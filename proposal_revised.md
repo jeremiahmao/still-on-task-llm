@@ -19,7 +19,7 @@ We investigate whether framing knowledge updates as a **policy preservation prob
 
 1. **A concrete adaptation of COPR for factual knowledge injection.** COPR [11] was designed for continual preference alignment using human-ranked responses. We adapt it for factual knowledge updates by replacing human preference rankings with *factual correctness rankings*: for each knowledge update, we sample multiple model responses, rank them by ground-truth accuracy, and apply COPR's advantage-weighted policy fitting with task replay regularization. This bridges the continual alignment and knowledge editing literatures.
 
-2. **To our knowledge, the first systematic comparison of knowledge update strategies on task-tuned models**, including weight-space editing (AlphaEdit), policy-space regularization (COPR-adapted), and SFT baselines with varying degrees of regularization. The primary evaluation is on financial query decomposition for RAG, where knowledge and task skill are tightly coupled. We additionally evaluate on FinQA as a generic-forgetting control where knowledge and skill are decoupled.
+2. **A systematic comparison of knowledge update strategies on task-tuned models**, including weight-space editing (AlphaEdit), policy-space regularization (COPR-adapted), and SFT baselines with varying degrees of regularization. The primary evaluation is on financial query decomposition for RAG, where knowledge and task skill are tightly coupled. We additionally evaluate on FinQA as a generic-forgetting control where knowledge and skill are decoupled.
 
 3. **An ablation isolating the contribution of advantage-weighted fitting** beyond simple KL regularization, testing whether COPR's structured policy fitting provides benefits over naive KL-regularized SFT for preserving task performance during knowledge injection.
 
@@ -73,7 +73,7 @@ EWC's diagonal approximation is thus a lossy, parameter-level proxy for the outp
 
 ### Primary task: Financial query decomposition for RAG
 
-We fine-tune Qwen2.5-3B on a financial query decomposition task. Given a financial question (e.g., "How did the Middle East conflict affect energy sector earnings in Q4 2023?"), the model generates 2–4 sub-queries whose embeddings maximize Recall@10 of target documents in a fixed retrieval corpus.
+We fine-tune Qwen2.5-3B on a financial query decomposition task. The query decomposition and FinQA task models are trained independently from the same Qwen2.5-3B base checkpoint — they are separate downstream models, not a single multi-task model. Given a financial question (e.g., "How did the Middle East conflict affect energy sector earnings in Q4 2023?"), the model generates 2–4 sub-queries whose embeddings maximize Recall@10 of target documents in a fixed retrieval corpus.
 
 **Why this task:** Query decomposition is a genuine *behavioral skill* — the model must learn a strategy for breaking complex questions into retrievable components — but it is also *knowledge-dependent*: generating effective sub-queries requires knowing which entities, events, and relationships exist. This tight coupling between skill and knowledge makes it an ideal setting for our study. When new facts are injected (e.g., a new acquisition or leadership change), the model's decomposition strategy should ideally incorporate the new entities without degrading on old ones.
 
@@ -168,7 +168,7 @@ To manage scope, we follow a phased execution strategy:
 | **Retrieval corpus** | FNSPID [5] articles before January 2022 | Fixed retrieval target for query decomposition training and task-preservation evaluation |
 | **Query decomposition training data** | Financial questions generated from pre-cutoff FNSPID by teacher LLM, filtered by Recall@10 > 0.7 | Evaluation infrastructure, not a dataset contribution |
 | **FinQA benchmark** | FinQA [3] — 8,281 QA pairs, standard train/dev/test split | Generic-forgetting control |
-| **Knowledge source** | FNSPID articles Jan 2022–Dec 2023 | Structured fact triples extracted via LLM, filtered to entities in pre-cutoff corpus and/or FinQA reports |
+| **Knowledge source** | FNSPID articles Jan 2022–Dec 2023 | Structured fact triples extracted via LLM. Verified by cross-document agreement: a triple is accepted only if the same (subject, relation, object) assertion appears in at least two independent FNSPID articles. Filtered to entities appearing in the pre-cutoff retrieval corpus and/or FinQA reports. |
 
 ---
 
