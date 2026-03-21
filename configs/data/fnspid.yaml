@@ -1,0 +1,13 @@
+source: "Zihan1004/FNSPID"
+cutoff_date: "2022-01-01"
+subsample_pre_cutoff: 500000
+subsample_post_cutoff: null  # Use all for triple extraction
+
+# Column names (verify after Check 1)
+date_column: "Date"
+ticker_column: "Stock_symbol"
+title_column: "Article_title"
+# Text columns — use best summary if no full text available
+text_columns:
+  - "LexRank"
+  - "Article_title"

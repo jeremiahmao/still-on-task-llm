@@ -1,0 +1,9 @@
+repo: "https://github.com/czyssrs/FinQA.git"
+data_dir: "dataset"  # Relative path within the cloned repo
+
+# Prompt template for Qwen2.5-3B
+system_prompt: |
+  You are a financial analyst. Given a financial report with tables and text,
+  answer the question by writing a reasoning program. Use operations: add,
+  subtract, multiply, divide, greater, exp. Reference table values as
+  table_row_col and text values as text_N.

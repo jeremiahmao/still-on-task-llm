@@ -1,0 +1,9 @@
+method: mixed_replay
+replay_pct: 0.05  # 5% task data mixed in
+training:
+  lr: 2.0e-5
+  epochs: 3
+  batch_size: 8
+  gradient_accumulation_steps: 2
+  max_seq_length: 512
+  bf16: true

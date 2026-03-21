@@ -1,0 +1,33 @@
+"""Download FNSPID and FinQA datasets."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from omegaconf import OmegaConf
+
+from sot.data.fnspid import download_fnspid
+from sot.data.finqa import download_finqa
+from sot.utils.config import load_config
+
+
+def main():
+    cfg = load_config()
+    data_root = Path(cfg.paths.data_root)
+
+    print("=== Downloading FNSPID ===")
+    fnspid_cfg = OmegaConf.load("configs/data/fnspid.yaml")
+    fnspid_path = download_fnspid(fnspid_cfg, data_root)
+    print(f"FNSPID saved to: {fnspid_path}")
+
+    print("\n=== Downloading FinQA ===")
+    finqa_dir = download_finqa(data_root)
+    print(f"FinQA dataset at: {finqa_dir}")
+
+    print("\nDone. Inspect FNSPID schema with:")
+    print(f"  python -c \"import pandas as pd; df = pd.read_parquet('{fnspid_path}'); print(df.columns.tolist()); print(df.head(3))\"")
+
+
+if __name__ == "__main__":
+    main()

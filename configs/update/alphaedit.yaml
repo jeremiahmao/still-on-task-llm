@@ -1,0 +1,4 @@
+method: alphaedit
+batch_size: 100  # Edits per batch (AlphaEdit default)
+preserved_keys: 100000  # Number of preserved knowledge triples for null-space
+# EasyEdit-specific params will be generated from this config

@@ -1,0 +1,14 @@
+# Fact triple extraction and filtering config
+min_cross_doc_agreement: 2  # Triple must appear in N+ articles
+scales: [200, 1000, 3000]
+
+# Relation type templates for NL rendering
+templates:
+  CEO: "Who is the CEO of {subject}?"
+  CFO: "Who is the CFO of {subject}?"
+  president: "Who is the president of {subject}?"
+  acquired_by: "Which company acquired {subject}?"
+  acquisition: "What company did {subject} acquire?"
+  revenue: "What was {subject}'s {relation}?"
+  net_income: "What was {subject}'s {relation}?"
+  default: "What is the {relation} of {subject}?"

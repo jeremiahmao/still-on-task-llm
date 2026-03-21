@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Data & outputs (large files)
+data/
+outputs/
+checkpoints/
+wandb/
+
+# FAISS indices
+*.faiss
+*.index
+
+# Large binary files
+*.npy
+*.npz
+*.pt
+*.bin
+*.safetensors
+
+# Environment
+.env
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/

@@ -1,0 +1,14 @@
+model:
+  name: "Qwen/Qwen2.5-3B"
+  dtype: "bfloat16"
+
+seed: 42
+
+paths:
+  data_root: "./data"
+  output_root: "./outputs"
+  checkpoint_root: "./checkpoints"
+
+wandb:
+  project: "still-on-task"
+  enabled: true
