@@ -1,47 +1,87 @@
-"""Phase 3: Full retrain + ablations (if compute permits)."""
+"""Phase 3: Ablations + deferred methods (if compute permits).
+
+Run after Phases 1-2 produce core results.
+"""
 
 import subprocess
 import sys
 
-
 ABLATIONS = [
+    # Mixed replay (deferred from Phase 1)
+    {
+        "method": "mixed_replay",
+        "scale": 1000,
+        "config": "configs/update/mixed_replay.yaml",
+        "overrides": [],
+        "tag": "mixed_replay_1K",
+    },
     # COPR ablations: replay percentage
-    {"method": "copr", "scale": 1000, "overrides": ["replay_pct=0.01"], "tag": "copr_replay1pct"},
-    {"method": "copr", "scale": 1000, "overrides": ["replay_pct=0.10"], "tag": "copr_replay10pct"},
+    {
+        "method": "copr",
+        "scale": 1000,
+        "config": "configs/update/copr.yaml",
+        "overrides": ["replay_pct=0.01"],
+        "tag": "copr_replay1pct",
+    },
+    {
+        "method": "copr",
+        "scale": 1000,
+        "config": "configs/update/copr.yaml",
+        "overrides": ["replay_pct=0.10"],
+        "tag": "copr_replay10pct",
+    },
     # COPR ablations: K (number of sampled responses)
-    {"method": "copr", "scale": 1000, "overrides": ["K=4"], "tag": "copr_K4"},
-    {"method": "copr", "scale": 1000, "overrides": ["K=16"], "tag": "copr_K16"},
+    {
+        "method": "copr",
+        "scale": 1000,
+        "config": "configs/update/copr.yaml",
+        "overrides": ["K=4"],
+        "tag": "copr_K4",
+    },
     # KL-reg lambda sweep
-    {"method": "kl_reg_sft", "scale": 1000, "overrides": ["kl_lambda=0.01"], "tag": "kl_lambda001"},
-    {"method": "kl_reg_sft", "scale": 1000, "overrides": ["kl_lambda=1.0"], "tag": "kl_lambda1"},
-    # Full retrain at all scales
-    {"method": "full_retrain", "scale": 200, "overrides": [], "tag": "full_retrain_200"},
-    {"method": "full_retrain", "scale": 1000, "overrides": [], "tag": "full_retrain_1000"},
-    {"method": "full_retrain", "scale": 3000, "overrides": [], "tag": "full_retrain_3000"},
+    {
+        "method": "kl_reg_sft",
+        "scale": 1000,
+        "config": "configs/update/kl_reg_sft.yaml",
+        "overrides": ["kl_lambda=0.01"],
+        "tag": "kl_lambda001",
+    },
+    {
+        "method": "kl_reg_sft",
+        "scale": 1000,
+        "config": "configs/update/kl_reg_sft.yaml",
+        "overrides": ["kl_lambda=1.0"],
+        "tag": "kl_lambda1",
+    },
+    # Full retrain (most expensive — run last)
+    {
+        "method": "full_retrain",
+        "scale": 1000,
+        "config": None,
+        "overrides": [],
+        "tag": "full_retrain_1K",
+    },
 ]
-
-CONFIG_MAP = {
-    "copr": "configs/update/copr.yaml",
-    "kl_reg_sft": "configs/update/kl_reg_sft.yaml",
-    "full_retrain": None,
-}
 
 
 def main():
     for i, ablation in enumerate(ABLATIONS):
-        print(f"\n{'='*60}")
-        print(f"[{i+1}/{len(ABLATIONS)}] {ablation['tag']}")
-        print(f"{'='*60}")
+        print(f"\n{'=' * 60}")
+        print(f"[{i + 1}/{len(ABLATIONS)}] {ablation['tag']}")
+        print(f"{'=' * 60}")
 
         cmd = [
-            sys.executable, "scripts/09_run_update.py",
-            "--method", ablation["method"],
-            "--scale", str(ablation["scale"]),
-            "--task", "qd",
+            sys.executable,
+            "scripts/09_run_update.py",
+            "--method",
+            ablation["method"],
+            "--scale",
+            str(ablation["scale"]),
+            "--task",
+            "qd",
         ]
-        config = CONFIG_MAP.get(ablation["method"])
-        if config:
-            cmd.extend(["--config", config])
+        if ablation["config"]:
+            cmd.extend(["--config", ablation["config"]])
         if ablation["overrides"]:
             cmd.extend(["--overrides"] + ablation["overrides"])
 
@@ -52,9 +92,12 @@ def main():
 
         run_id = f"{ablation['method']}_qd_scale{ablation['scale']}"
         eval_cmd = [
-            sys.executable, "scripts/10_evaluate.py",
-            "--model_path", f"outputs/{run_id}",
-            "--task", "qd",
+            sys.executable,
+            "scripts/10_evaluate.py",
+            "--model_path",
+            f"outputs/{run_id}",
+            "--task",
+            "qd",
         ]
         subprocess.run(eval_cmd)
 
