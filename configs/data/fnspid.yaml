@@ -1,13 +1,20 @@
 source: "Zihan1004/FNSPID"
+# Raw file paths within the HF repo
+news_file: "Stock_news/nasdaq_exteral_data.csv"
+all_news_file: "Stock_news/All_external.csv"
+
 cutoff_date: "2022-01-01"
 subsample_pre_cutoff: 500000
 subsample_post_cutoff: null  # Use all for triple extraction
 
-# Column names (verify after Check 1)
+# Verified column names from actual CSV
 date_column: "Date"
 ticker_column: "Stock_symbol"
 title_column: "Article_title"
-# Text columns — use best summary if no full text available
+text_column: "Article"  # Full article text is available
+
+# Fallback text columns in priority order (if Article is missing/empty)
 text_columns:
-  - "LexRank"
+  - "Article"
+  - "Lexrank_summary"
   - "Article_title"
