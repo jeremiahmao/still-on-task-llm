@@ -1,107 +1,81 @@
-"""Phase 3: Ablations + deferred methods (if compute permits).
+"""Phase 3: FinQA generic-forgetting control (time permitting).
 
-Run after Phases 1-2 produce core results.
+Run top methods from Phase 1 on a FinQA-tuned model at 1K edits.
+Expected outcome: no degradation (knowledge updates shouldn't affect table arithmetic).
+See FINAL_PLAN.md for the full execution plan.
 """
 
 import subprocess
 import sys
 
-ABLATIONS = [
-    # Mixed replay (deferred from Phase 1)
-    {
-        "method": "mixed_replay",
-        "scale": 1000,
-        "config": "configs/update/mixed_replay.yaml",
-        "overrides": [],
-        "tag": "mixed_replay_1K",
-    },
-    # COPR ablations: replay percentage
-    {
-        "method": "copr",
-        "scale": 1000,
-        "config": "configs/update/copr.yaml",
-        "overrides": ["replay_pct=0.01"],
-        "tag": "copr_replay1pct",
-    },
-    {
-        "method": "copr",
-        "scale": 1000,
-        "config": "configs/update/copr.yaml",
-        "overrides": ["replay_pct=0.10"],
-        "tag": "copr_replay10pct",
-    },
-    # COPR ablations: K (number of sampled responses)
-    {
-        "method": "copr",
-        "scale": 1000,
-        "config": "configs/update/copr.yaml",
-        "overrides": ["K=4"],
-        "tag": "copr_K4",
-    },
-    # KL-reg lambda sweep
-    {
-        "method": "kl_reg_sft",
-        "scale": 1000,
-        "config": "configs/update/kl_reg_sft.yaml",
-        "overrides": ["kl_lambda=0.01"],
-        "tag": "kl_lambda001",
-    },
-    {
-        "method": "kl_reg_sft",
-        "scale": 1000,
-        "config": "configs/update/kl_reg_sft.yaml",
-        "overrides": ["kl_lambda=1.0"],
-        "tag": "kl_lambda1",
-    },
-    # Full retrain (most expensive — run last)
-    {
-        "method": "full_retrain",
-        "scale": 1000,
-        "config": None,
-        "overrides": [],
-        "tag": "full_retrain_1K",
-    },
-]
+# Run the methods that matter most for the paper's story
+METHODS = ["kl_reg_sft", "alphaedit", "copr"]
+SCALE = 1000
+
+CONFIG_MAP = {
+    "kl_reg_sft": "configs/update/kl_reg_sft.yaml",
+    "alphaedit": "configs/update/alphaedit.yaml",
+    "copr": "configs/update/copr.yaml",
+}
 
 
 def main():
-    for i, ablation in enumerate(ABLATIONS):
+    print("=== Phase 3: FinQA forgetting control ===")
+
+    # No-update baseline on FinQA
+    print(f"\n{'=' * 60}")
+    print("Evaluating FinQA no-update baseline...")
+    print(f"{'=' * 60}")
+    eval_cmd = [
+        sys.executable,
+        "scripts/10_evaluate.py",
+        "--model_path",
+        "checkpoints/finqa_sft/final",
+        "--task",
+        "finqa",
+        "--metrics",
+        "forgetting",
+    ]
+    subprocess.run(eval_cmd)
+
+    # Run each method
+    for i, method in enumerate(METHODS):
         print(f"\n{'=' * 60}")
-        print(f"[{i + 1}/{len(ABLATIONS)}] {ablation['tag']}")
+        print(f"[{i + 1}/{len(METHODS)}] FinQA: {method} @ scale={SCALE}")
         print(f"{'=' * 60}")
 
+        config = CONFIG_MAP[method]
         cmd = [
             sys.executable,
             "scripts/09_run_update.py",
             "--method",
-            ablation["method"],
+            method,
             "--scale",
-            str(ablation["scale"]),
+            str(SCALE),
             "--task",
-            "qd",
+            "finqa",
+            "--config",
+            config,
         ]
-        if ablation["config"]:
-            cmd.extend(["--config", ablation["config"]])
-        if ablation["overrides"]:
-            cmd.extend(["--overrides"] + ablation["overrides"])
 
         result = subprocess.run(cmd)
         if result.returncode != 0:
-            print(f"FAILED: {ablation['tag']}")
+            print(f"FAILED: {method} @ FinQA")
             continue
 
-        run_id = f"{ablation['method']}_qd_scale{ablation['scale']}"
         eval_cmd = [
             sys.executable,
             "scripts/10_evaluate.py",
             "--model_path",
-            f"outputs/{run_id}",
+            f"outputs/{method}_finqa_scale{SCALE}",
             "--task",
-            "qd",
+            "finqa",
+            "--metrics",
+            "forgetting,absorption",
         ]
         subprocess.run(eval_cmd)
 
-    print(f"\nPhase 3 complete. {len(ABLATIONS)} ablations run.")
+    print("\nPhase 3 complete.")
 
 
 if __name__ == "__main__":

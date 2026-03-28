@@ -7,7 +7,7 @@ build/
 *.egg
 
 # Data & outputs (large files)
-data/
+/data/
 outputs/
 checkpoints/
 wandb/

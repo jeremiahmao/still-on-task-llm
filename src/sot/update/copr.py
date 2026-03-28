@@ -20,13 +20,12 @@ import torch
 import torch.nn.functional as F
 from omegaconf import DictConfig
 from tqdm import tqdm
-from transformers import PreTrainedModel, AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedModel
 
 from sot.update.base import UpdateMethod
 
 
 class COPRUpdate(UpdateMethod):
-
     @property
     def name(self) -> str:
         return "copr_adapted"
@@ -80,9 +79,7 @@ class COPRUpdate(UpdateMethod):
         # Step 4: Training loop
         print(f"Training for {epochs} epochs...")
         model.train()
-        optimizer = torch.optim.AdamW(
-            [p for p in model.parameters() if p.requires_grad], lr=lr
-        )
+        optimizer = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=lr)
 
         for epoch in range(epochs):
             total_fit_loss = 0.0
@@ -94,7 +91,7 @@ class COPRUpdate(UpdateMethod):
             random.shuffle(fit_data)
             replay_iter = iter(replay_buffer * max(1, len(fit_data) // max(len(replay_buffer), 1)))
 
-            for item in tqdm(fit_data, desc=f"COPR epoch {epoch+1}/{epochs}"):
+            for item in tqdm(fit_data, desc=f"COPR epoch {epoch + 1}/{epochs}"):
                 # --- Fit loss: KL(P_theta || P*) over ranked responses ---
                 fit_loss = self._compute_fit_loss(model, tokenizer, item)
                 total_fit_loss += fit_loss.item()
@@ -117,7 +114,7 @@ class COPRUpdate(UpdateMethod):
 
             avg_fit = total_fit_loss / max(n_fit, 1)
             avg_reg = total_reg_loss / max(n_reg, 1)
-            print(f"  Epoch {epoch+1}: fit_loss={avg_fit:.4f}, reg_loss={avg_reg:.4f}")
+            print(f"  Epoch {epoch + 1}: fit_loss={avg_fit:.4f}, reg_loss={avg_reg:.4f}")
 
         # Clean up
         del ref_model
@@ -151,13 +148,15 @@ class COPRUpdate(UpdateMethod):
             # Compute linear advantages: worst (j=0) to best (j=K-1)
             advantages = [(2 * j - K + 1) / K for j in range(len(ranked))]
 
-            fit_data.append({
-                "question": question,
-                "gold_answer": gold_answer,
-                "ranked_responses": ranked,
-                "advantages": advantages,
-                "log_p_star": None,  # Computed later
-            })
+            fit_data.append(
+                {
+                    "question": question,
+                    "gold_answer": gold_answer,
+                    "ranked_responses": ranked,
+                    "advantages": advantages,
+                    "log_p_star": None,  # Computed later
+                }
+            )
 
         model.train()
         return fit_data
@@ -187,7 +186,7 @@ class COPRUpdate(UpdateMethod):
                     pad_token_id=tokenizer.pad_token_id,
                 )
             response = tokenizer.decode(
-                outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True
+                outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
             ).strip()
             responses.append(response)
 
@@ -335,7 +334,9 @@ def _compute_seq_log_prob(
 
     # Get prompt length to only compute log-prob over the response tokens
     prompt_chat = [{"role": "user", "content": question}]
-    prompt_text = tokenizer.apply_chat_template(prompt_chat, tokenize=False, add_generation_prompt=True)
+    prompt_text = tokenizer.apply_chat_template(
+        prompt_chat, tokenize=False, add_generation_prompt=True
+    )
     prompt_len = len(tokenizer(prompt_text)["input_ids"])
 
     with torch.no_grad() if not model.training else torch.enable_grad():

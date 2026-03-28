@@ -5,7 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import torch
-from transformers import PreTrainedModel, AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedModel
 
 
 def evaluate_locality(
@@ -50,7 +50,7 @@ def evaluate_locality(
             )
 
         response = tokenizer.decode(
-            outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True
+            outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
         ).strip()
 
         correct = response.strip().lower() == gold.strip().lower()
@@ -97,10 +97,7 @@ def prepare_locality_facts(
 
     edited_keys = {t.key() for t in edited_triples}
     edited_entities = {t.subject.lower().strip() for t in edited_triples}
-    edited_sectors = {
-        sector_map.get(t.subject.strip(), "unknown")
-        for t in edited_triples
-    }
+    edited_sectors = {sector_map.get(t.subject.strip(), "unknown") for t in edited_triples}
 
     locality_facts = []
     for triple in all_triples:
@@ -119,11 +116,13 @@ def prepare_locality_facts(
             stratum = "other_sector"
 
         qa = render_triple(triple, templates)
-        locality_facts.append({
-            "question": qa.question,
-            "answer": qa.answer,
-            "stratum": stratum,
-        })
+        locality_facts.append(
+            {
+                "question": qa.question,
+                "answer": qa.answer,
+                "stratum": stratum,
+            }
+        )
 
     return locality_facts
 

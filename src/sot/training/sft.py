@@ -4,11 +4,8 @@ from pathlib import Path
 
 from datasets import Dataset
 from omegaconf import DictConfig
-from peft import PeftModel
 from transformers import AutoTokenizer, TrainingArguments
 from trl import SFTTrainer
-
-from sot.utils.seed import seed_everything
 
 
 def run_sft(

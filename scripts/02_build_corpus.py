@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from omegaconf import OmegaConf
 
-from sot.data.fnspid import load_fnspid, temporal_split, subsample_stratified, get_text_column
+from sot.data.fnspid import get_text_column, load_fnspid, subsample_stratified, temporal_split
 from sot.utils.config import load_config
 
 

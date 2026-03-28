@@ -2,13 +2,17 @@
 
 from pathlib import Path
 
-from peft import LoraConfig, PeftModel, get_peft_model, TaskType
+from peft import LoraConfig, PeftModel, TaskType, get_peft_model
 from transformers import PreTrainedModel
 
-
 DEFAULT_TARGET_MODULES = [
-    "q_proj", "k_proj", "v_proj", "o_proj",
-    "gate_proj", "up_proj", "down_proj",
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "o_proj",
+    "gate_proj",
+    "up_proj",
+    "down_proj",
 ]
 
 

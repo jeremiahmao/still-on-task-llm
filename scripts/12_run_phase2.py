@@ -1,17 +1,18 @@
-"""Phase 2: Expand to multiple scales + FinQA forgetting control.
+"""Phase 2: Scaling stress test at 3K edits.
 
 Run after Phase 1 validates the pipeline at 1K edits.
+See FINAL_PLAN.md for the full execution plan.
 """
 
 import subprocess
 import sys
 
-# Expand core methods to all scales
-METHODS = ["kl_reg_sft", "alphaedit", "copr"]
-SCALES = [200, 3000]  # 1K already done in Phase 1
+METHODS = ["naive_sft", "kl_reg_sft", "alphaedit", "copr"]
+SCALE = 3000
 TASK = "qd"
 
 CONFIG_MAP = {
+    "naive_sft": "configs/update/naive_sft.yaml",
     "kl_reg_sft": "configs/update/kl_reg_sft.yaml",
     "alphaedit": "configs/update/alphaedit.yaml",
     "copr": "configs/update/copr.yaml",
@@ -19,89 +20,56 @@ CONFIG_MAP = {
 
 
 def main():
-    # Part A: Expand QD to remaining scales
-    print("=== Phase 2A: QD at 200 and 3K scales ===")
-    total = len(METHODS) * len(SCALES)
+    print(f"=== Phase 2: QD at {SCALE} edits ===")
+    total = len(METHODS)
     completed = 0
+    failed = []
 
     for method in METHODS:
-        for scale in SCALES:
-            completed += 1
-            print(f"\n{'=' * 60}")
-            print(f"[{completed}/{total}] {method} @ scale={scale}")
-            print(f"{'=' * 60}")
-
-            config = CONFIG_MAP.get(method)
-            cmd = [
-                sys.executable,
-                "scripts/09_run_update.py",
-                "--method",
-                method,
-                "--scale",
-                str(scale),
-                "--task",
-                TASK,
-            ]
-            if config:
-                cmd.extend(["--config", config])
-
-            result = subprocess.run(cmd)
-            if result.returncode != 0:
-                print(f"FAILED: {method} @ scale={scale}")
-                continue
-
-            run_id = f"{method}_{TASK}_scale{scale}"
-            eval_cmd = [
-                sys.executable,
-                "scripts/10_evaluate.py",
-                "--model_path",
-                f"outputs/{run_id}",
-                "--task",
-                TASK,
-                "--metrics",
-                "preservation,absorption,locality",
-            ]
-            subprocess.run(eval_cmd)
-
-    # Part B: FinQA forgetting control at 1K for top methods
-    print("\n=== Phase 2B: FinQA forgetting control ===")
-    for method in METHODS:
+        completed += 1
         print(f"\n{'=' * 60}")
-        print(f"FinQA: {method} @ scale=1000")
+        print(f"[{completed}/{total}] {method} @ scale={SCALE}")
         print(f"{'=' * 60}")
 
-        config = CONFIG_MAP.get(method)
+        config = CONFIG_MAP[method]
         cmd = [
             sys.executable,
             "scripts/09_run_update.py",
             "--method",
             method,
             "--scale",
-            "1000",
+            str(SCALE),
             "--task",
-            "finqa",
+            TASK,
+            "--config",
+            config,
         ]
-        if config:
-            cmd.extend(["--config", config])
 
         result = subprocess.run(cmd)
         if result.returncode != 0:
-            print(f"FAILED: {method} @ FinQA")
+            print(f"FAILED: {method} @ scale={SCALE}")
+            failed.append(method)
             continue
 
+        run_id = f"{method}_{TASK}_scale{SCALE}"
         eval_cmd = [
             sys.executable,
             "scripts/10_evaluate.py",
             "--model_path",
-            f"outputs/{method}_finqa_scale1000",
+            f"outputs/{run_id}",
             "--task",
-            "finqa",
+            TASK,
             "--metrics",
-            "forgetting,absorption",
+            "preservation,absorption,locality",
         ]
         subprocess.run(eval_cmd)
 
-    print("\nPhase 2 complete.")
+    # Summary
+    print(f"\n{'=' * 60}")
+    print(f"Phase 2 complete. {completed - len(failed)}/{total} methods succeeded.")
+    if failed:
+        print(f"  Failed: {', '.join(failed)}")
+    print("\nNext (time permitting): run scripts/13_run_phase3.py for FinQA control.")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 
@@ -10,6 +10,7 @@ import torch
 @dataclass
 class ComputeStats:
     """Tracks GPU-hours and peak memory for a single run."""
+
     start_time: float = 0.0
     elapsed_seconds: float = 0.0
     peak_memory_gb: float = 0.0

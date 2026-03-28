@@ -1,7 +1,7 @@
 """Task preservation: Recall@10 on held-out query decomposition test set."""
 
 import torch
-from transformers import PreTrainedModel, AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedModel
 
 from sot.retrieval.encoder import Encoder
 from sot.retrieval.index import search
@@ -72,7 +72,7 @@ def evaluate_task_preservation(
             )
 
         response = tokenizer.decode(
-            outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True
+            outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
         ).strip()
 
         # Parse sub-queries from response (expect "- sub_query" format)

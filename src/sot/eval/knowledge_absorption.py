@@ -1,7 +1,7 @@
 """Knowledge absorption: accuracy on fact-probe questions."""
 
 import torch
-from transformers import PreTrainedModel, AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedModel
 
 
 def evaluate_knowledge_absorption(
@@ -40,19 +40,21 @@ def evaluate_knowledge_absorption(
             )
 
         response = tokenizer.decode(
-            outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True
+            outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
         ).strip()
 
         exact = response.strip().lower() == gold.strip().lower()
         f1 = _token_f1(response, gold)
 
-        results.append({
-            "question": question,
-            "gold": gold,
-            "prediction": response,
-            "exact_match": exact,
-            "token_f1": f1,
-        })
+        results.append(
+            {
+                "question": question,
+                "gold": gold,
+                "prediction": response,
+                "exact_match": exact,
+                "token_f1": f1,
+            }
+        )
 
     n = len(results)
     return {

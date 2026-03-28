@@ -11,32 +11,27 @@ from omegaconf import OmegaConf
 
 from sot.models.base import load_model
 from sot.models.lora import load_lora, merge_lora
-from sot.update.naive_sft import NaiveSFTUpdate
-from sot.update.kl_reg_sft import KLRegSFTUpdate
-from sot.update.mixed_replay import MixedReplayUpdate
 from sot.update.alphaedit import AlphaEditUpdate
 from sot.update.copr import COPRUpdate
-from sot.update.full_retrain import FullRetrainUpdate
+from sot.update.kl_reg_sft import KLRegSFTUpdate
+from sot.update.naive_sft import NaiveSFTUpdate
 from sot.utils.config import load_config, save_config
 from sot.utils.gpu import track_compute
-from sot.utils.seed import seed_everything
 from sot.utils.logging import save_metadata
-
+from sot.utils.seed import seed_everything
 
 METHODS = {
     "naive_sft": NaiveSFTUpdate,
     "kl_reg_sft": KLRegSFTUpdate,
-    "mixed_replay": MixedReplayUpdate,
     "alphaedit": AlphaEditUpdate,
     "copr": COPRUpdate,
-    "full_retrain": FullRetrainUpdate,
 }
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--method", required=True, choices=list(METHODS.keys()))
-    parser.add_argument("--scale", type=int, required=True, choices=[200, 1000, 3000])
+    parser.add_argument("--scale", type=int, required=True, choices=[1000, 3000])
     parser.add_argument("--task", default="qd", choices=["qd", "finqa"])
     parser.add_argument("--config", default=None, help="Method-specific config YAML")
     parser.add_argument("--overrides", nargs="*", default=[], help="OmegaConf dot-list overrides")
@@ -90,15 +85,18 @@ def main():
     updated_model.save_pretrained(str(run_dir / "model"))
     tokenizer.save_pretrained(str(run_dir / "model"))
 
-    save_metadata({
-        "method": args.method,
-        "task": args.task,
-        "scale": args.scale,
-        "gpu_hours": stats.gpu_hours,
-        "peak_memory_gb": stats.peak_memory_gb,
-        "elapsed_seconds": stats.elapsed_seconds,
-        "seed": base_cfg.seed,
-    }, run_dir / "metadata.json")
+    save_metadata(
+        {
+            "method": args.method,
+            "task": args.task,
+            "scale": args.scale,
+            "gpu_hours": stats.gpu_hours,
+            "peak_memory_gb": stats.peak_memory_gb,
+            "elapsed_seconds": stats.elapsed_seconds,
+            "seed": base_cfg.seed,
+        },
+        run_dir / "metadata.json",
+    )
 
     save_config(OmegaConf.merge(base_cfg, method_cfg), run_dir / "config.yaml")
 

@@ -4,11 +4,12 @@ from pathlib import Path
 
 from omegaconf import DictConfig, OmegaConf
 
-
 _BASE_CONFIG = Path(__file__).resolve().parents[3] / "configs" / "base.yaml"
 
 
-def load_config(config_path: str | Path | None = None, overrides: list[str] | None = None) -> DictConfig:
+def load_config(
+    config_path: str | Path | None = None, overrides: list[str] | None = None
+) -> DictConfig:
     """Load and merge configs: base.yaml <- specific config <- CLI overrides."""
     base = OmegaConf.load(_BASE_CONFIG)
 

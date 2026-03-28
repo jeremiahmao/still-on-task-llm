@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 
 from omegaconf import DictConfig
-from transformers import PreTrainedModel, AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedModel
 
 
 class UpdateMethod(ABC):

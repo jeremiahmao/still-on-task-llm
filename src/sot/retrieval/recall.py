@@ -18,7 +18,7 @@ def compute_recall_at_k(
         Dict with 'mean', 'std', and 'per_query' Recall@K values.
     """
     recalls = []
-    for retrieved, gold in zip(retrieved_ids, gold_ids):
+    for retrieved, gold in zip(retrieved_ids, gold_ids, strict=False):
         if len(gold) == 0:
             continue
         top_k = set(list(retrieved)[:k]) if len(retrieved) > k else retrieved

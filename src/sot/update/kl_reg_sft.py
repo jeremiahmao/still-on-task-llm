@@ -4,17 +4,14 @@ import copy
 
 import torch
 import torch.nn.functional as F
-from datasets import Dataset
 from omegaconf import DictConfig
-from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import PreTrainedModel, AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedModel
 
 from sot.update.base import UpdateMethod
 
 
 class KLRegSFTUpdate(UpdateMethod):
-
     @property
     def name(self) -> str:
         return "kl_reg_sft"
@@ -54,16 +51,17 @@ class KLRegSFTUpdate(UpdateMethod):
             texts.append(text)
 
         model.train()
-        optimizer = torch.optim.AdamW(
-            [p for p in model.parameters() if p.requires_grad], lr=lr
-        )
+        optimizer = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=lr)
 
         for epoch in range(epochs):
             total_loss = 0.0
-            for text in tqdm(texts, desc=f"KL-reg SFT epoch {epoch+1}/{epochs}"):
+            for text in tqdm(texts, desc=f"KL-reg SFT epoch {epoch + 1}/{epochs}"):
                 inputs = tokenizer(
-                    text, return_tensors="pt", truncation=True,
-                    max_length=max_seq_length, padding=False,
+                    text,
+                    return_tensors="pt",
+                    truncation=True,
+                    max_length=max_seq_length,
+                    padding=False,
                 )
                 inputs = {k: v.to(model.device) for k, v in inputs.items()}
                 labels = inputs["input_ids"].clone()
@@ -80,8 +78,10 @@ class KLRegSFTUpdate(UpdateMethod):
                 current_logprobs = F.log_softmax(outputs.logits, dim=-1)
                 ref_logprobs = F.log_softmax(ref_outputs.logits, dim=-1)
                 kl_loss = F.kl_div(
-                    current_logprobs, ref_logprobs.exp(),
-                    reduction="batchmean", log_target=False,
+                    current_logprobs,
+                    ref_logprobs.exp(),
+                    reduction="batchmean",
+                    log_target=False,
                 )
 
                 loss = sft_loss + kl_lambda * kl_loss
@@ -92,7 +92,7 @@ class KLRegSFTUpdate(UpdateMethod):
                 total_loss += loss.item()
 
             avg_loss = total_loss / max(len(texts), 1)
-            print(f"  Epoch {epoch+1} avg loss: {avg_loss:.4f}")
+            print(f"  Epoch {epoch + 1} avg loss: {avg_loss:.4f}")
 
         # Clean up reference model
         del ref_model

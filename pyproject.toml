@@ -20,6 +20,7 @@ dependencies = [
     "pyarrow>=15.0",
     "huggingface-hub>=0.22",
     "tqdm",
+    "matplotlib>=3.10.8",
 ]
 
 [project.optional-dependencies]

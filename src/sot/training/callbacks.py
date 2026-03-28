@@ -3,8 +3,6 @@
 import torch
 from transformers import TrainerCallback
 
-import wandb
-
 
 class GPUMemoryCallback(TrainerCallback):
     """Log GPU memory usage at each logging step."""
