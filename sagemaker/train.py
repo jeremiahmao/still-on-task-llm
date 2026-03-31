@@ -2,7 +2,7 @@
 
 Usage on SageMaker:
     The estimator calls this script with --phase and optional --methods/--scale args.
-    Data is expected at /opt/ml/input/data/{fnspid,finqa,qd}/ (SageMaker channels)
+    Data is expected at /opt/ml/input/data/data/ (SageMaker channel)
     or downloaded at runtime.
 
     Checkpoints go to /opt/ml/checkpoints/ (persisted across spot restarts).
@@ -36,6 +36,9 @@ def setup_paths():
     if sm_data.exists() and not repo_data.exists():
         repo_data.symlink_to(sm_data)
         print(f"Linked data: {sm_data} -> {repo_data}")
+    elif not repo_data.exists():
+        repo_data.mkdir(parents=True, exist_ok=True)
+        print(f"Created empty data dir: {repo_data}")
 
     # Checkpoints: use SageMaker checkpoint dir for spot instance resilience
     sm_ckpt = Path(SM_CHECKPOINT_DIR)
@@ -45,6 +48,8 @@ def setup_paths():
         if not repo_ckpt.exists():
             repo_ckpt.symlink_to(sm_ckpt)
             print(f"Linked checkpoints: {sm_ckpt} -> {repo_ckpt}")
+    elif not repo_ckpt.exists():
+        repo_ckpt.mkdir(parents=True, exist_ok=True)
 
     # Outputs
     repo_outputs = repo / "outputs"
@@ -66,17 +71,42 @@ def run_script(script_name: str, args: list[str] | None = None):
         sys.exit(result.returncode)
 
 
-def copy_outputs_to_model_dir():
-    """Copy final outputs to SM_MODEL_DIR for S3 upload."""
+def copy_to_model_dir():
+    """Copy outputs and key artifacts to SM_MODEL_DIR for S3 upload."""
+    model_dir = Path(SM_MODEL_DIR)
+
+    # Copy outputs/ (eval results, metadata, configs)
     outputs = REPO_ROOT / "outputs"
     if outputs.exists():
-        dst = Path(SM_MODEL_DIR) / "outputs"
+        dst = model_dir / "outputs"
         if outputs.is_symlink():
-            # Copy the actual content, not the symlink
             shutil.copytree(str(outputs.resolve()), str(dst), dirs_exist_ok=True)
         else:
             shutil.copytree(str(outputs), str(dst), dirs_exist_ok=True)
-        print(f"Outputs copied to {dst}")
+        print(f"Outputs -> {dst}")
+
+    # Copy generated data artifacts (triples, QD data, locality facts)
+    # so they can be reused without re-running the data pipeline
+    data_artifacts = [
+        "data/fnspid/triples",
+        "data/fnspid/locality_facts.json",
+        "data/qd",
+    ]
+    for artifact in data_artifacts:
+        src = REPO_ROOT / artifact
+        if src.exists():
+            dst = model_dir / artifact
+            if src.is_dir():
+                shutil.copytree(str(src), str(dst), dirs_exist_ok=True)
+            else:
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(str(src), str(dst))
+            print(f"{artifact} -> {dst}")
+
+    # Copy the results CSV if it was generated
+    csv_path = REPO_ROOT / "outputs" / "all_results.csv"
+    if csv_path.exists():
+        shutil.copy2(str(csv_path), str(model_dir / "all_results.csv"))
 
 
 def main():
@@ -105,6 +135,15 @@ def main():
 
     # Install the package
     subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."], cwd=str(repo))
+
+    # Install submodule deps if needed
+    alphaedit = repo / "vendor" / "AlphaEdit"
+    if alphaedit.exists():
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+            cwd=str(alphaedit),
+            check=False,
+        )
 
     if args.phase == "data":
         run_script("01_download_data.py")
@@ -148,7 +187,7 @@ def main():
 
         run_script("14_generate_tables.py")
 
-    copy_outputs_to_model_dir()
+    copy_to_model_dir()
     print("\nTraining complete.")
 
 
