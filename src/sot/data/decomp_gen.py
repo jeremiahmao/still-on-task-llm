@@ -25,6 +25,8 @@ def generate_decompositions(
     tokenizer: AutoTokenizer,
     n_candidates: int = 5,
     max_new_tokens: int = 256,
+    checkpoint_path: str | None = None,
+    checkpoint_every: int = 200,
 ) -> list[dict]:
     """Generate multiple candidate decompositions per question.
 
@@ -34,13 +36,28 @@ def generate_decompositions(
         tokenizer: Corresponding tokenizer.
         n_candidates: Number of candidate decompositions to generate per question.
         max_new_tokens: Max generation length.
+        checkpoint_path: If set, save progress here periodically.
+        checkpoint_every: Save checkpoint every N questions.
 
     Returns:
         List of dicts with 'question', 'gold_articles', and 'decompositions' (list of lists).
     """
     results = []
+    start_idx = 0
 
-    for q in tqdm(questions, desc="Generating decompositions"):
+    # Resume from checkpoint
+    if checkpoint_path and Path(checkpoint_path).exists():
+        with open(checkpoint_path) as f:
+            ckpt_data = json.load(f)
+        results = ckpt_data["results"]
+        start_idx = ckpt_data["next_idx"]
+        print(
+            f"Resuming from checkpoint: {len(results)} decompositions, starting at question {start_idx}"
+        )
+
+    for i, q in enumerate(
+        tqdm(questions[start_idx:], desc="Generating decompositions"), start=start_idx
+    ):
         prompt = DECOMP_PROMPT.format(question=q["question"])
         inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024)
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
@@ -73,7 +90,23 @@ def generate_decompositions(
                 }
             )
 
+        # Periodic checkpoint
+        if checkpoint_path and (i - start_idx + 1) % checkpoint_every == 0:
+            _save_decomp_checkpoint(checkpoint_path, results, i + 1)
+
+    # Final checkpoint
+    if checkpoint_path:
+        _save_decomp_checkpoint(checkpoint_path, results, len(questions))
+
     return results
+
+
+def _save_decomp_checkpoint(path: str, results: list[dict], next_idx: int) -> None:
+    """Save decomposition generation progress."""
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump({"results": results, "next_idx": next_idx}, f)
+    print(f"  Checkpoint saved: {len(results)} decompositions, next_idx={next_idx}")
 
 
 def generate_decompositions_api(

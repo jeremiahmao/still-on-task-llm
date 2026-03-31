@@ -5,6 +5,8 @@ Pipeline:
 2. Generate candidate sub-query decompositions for each question
 3. Filter decompositions by Recall@10 against the FAISS index
 4. Split into train/test sets
+
+All steps checkpoint progress and resume on restart.
 """
 
 import sys
@@ -54,21 +56,24 @@ def main():
     articles = df.to_dict("records")
     print(f"Corpus: {len(articles)} articles")
 
-    # Load teacher LLM
-    print(f"\nLoading teacher model: {cfg.model.name}")
-    model, tokenizer = load_model(cfg.model.name, cfg.model.dtype)
-
-    # Step 1: Generate questions
     qd_dir = data_root / "qd"
     qd_dir.mkdir(parents=True, exist_ok=True)
 
     questions_path = qd_dir / "raw_questions.json"
+    questions_ckpt = qd_dir / ".questions_checkpoint.json"
+    decomps_path = qd_dir / "raw_decompositions.json"
+    decomps_ckpt = qd_dir / ".decomps_checkpoint.json"
+
+    # Step 1: Generate questions (resume-aware)
     if questions_path.exists():
         from sot.data.query_gen import load_questions
 
         print(f"Loading existing questions from {questions_path}")
         questions = load_questions(questions_path)
     else:
+        print(f"\nLoading teacher model: {cfg.model.name}")
+        model, tokenizer = load_model(cfg.model.name, cfg.model.dtype)
+
         print("\nStep 1: Generating questions...")
         questions = generate_questions(
             articles,
@@ -78,33 +83,53 @@ def main():
             n_questions=5000,
             articles_per_question=3,
             seed=cfg.seed,
+            checkpoint_path=str(questions_ckpt),
+            checkpoint_every=200,
         )
         save_questions(questions, questions_path)
+
+        # Clean up checkpoint
+        if questions_ckpt.exists():
+            questions_ckpt.unlink()
+
+        # Keep model loaded for step 2
+        _model_loaded = True
     print(f"Questions: {len(questions)}")
 
-    # Step 2: Generate decompositions
-    decomps_path = qd_dir / "raw_decompositions.json"
+    # Step 2: Generate decompositions (resume-aware)
     if decomps_path.exists():
         from sot.data.decomp_gen import load_decompositions
 
         print(f"Loading existing decompositions from {decomps_path}")
         decomps = load_decompositions(decomps_path)
     else:
+        # Load model if not already loaded from step 1
+        if "model" not in dir() or model is None:
+            print(f"\nLoading teacher model: {cfg.model.name}")
+            model, tokenizer = load_model(cfg.model.name, cfg.model.dtype)
+
         print("\nStep 2: Generating decompositions...")
         decomps = generate_decompositions(
             questions,
             model,
             tokenizer,
             n_candidates=5,
+            checkpoint_path=str(decomps_ckpt),
+            checkpoint_every=200,
         )
         save_decompositions(decomps, decomps_path)
+
+        # Clean up checkpoint
+        if decomps_ckpt.exists():
+            decomps_ckpt.unlink()
     print(f"Questions with decompositions: {len(decomps)}")
 
     # Free GPU memory from teacher model
-    del model
-    import torch
+    if "model" in dir():
+        del model
+        import torch
 
-    torch.cuda.empty_cache()
+        torch.cuda.empty_cache()
 
     # Step 3: Filter by Recall@10
     print("\nStep 3: Filtering by Recall@10...")

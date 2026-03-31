@@ -3,6 +3,7 @@
 import json
 import re
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 import torch
 from tqdm import tqdm
@@ -48,6 +49,8 @@ def extract_triples_batch(
     id_column: str | None = None,
     batch_size: int = 1,
     max_new_tokens: int = 512,
+    checkpoint_path: str | None = None,
+    checkpoint_every: int = 100,
 ) -> list[FactTriple]:
     """Extract fact triples from a batch of articles using a local LLM.
 
@@ -59,13 +62,28 @@ def extract_triples_batch(
         id_column: Key for article ID (optional).
         batch_size: Number of articles to process at once.
         max_new_tokens: Max generation length.
+        checkpoint_path: If set, save progress here every checkpoint_every articles.
+        checkpoint_every: Save checkpoint every N articles.
 
     Returns:
         List of extracted FactTriple objects.
     """
     all_triples = []
+    start_idx = 0
 
-    for i in tqdm(range(0, len(articles), batch_size), desc="Extracting triples"):
+    # Resume from checkpoint if available
+    if checkpoint_path:
+        ckpt = Path(checkpoint_path)
+        if ckpt.exists():
+            with open(ckpt) as f:
+                ckpt_data = json.load(f)
+            all_triples = [FactTriple(**d) for d in ckpt_data["triples"]]
+            start_idx = ckpt_data["next_idx"]
+            print(
+                f"Resuming from checkpoint: {len(all_triples)} triples, starting at article {start_idx}"
+            )
+
+    for i in tqdm(range(start_idx, len(articles), batch_size), desc="Extracting triples"):
         batch = articles[i : i + batch_size]
 
         for article in batch:
@@ -94,7 +112,24 @@ def extract_triples_batch(
             parsed = _parse_triples(response, article_id)
             all_triples.extend(parsed)
 
+        # Periodic checkpoint
+        if checkpoint_path and (i - start_idx + batch_size) % checkpoint_every < batch_size:
+            _save_checkpoint(checkpoint_path, all_triples, i + batch_size)
+
+    # Final checkpoint
+    if checkpoint_path:
+        _save_checkpoint(checkpoint_path, all_triples, len(articles))
+
     return all_triples
+
+
+def _save_checkpoint(path: str, triples: list[FactTriple], next_idx: int) -> None:
+    """Save extraction progress to a checkpoint file."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump({"triples": [asdict(t) for t in triples], "next_idx": next_idx}, f)
+    print(f"  Checkpoint saved: {len(triples)} triples, next_idx={next_idx}")
 
 
 def extract_triples_api(

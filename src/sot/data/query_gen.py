@@ -32,6 +32,8 @@ def generate_questions(
     articles_per_question: int = 3,
     max_new_tokens: int = 128,
     seed: int = 42,
+    checkpoint_path: str | None = None,
+    checkpoint_every: int = 200,
 ) -> list[dict]:
     """Generate financial questions from groups of related articles.
 
@@ -44,6 +46,8 @@ def generate_questions(
         articles_per_question: Number of articles to group per question.
         max_new_tokens: Max generation length.
         seed: Random seed for article grouping.
+        checkpoint_path: If set, save progress here periodically.
+        checkpoint_every: Save checkpoint every N questions.
 
     Returns:
         List of dicts with 'question', 'source_articles' (indices), and
@@ -51,11 +55,28 @@ def generate_questions(
     """
     rng = random.Random(seed)
     questions = []
+    start_iter = 0
+
+    # Resume from checkpoint
+    if checkpoint_path and Path(checkpoint_path).exists():
+        with open(checkpoint_path) as f:
+            ckpt_data = json.load(f)
+        questions = ckpt_data["questions"]
+        start_iter = ckpt_data["next_iter"]
+        # Advance RNG to the same state
+        rng = random.Random(seed)
+        indices = list(range(len(articles)))
+        for _ in range(start_iter):
+            if len(indices) >= articles_per_question:
+                rng.sample(indices, articles_per_question)
+        print(
+            f"Resuming from checkpoint: {len(questions)} questions, starting at iter {start_iter}"
+        )
 
     # Create random groups of articles
     indices = list(range(len(articles)))
 
-    for _ in tqdm(range(n_questions), desc="Generating questions"):
+    for iter_idx in tqdm(range(start_iter, n_questions), desc="Generating questions"):
         if len(indices) < articles_per_question:
             break
 
@@ -99,7 +120,23 @@ def generate_questions(
                 }
             )
 
+        # Periodic checkpoint
+        if checkpoint_path and (iter_idx - start_iter + 1) % checkpoint_every == 0:
+            _save_question_checkpoint(checkpoint_path, questions, iter_idx + 1)
+
+    # Final checkpoint
+    if checkpoint_path:
+        _save_question_checkpoint(checkpoint_path, questions, n_questions)
+
     return questions
+
+
+def _save_question_checkpoint(path: str, questions: list[dict], next_iter: int) -> None:
+    """Save question generation progress."""
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump({"questions": questions, "next_iter": next_iter}, f)
+    print(f"  Checkpoint saved: {len(questions)} questions, next_iter={next_iter}")
 
 
 def generate_questions_api(
