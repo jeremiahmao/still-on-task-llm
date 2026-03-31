@@ -16,6 +16,8 @@ from sot.update.base import UpdateMethod
 
 # Path to the vendored AlphaEdit repo
 ALPHAEDIT_ROOT = Path(__file__).resolve().parents[3] / "vendor" / "AlphaEdit"
+# Hparams live in our repo (not the submodule) so they're always tracked
+HPARAMS_ROOT = Path(__file__).resolve().parents[3] / "configs" / "alphaedit_hparams"
 
 
 def _setup_alphaedit_imports():
@@ -54,8 +56,8 @@ class AlphaEditUpdate(UpdateMethod):
         finally:
             os.chdir(orig_cwd)
 
-        # Load hparams for Qwen2.5-3B
-        hparams_path = ALPHAEDIT_ROOT / "hparams" / "AlphaEdit" / "Qwen2.5-3B.json"
+        # Load hparams for Qwen2.5-3B (from our repo, not the submodule)
+        hparams_path = HPARAMS_ROOT / "Qwen2.5-3B.json"
         hparams = AlphaEditHyperParams.from_json(hparams_path)
 
         # Convert fact QA pairs to AlphaEdit request format
