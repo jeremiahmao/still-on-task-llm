@@ -1,10 +1,11 @@
 #!/bin/bash
 set -e
 
-# === Configuration ===
-# Set these before running, or export them in your environment
-export WANDB_API_KEY="${WANDB_API_KEY:-}"
-export HF_TOKEN="${HF_TOKEN:-}"
+# Load secrets from .env if it exists
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+    echo "Loaded .env"
+fi
 
 # === Setup ===
 pip install -e . -q
