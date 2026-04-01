@@ -9,6 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from omegaconf import OmegaConf
 
+from sot.data.triple_extract import FactTriple
+from sot.data.triple_render import render_triple
 from sot.models.base import load_model
 from sot.models.lora import load_lora, merge_lora
 from sot.update.alphaedit import AlphaEditUpdate
@@ -47,10 +49,26 @@ def main():
     data_root = Path(base_cfg.paths.data_root)
     output_root = Path(base_cfg.paths.output_root)
 
-    # Load fact triples at the specified scale
+    # Load fact triples at the specified scale and render to QA pairs
     triples_path = data_root / "fnspid" / "triples" / f"triples_{args.scale}.json"
     with open(triples_path) as f:
-        fact_qa_pairs = json.load(f)
+        raw_triples = json.load(f)
+
+    fact_qa_pairs = []
+    for t in raw_triples:
+        triple = FactTriple(**t)
+        qa = render_triple(triple)
+        fact_qa_pairs.append(
+            {
+                "question": qa.question,
+                "answer": qa.answer,
+                "triple": {
+                    "subject": triple.subject,
+                    "relation": triple.relation,
+                    "object": triple.object,
+                },
+            }
+        )
     print(f"Loaded {len(fact_qa_pairs)} fact QA pairs at scale {args.scale}")
 
     # Load task data for replay (if needed)

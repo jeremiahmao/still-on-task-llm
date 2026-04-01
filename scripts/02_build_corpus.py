@@ -16,7 +16,12 @@ def main():
     fnspid_cfg = OmegaConf.load("configs/data/fnspid.yaml")
 
     data_root = Path(cfg.paths.data_root)
-    raw_path = data_root / "fnspid" / "raw" / "fnspid.parquet"
+
+    # The download script saves the CSV here
+    raw_path = data_root / "fnspid" / "raw" / "Stock_news" / "nasdaq_exteral_data.csv"
+    if not raw_path.exists():
+        print(f"ERROR: {raw_path} not found. Run 01_download_data.py first.")
+        sys.exit(1)
 
     print("Loading FNSPID...")
     df = load_fnspid(raw_path)

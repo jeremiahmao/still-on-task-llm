@@ -64,6 +64,14 @@ def main():
     decomps_path = qd_dir / "raw_decompositions.json"
     decomps_ckpt = qd_dir / ".decomps_checkpoint.json"
 
+    # Load teacher model (needed for steps 1 and 2 if outputs don't exist)
+    model = None
+    tokenizer = None
+    need_model = not questions_path.exists() or not decomps_path.exists()
+    if need_model:
+        print(f"\nLoading teacher model: {cfg.model.name}")
+        model, tokenizer = load_model(cfg.model.name, cfg.model.dtype)
+
     # Step 1: Generate questions (resume-aware)
     if questions_path.exists():
         from sot.data.query_gen import load_questions
@@ -71,9 +79,6 @@ def main():
         print(f"Loading existing questions from {questions_path}")
         questions = load_questions(questions_path)
     else:
-        print(f"\nLoading teacher model: {cfg.model.name}")
-        model, tokenizer = load_model(cfg.model.name, cfg.model.dtype)
-
         print("\nStep 1: Generating questions...")
         questions = generate_questions(
             articles,
@@ -91,9 +96,6 @@ def main():
         # Clean up checkpoint
         if questions_ckpt.exists():
             questions_ckpt.unlink()
-
-        # Keep model loaded for step 2
-        _model_loaded = True
     print(f"Questions: {len(questions)}")
 
     # Step 2: Generate decompositions (resume-aware)
@@ -103,11 +105,6 @@ def main():
         print(f"Loading existing decompositions from {decomps_path}")
         decomps = load_decompositions(decomps_path)
     else:
-        # Load model if not already loaded from step 1
-        if "model" not in dir() or model is None:
-            print(f"\nLoading teacher model: {cfg.model.name}")
-            model, tokenizer = load_model(cfg.model.name, cfg.model.dtype)
-
         print("\nStep 2: Generating decompositions...")
         decomps = generate_decompositions(
             questions,
@@ -125,7 +122,7 @@ def main():
     print(f"Questions with decompositions: {len(decomps)}")
 
     # Free GPU memory from teacher model
-    if "model" in dir():
+    if model is not None:
         del model
         import torch
 

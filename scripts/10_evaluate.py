@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from sot.data.triple_extract import FactTriple
+from sot.data.triple_render import render_triple
 from sot.eval.generic_forgetting import evaluate_generic_forgetting
 from sot.eval.knowledge_absorption import evaluate_knowledge_absorption
 from sot.eval.locality import evaluate_locality
@@ -79,7 +81,12 @@ def main():
             triples_path = data_root / "fnspid" / "triples" / f"triples_{scale}.json"
             if triples_path.exists():
                 with open(triples_path) as f:
-                    fact_qa = json.load(f)
+                    raw_triples = json.load(f)
+                fact_qa = []
+                for t in raw_triples:
+                    triple = FactTriple(**t)
+                    qa = render_triple(triple)
+                    fact_qa.append({"question": qa.question, "answer": qa.answer})
                 absorb = evaluate_knowledge_absorption(model, tokenizer, fact_qa)
                 results["knowledge_absorption"] = {
                     "exact_match": absorb["exact_match"],
