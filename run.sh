@@ -13,10 +13,19 @@ git submodule update --init --recursive
 
 # === Run ===
 PHASE="${1:-all}"
-echo "Running phase: $PHASE"
+LOGFILE="logs/train_$(date +%Y%m%d_%H%M%S).log"
+mkdir -p logs
 
-python sagemaker/train.py --phase "$PHASE"
+echo "Running phase: $PHASE"
+echo "Logging to: $LOGFILE"
+echo "Follow with: tail -f $LOGFILE"
+
+nohup python sagemaker/train.py --phase "$PHASE" > "$LOGFILE" 2>&1 &
+PID=$!
+echo "PID: $PID"
+echo "$PID" > logs/.pid
 
 echo ""
-echo "Done. To see results:"
-echo "  python scripts/14_generate_tables.py"
+echo "Running in background. Commands:"
+echo "  tail -f $LOGFILE      # watch progress"
+echo "  kill $PID             # stop the run"

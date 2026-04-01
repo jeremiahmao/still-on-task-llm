@@ -36,5 +36,8 @@ wandb/
 .DS_Store
 Thumbs.db
 
+# Logs
+logs/
+
 # Jupyter
 .ipynb_checkpoints/
