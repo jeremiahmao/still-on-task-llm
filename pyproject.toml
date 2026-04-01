@@ -2,7 +2,7 @@
 name = "still-on-task-llm"
 version = "0.1.0"
 description = "Comparing knowledge update methods on task-tuned LLMs"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "torch>=2.1",
     "transformers>=4.40",
@@ -35,7 +35,7 @@ packages = ["src/sot"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
