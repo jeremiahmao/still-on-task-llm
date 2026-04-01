@@ -137,11 +137,10 @@ def main():
     subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."], cwd=str(repo))
 
     # Install submodule deps if needed
-    alphaedit = repo / "vendor" / "AlphaEdit"
-    if alphaedit.exists():
+    alphaedit_reqs = repo / "vendor" / "AlphaEdit" / "requirements.txt"
+    if alphaedit_reqs.exists():
         subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
-            cwd=str(alphaedit),
+            [sys.executable, "-m", "pip", "install", "-r", str(alphaedit_reqs)],
             check=False,
         )
 
