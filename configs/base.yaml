@@ -6,6 +6,8 @@ seed: 42
 
 paths:
   data_root: "./data"
+  qd_data_root: "./data/qd"
+  qd_temporal_data_root: "./data/qd_temporal"
   output_root: "./outputs"
   checkpoint_root: "./checkpoints"
 

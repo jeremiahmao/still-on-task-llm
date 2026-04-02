@@ -57,7 +57,7 @@ def main():
     # Task preservation (Recall@10 on QD test set)
     if "preservation" in metrics_to_run and args.task == "qd":
         print("\n--- Task Preservation ---")
-        test_path = data_root / "qd" / "test.json"
+        test_path = Path(cfg.paths.qd_data_root) / "test.json"
         if test_path.exists():
             with open(test_path) as f:
                 test_data = json.load(f)

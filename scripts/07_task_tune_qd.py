@@ -1,7 +1,7 @@
 """Task-tune Qwen2.5-3B on query decomposition via LoRA SFT.
 
 This produces the baseline checkpoint that all update methods start from.
-Prerequisite: QD training data at data/qd/train.json (from 05_generate_qd_data.py).
+Prerequisite: QD training data at cfg.paths.qd_data_root/train.json.
 """
 
 import json
@@ -27,9 +27,10 @@ def main():
     data_root = Path(cfg.paths.data_root)
     checkpoint_root = Path(cfg.paths.checkpoint_root)
 
-    # Load QD training data
-    train_path = data_root / "qd" / "train.json"
-    test_path = data_root / "qd" / "test.json"
+    # Load QD training data from the configured dataset root
+    qd_data_root = Path(cfg.paths.qd_data_root)
+    train_path = qd_data_root / "train.json"
+    test_path = qd_data_root / "test.json"
 
     if not train_path.exists():
         print(f"ERROR: {train_path} not found. Run 05_generate_qd_data.py first.")
