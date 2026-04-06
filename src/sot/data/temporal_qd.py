@@ -31,9 +31,11 @@ You are given two article bundles about the same entity or topic:
 
 Write exactly ONE high-level financial question that:
 - Is meaningful in both time periods
-- Would require retrieving evidence in both settings
+- Would require retrieving evidence in either setting
 - Should lead to a different retrieval strategy before and after 2022 because the world changed
 - Mentions the main entity or topic explicitly
+- Sounds like a normal user query asked at a single point in time
+- Does NOT mention time periods, dates, "before", "after", "pre", "post", "compared with", or any explicit temporal comparison
 
 Return ONLY the question text.
 
@@ -89,11 +91,6 @@ def build_temporal_topic_pairs(
     """
     rng = random.Random(seed)
 
-    post_triples_by_entity: dict[str, list[FactTriple]] = {}
-    for triple in post_triples:
-        key = triple.subject.lower().strip()
-        post_triples_by_entity.setdefault(key, []).append(triple)
-
     pre_groups = pre_df.groupby(ticker_column)
     post_groups = post_df.groupby(ticker_column)
     candidate_entities = sorted(set(pre_groups.groups) & set(post_groups.groups))
@@ -108,11 +105,18 @@ def build_temporal_topic_pairs(
         if len(pre_group) < min_articles_per_side or len(post_group) < min_articles_per_side:
             continue
 
+        entity_triples = _select_relevant_triples_for_entity(
+            entity=str(entity),
+            pre_group=pre_group,
+            post_group=post_group,
+            post_triples=post_triples,
+            text_column=text_column,
+        )
         changed_facts = _detect_changed_facts(
             entity=str(entity),
             pre_group=pre_group,
             post_group=post_group,
-            post_triples=post_triples_by_entity.get(entity_key, []),
+            post_triples=entity_triples,
             text_column=text_column,
         )
         if not changed_facts:
@@ -151,6 +155,39 @@ def build_temporal_topic_pairs(
     return pairs
 
 
+def _select_relevant_triples_for_entity(
+    entity: str,
+    pre_group: pd.DataFrame,
+    post_group: pd.DataFrame,
+    post_triples: list[FactTriple],
+    text_column: str,
+) -> list[FactTriple]:
+    """Match triples to an entity using ticker keys plus article-text aliases.
+
+    The debug corpora are often ticker-keyed (for example, ``NVDA``) while the
+    extractor emits company-name subjects such as ``Nvidia`` or
+    ``NVIDIA Corporation``. For temporal pairing we accept triples whose
+    subjects are explicitly mentioned in the entity's article bundle.
+    """
+    entity_key = entity.lower().strip()
+    bundle_text = " ".join(
+        pre_group[text_column].fillna("").astype(str).tolist()
+        + post_group[text_column].fillna("").astype(str).tolist()
+    ).lower()
+
+    matched = []
+    seen = set()
+    for triple in post_triples:
+        subject_key = triple.subject.lower().strip()
+        if subject_key == entity_key or subject_key in bundle_text:
+            triple_key = (subject_key, triple.relation.lower().strip(), triple.object.lower().strip())
+            if triple_key not in seen:
+                matched.append(triple)
+                seen.add(triple_key)
+
+    return matched
+
+
 def generate_temporal_question(
     pair: dict,
     model: AutoModelForCausalLM,
@@ -167,7 +204,21 @@ def generate_temporal_question(
     return question if len(question) >= 20 else None
 
 
-def generate_temporal_question_api(
+async def generate_temporal_question_api(
+    pair: dict,
+    api_func: Callable[[str], str],
+) -> str | None:
+    prompt = QUESTION_PROMPT.format(
+        entity=pair["entity"],
+        pre_context=_format_articles_for_prompt(pair["pre_articles"]),
+        post_context=_format_articles_for_prompt(pair["post_articles"]),
+    )
+    response = await api_func(prompt)
+    question = _normalize_question(response)
+    return question if len(question) >= 20 else None
+
+
+def generate_temporal_question_api_sync(
     pair: dict,
     api_func: Callable[[str], str],
 ) -> str | None:
@@ -201,7 +252,25 @@ def generate_temporal_decomposition(
     return _parse_decomposition(response)
 
 
-def generate_temporal_decomposition_api(
+async def generate_temporal_decomposition_api(
+    pair: dict,
+    question: str,
+    period: str,
+    api_func: Callable[[str], str],
+) -> list[str] | None:
+    articles = pair["pre_articles"] if period == "pre" else pair["post_articles"]
+    period_label = "pre-2022" if period == "pre" else "post-2022"
+    prompt = DECOMP_PROMPT.format(
+        entity=pair["entity"],
+        period_label=period_label,
+        question=question,
+        context=_format_articles_for_prompt(articles),
+    )
+    response = await api_func(prompt, text_format=_decomposition_json_schema())
+    return _parse_decomposition(response)
+
+
+def generate_temporal_decomposition_api_sync(
     pair: dict,
     question: str,
     period: str,
@@ -225,6 +294,7 @@ def score_decomposition_recall(
     faiss_index,
     doc_ids: list[int],
     gold_article_ids: list[int],
+    corpus_embeddings: np.ndarray | None = None,
     k: int = 10,
     nprobe: int = 64,
 ) -> float:
@@ -233,7 +303,12 @@ def score_decomposition_recall(
         return 0.0
 
     embeddings = encoder.encode(decomposition, show_progress=False)
-    _scores, indices = search(faiss_index, embeddings, k=k, nprobe=nprobe)
+    if corpus_embeddings is not None:
+        similarity = embeddings @ corpus_embeddings.T
+        top_k = min(k, corpus_embeddings.shape[0])
+        indices = np.argsort(-similarity, axis=1)[:, :top_k]
+    else:
+        _scores, indices = search(faiss_index, embeddings, k=k, nprobe=nprobe)
 
     retrieved = set()
     for row in indices:

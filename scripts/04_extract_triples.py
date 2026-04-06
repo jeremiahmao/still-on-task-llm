@@ -1,18 +1,25 @@
 """Extract fact triples from post-cutoff FNSPID articles, filter, and sample at scales."""
 
+import argparse
+import asyncio
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-import pandas as pd
 from omegaconf import OmegaConf
 
 from sot.data.fnspid import get_text_column, load_fnspid
-from sot.data.triple_extract import extract_triples_batch, load_triples, save_triples
+from sot.data.triple_extract import (
+    extract_triples_api,
+    extract_triples_api_async,
+    extract_triples_batch,
+    load_progress_jsonl,
+    load_triples,
+    save_triples,
+)
 from sot.data.triple_filter import (
-    extract_entities_from_corpus,
-    filter_by_entities,
     filter_cross_doc_agreement,
     sample_at_scales,
     save_scaled_triples,
@@ -21,14 +28,84 @@ from sot.models.base import load_model
 from sot.utils.config import load_config
 
 
+def _build_openai_api_func(model_name: str):
+    try:
+        from openai import AsyncOpenAI
+    except ImportError as exc:
+        raise ImportError(
+            "OpenAI provider requested but the 'openai' package is not installed."
+        ) from exc
+
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is required when --provider=openai")
+
+    client = AsyncOpenAI(api_key=api_key)
+
+    async def call_api(prompt: str) -> str:
+        response = await client.responses.create(
+            model=model_name,
+            input=prompt,
+        )
+        return response.output_text
+
+    return call_api
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Use debug ticker filtering from configs/data/fnspid.yaml.",
+    )
+    parser.add_argument("--provider", choices=["local", "openai"], default="local")
+    parser.add_argument("--model", default=None)
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=10,
+        help="Concurrent OpenAI requests when --provider=openai.",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=6,
+        help="Max retries per article on transient OpenAI rate limits.",
+    )
+    parser.add_argument(
+        "--base-retry-seconds",
+        type=float,
+        default=10.0,
+        help="Base sleep time for exponential backoff on OpenAI rate limits.",
+    )
+    parser.add_argument(
+        "--tickers",
+        nargs="*",
+        default=[],
+        help="Optional ticker whitelist, e.g. --tickers AAPL MSFT NVDA",
+    )
+    parser.add_argument(
+        "--output-suffix",
+        default="",
+        help="Optional suffix for output files, e.g. '_debug'.",
+    )
+    parser.add_argument(
+        "--save-every",
+        type=int,
+        default=25,
+        help="Flush per-article extraction progress every N completed articles.",
+    )
+    args = parser.parse_args()
+
     cfg = load_config()
     fnspid_cfg = OmegaConf.load("configs/data/fnspid.yaml")
     triples_cfg = OmegaConf.load("configs/data/triples.yaml")
 
     data_root = Path(cfg.paths.data_root)
-    post_path = data_root / "fnspid" / "processed" / "post_cutoff.parquet"
-    pre_path = data_root / "fnspid" / "processed" / "pre_cutoff.parquet"
+    debug_suffix = fnspid_cfg.debug.output_suffix if args.debug else ""
+    post_path = data_root / "fnspid" / "processed" / f"post_cutoff{debug_suffix}.parquet"
+    pre_path = data_root / "fnspid" / "processed" / f"pre_cutoff{debug_suffix}.parquet"
 
     if not post_path.exists():
         print(f"ERROR: {post_path} not found. Run 02_build_corpus.py first.")
@@ -36,8 +113,19 @@ def main():
 
     raw_dir = data_root / "fnspid" / "triples"
     raw_dir.mkdir(parents=True, exist_ok=True)
-    raw_triples_path = raw_dir / "raw_triples.json"
-    checkpoint_path = raw_dir / ".extraction_checkpoint.json"
+    suffix = args.output_suffix
+    if args.debug and not suffix:
+        suffix = fnspid_cfg.debug.output_suffix
+    if not suffix and args.tickers:
+        suffix = "_" + "_".join(t.lower() for t in args.tickers)
+    raw_triples_path = raw_dir / f"raw_triples{suffix}.json"
+    filtered_triples_path = raw_dir / f"filtered_triples{suffix}.json"
+    progress_path = raw_dir / f"raw_triples{suffix}.jsonl"
+
+    ticker_filter = {ticker.upper() for ticker in args.tickers}
+    if args.debug:
+        ticker_filter = {ticker.upper() for ticker in fnspid_cfg.debug.tickers}
+    model_name = args.model or ("gpt-5-mini" if args.provider == "openai" else cfg.model.name)
 
     # Skip extraction if raw triples already exist
     if raw_triples_path.exists():
@@ -47,36 +135,59 @@ def main():
         print("Loading post-cutoff articles...")
         post_df = load_fnspid(post_path)
         text_col = get_text_column(post_df, fnspid_cfg.text_columns)
+        if ticker_filter:
+            ticker_col = fnspid_cfg.ticker_column
+            post_df = post_df[post_df[ticker_col].astype(str).str.upper().isin(ticker_filter)].copy()
+            print(f"Filtering post-cutoff corpus to tickers: {sorted(ticker_filter)}")
         print(f"Post-cutoff articles: {len(post_df)}, text column: {text_col}")
 
         articles = post_df.to_dict("records")
 
-        print(f"\nLoading extraction model: {cfg.model.name}")
-        model, tokenizer = load_model(cfg.model.name, cfg.model.dtype)
-
         print(f"\nExtracting triples from {len(articles)} articles...")
-        raw_triples = extract_triples_batch(
-            articles,
-            model,
-            tokenizer,
-            text_column=text_col,
-            id_column=None,
-            batch_size=1,
-            checkpoint_path=str(checkpoint_path),
-            checkpoint_every=100,
-        )
+        if args.provider == "local":
+            print(f"\nLoading extraction model: {model_name}")
+            model, tokenizer = load_model(model_name, cfg.model.dtype)
+            raw_triples = extract_triples_batch(
+                articles,
+                model,
+                tokenizer,
+                text_column=text_col,
+                id_column=None,
+                batch_size=1,
+                progress_path=str(progress_path),
+                save_every=args.save_every,
+            )
+        else:
+            print(f"\nConfiguring OpenAI extractor: {model_name}")
+            api_func = _build_openai_api_func(model_name)
+            print(f"Using async OpenAI extraction with concurrency={args.concurrency}")
+            raw_triples = asyncio.run(
+                extract_triples_api_async(
+                    articles,
+                    text_column=text_col,
+                    id_column=None,
+                    api_func_async=api_func,
+                    concurrency=args.concurrency,
+                    max_retries=args.max_retries,
+                    base_retry_seconds=args.base_retry_seconds,
+                    progress_path=str(progress_path),
+                    save_every=args.save_every,
+                )
+            )
         print(f"Raw triples extracted: {len(raw_triples)}")
 
         save_triples(raw_triples, str(raw_triples_path))
+        if progress_path.exists():
+            processed_articles, _ = load_progress_jsonl(str(progress_path))
+            print(
+                f"Saved incremental progress log: {progress_path} ({len(processed_articles)} articles)"
+            )
 
-        # Clean up checkpoint after successful completion
-        if checkpoint_path.exists():
-            checkpoint_path.unlink()
+        if args.provider == "local":
+            del model
+            import torch
 
-        del model
-        import torch
-
-        torch.cuda.empty_cache()
+            torch.cuda.empty_cache()
 
     # Filter by cross-document agreement
     min_agree = triples_cfg.get("min_cross_doc_agreement", 2)
@@ -84,20 +195,22 @@ def main():
     agreed = filter_cross_doc_agreement(raw_triples, min_agreement=min_agree)
     print(f"After cross-doc filter: {len(agreed)} triples")
 
-    # Filter by known entities from pre-cutoff corpus
-    print("Filtering by known entities...")
-    pre_df = pd.read_parquet(pre_path)
-    known_entities = extract_entities_from_corpus(pre_df, fnspid_cfg.ticker_column)
-    filtered = filter_by_entities(agreed, known_entities)
-    print(f"After entity filter: {len(filtered)} triples")
+    # Skip entity-name filtering for now. The extractor emits company names like
+    # "Nvidia" while the corpus entity list is ticker-based ("NVDA"), so exact
+    # matching drops otherwise usable debug triples.
+    filtered = agreed
+    print(f"Skipping entity filter. Keeping {len(filtered)} triples after agreement filter.")
 
-    save_triples(filtered, str(raw_dir / "filtered_triples.json"))
+    save_triples(filtered, str(filtered_triples_path))
 
     # Sample at target scales
     scales = triples_cfg.get("scales", [1000, 3000])
     print(f"\nSampling at scales: {scales}")
     scaled = sample_at_scales(filtered, scales, seed=cfg.seed)
-    save_scaled_triples(scaled, raw_dir)
+    save_scaled_triples(
+        {scale: triples for scale, triples in scaled.items()},
+        raw_dir if not suffix else raw_dir / suffix.lstrip("_"),
+    )
 
     for scale, triples in scaled.items():
         print(f"  Scale {scale}: {len(triples)} triples saved")

@@ -7,8 +7,10 @@ decomposition, while preserving the post-cutoff decomposition and changed facts
 for downstream update/evaluation work.
 """
 
+import asyncio
 import argparse
 import os
+import random
 import sys
 from pathlib import Path
 
@@ -26,8 +28,10 @@ from sot.data.temporal_qd import (
     decomposition_contrast_score,
     generate_temporal_decomposition,
     generate_temporal_decomposition_api,
+    generate_temporal_decomposition_api_sync,
     generate_temporal_question,
     generate_temporal_question_api,
+    generate_temporal_question_api_sync,
     load_json,
     save_json,
     score_decomposition_recall,
@@ -40,7 +44,52 @@ from sot.retrieval.index import load_index
 from sot.utils.config import load_config
 
 
-def _build_openai_api_func(model_name: str):
+def _build_openai_api_func(
+    model_name: str,
+    max_retries: int = 6,
+    base_retry_seconds: float = 10.0,
+):
+    try:
+        from openai import AsyncOpenAI
+    except ImportError as exc:
+        raise ImportError(
+            "OpenAI teacher requested but the 'openai' package is not installed."
+        ) from exc
+
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is required when --teacher-provider=openai")
+
+    client = AsyncOpenAI(api_key=api_key)
+
+    async def call_api(prompt: str, text_format: dict | None = None) -> str:
+        for attempt in range(max_retries + 1):
+            try:
+                kwargs = {
+                    "model": model_name,
+                    "input": prompt,
+                }
+                if text_format is not None:
+                    kwargs["text"] = {"format": text_format}
+
+                response = await client.responses.create(**kwargs)
+                return response.output_text
+            except Exception as exc:
+                message = str(exc).lower()
+                is_rate_limit = "rate limit" in message or "429" in message
+                if not is_rate_limit or attempt >= max_retries:
+                    raise
+                delay = base_retry_seconds * (2**attempt) + random.uniform(0, 0.25)
+                await asyncio.sleep(delay)
+
+    return call_api
+
+
+def _build_openai_api_func_sync(
+    model_name: str,
+    max_retries: int = 6,
+    base_retry_seconds: float = 10.0,
+):
     try:
         from openai import OpenAI
     except ImportError as exc:
@@ -55,21 +104,37 @@ def _build_openai_api_func(model_name: str):
     client = OpenAI(api_key=api_key)
 
     def call_api(prompt: str, text_format: dict | None = None) -> str:
-        kwargs = {
-            "model": model_name,
-            "input": prompt,
-        }
-        if text_format is not None:
-            kwargs["text"] = {"format": text_format}
+        for attempt in range(max_retries + 1):
+            try:
+                kwargs = {
+                    "model": model_name,
+                    "input": prompt,
+                }
+                if text_format is not None:
+                    kwargs["text"] = {"format": text_format}
 
-        response = client.responses.create(**kwargs)
-        return response.output_text
+                response = client.responses.create(**kwargs)
+                return response.output_text
+            except Exception as exc:
+                message = str(exc).lower()
+                is_rate_limit = "rate limit" in message or "429" in message
+                if not is_rate_limit or attempt >= max_retries:
+                    raise
+                delay = base_retry_seconds * (2**attempt) + random.uniform(0, 0.25)
+                import time
+
+                time.sleep(delay)
 
     return call_api
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Use debug corpora, triples, and FAISS index from configs/data/fnspid.yaml.",
+    )
     parser.add_argument("--teacher-provider", choices=["local", "openai"], default="local")
     parser.add_argument("--teacher-model", default=None)
     parser.add_argument("--output-dir", default=None)
@@ -79,16 +144,26 @@ def main():
     parser.add_argument("--min-recall", type=float, default=0.7)
     parser.add_argument("--min-contrast", type=float, default=0.35)
     parser.add_argument("--test-ratio", type=float, default=0.2)
+    parser.add_argument("--concurrency", type=int, default=5)
+    parser.add_argument("--max-retries", type=int, default=6)
+    parser.add_argument("--base-retry-seconds", type=float, default=10.0)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--overrides", nargs="*", default=[], help="OmegaConf dot-list overrides")
     args = parser.parse_args()
 
     cfg = load_config(overrides=args.overrides)
     fnspid_cfg = OmegaConf.load("configs/data/fnspid.yaml")
-    faiss_cfg = OmegaConf.load("configs/retrieval/faiss.yaml")
+    faiss_cfg_path = (
+        "configs/retrieval/faiss_debug.yaml" if args.debug else "configs/retrieval/faiss.yaml"
+    )
+    faiss_cfg = OmegaConf.load(faiss_cfg_path)
 
     data_root = Path(cfg.paths.data_root)
-    output_dir = Path(args.output_dir or cfg.paths.qd_temporal_data_root)
+    suffix = fnspid_cfg.debug.output_suffix if args.debug else ""
+    default_output_dir = Path(cfg.paths.qd_temporal_data_root)
+    if suffix:
+        default_output_dir = default_output_dir / suffix.lstrip("_")
+    output_dir = Path(args.output_dir or default_output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     topic_pairs_path = output_dir / "topic_pairs.json"
@@ -97,11 +172,12 @@ def main():
     test_path = output_dir / "test.json"
     metadata_path = output_dir / "metadata.json"
 
-    pre_path = data_root / "fnspid" / "processed" / "pre_cutoff.parquet"
-    post_path = data_root / "fnspid" / "processed" / "post_cutoff.parquet"
-    triples_path = data_root / "fnspid" / "triples" / "filtered_triples.json"
-    index_path = data_root / "fnspid" / "index" / "corpus.faiss"
-    doc_ids_path = data_root / "fnspid" / "index" / "doc_ids.npy"
+    pre_path = data_root / "fnspid" / "processed" / f"pre_cutoff{suffix}.parquet"
+    post_path = data_root / "fnspid" / "processed" / f"post_cutoff{suffix}.parquet"
+    triples_path = data_root / "fnspid" / "triples" / f"filtered_triples{suffix}.json"
+    index_path = data_root / "fnspid" / "index" / f"corpus{suffix}.faiss"
+    doc_ids_path = data_root / "fnspid" / "index" / f"doc_ids{suffix}.npy"
+    embeddings_path = data_root / "fnspid" / "index" / f"embeddings{suffix}.npy"
 
     for path in [pre_path, post_path, triples_path, index_path, doc_ids_path]:
         if not path.exists():
@@ -121,6 +197,8 @@ def main():
         "min_contrast": args.min_contrast,
         "max_pairs": args.max_pairs,
         "seed": cfg.seed,
+        "debug": args.debug,
+        "concurrency": args.concurrency,
     }
 
     print("Loading temporal corpora...")
@@ -160,87 +238,251 @@ def main():
         encoder = Encoder(faiss_cfg.encoder)
         faiss_index = load_index(index_path)
         doc_ids = np.load(doc_ids_path).tolist()
+        corpus_embeddings = np.load(embeddings_path) if args.debug and embeddings_path.exists() else None
 
         model = None
         tokenizer = None
         api_func = None
+        api_func_sync = None
         if args.teacher_provider == "local":
             print(f"\nLoading local teacher model: {teacher_model_name}")
             model, tokenizer = load_model(teacher_model_name, cfg.model.dtype)
         else:
             print(f"\nConfiguring OpenAI teacher: {teacher_model_name}")
-            api_func = _build_openai_api_func(teacher_model_name)
+            if args.concurrency <= 1:
+                print("Using synchronous OpenAI teacher path")
+                api_func_sync = _build_openai_api_func_sync(
+                    teacher_model_name,
+                    max_retries=args.max_retries,
+                    base_retry_seconds=args.base_retry_seconds,
+                )
+            else:
+                api_func = _build_openai_api_func(
+                    teacher_model_name,
+                    max_retries=args.max_retries,
+                    base_retry_seconds=args.base_retry_seconds,
+                )
 
         paired_examples = []
-        for i, pair in enumerate(topic_pairs, start=1):
-            print(f"\n[{i}/{len(topic_pairs)}] {pair['entity']}")
+        if args.teacher_provider == "local":
+            for i, pair in enumerate(topic_pairs, start=1):
+                print(f"\n[{i}/{len(topic_pairs)}] {pair['entity']}")
 
-            if args.teacher_provider == "local":
                 question = generate_temporal_question(pair, model, tokenizer)
-            else:
-                question = generate_temporal_question_api(pair, api_func)
-            if not question:
-                print("  Skipping: question generation failed")
-                continue
+                if not question:
+                    print("  Skipping: question generation failed")
+                    continue
 
-            if args.teacher_provider == "local":
                 pre_decomp = generate_temporal_decomposition(pair, question, "pre", model, tokenizer)
                 post_decomp = generate_temporal_decomposition(pair, question, "post", model, tokenizer)
-            else:
-                pre_decomp = generate_temporal_decomposition_api(pair, question, "pre", api_func)
-                post_decomp = generate_temporal_decomposition_api(pair, question, "post", api_func)
 
-            if not pre_decomp or not post_decomp:
-                print("  Skipping: missing decomposition")
-                continue
+                if not pre_decomp or not post_decomp:
+                    print("  Skipping: missing decomposition")
+                    continue
 
-            pre_gold_articles = [a["doc_id"] for a in pair["pre_articles"]]
-            post_gold_articles = [a["doc_id"] for a in pair["post_articles"]]
+                pre_gold_articles = [a["doc_id"] for a in pair["pre_articles"]]
+                post_gold_articles = [a["doc_id"] for a in pair["post_articles"]]
 
-            pre_recall = score_decomposition_recall(
-                pre_decomp, encoder, faiss_index, doc_ids, pre_gold_articles, nprobe=faiss_cfg.nprobe
-            )
-            post_recall = score_decomposition_recall(
-                post_decomp,
-                encoder,
-                faiss_index,
-                doc_ids,
-                post_gold_articles,
-                nprobe=faiss_cfg.nprobe,
-            )
-            contrast_score = decomposition_contrast_score(pre_decomp, post_decomp)
+                pre_recall = score_decomposition_recall(
+                    pre_decomp,
+                    encoder,
+                    faiss_index,
+                    doc_ids,
+                    pre_gold_articles,
+                    corpus_embeddings=corpus_embeddings,
+                    nprobe=faiss_cfg.nprobe,
+                )
+                post_recall = score_decomposition_recall(
+                    post_decomp,
+                    encoder,
+                    faiss_index,
+                    doc_ids,
+                    post_gold_articles,
+                    corpus_embeddings=corpus_embeddings,
+                    nprobe=faiss_cfg.nprobe,
+                )
+                contrast_score = decomposition_contrast_score(pre_decomp, post_decomp)
 
-            if pre_recall < args.min_recall:
-                print(f"  Skipping: pre recall {pre_recall:.3f} < {args.min_recall}")
-                continue
-            if post_recall < args.min_recall:
-                print(f"  Skipping: post recall {post_recall:.3f} < {args.min_recall}")
-                continue
-            if contrast_score < args.min_contrast:
-                print(f"  Skipping: contrast {contrast_score:.3f} < {args.min_contrast}")
-                continue
+                if not args.debug and pre_recall < args.min_recall:
+                    print(f"  Skipping: pre recall {pre_recall:.3f} < {args.min_recall}")
+                    continue
+                if not args.debug and post_recall < args.min_recall:
+                    print(f"  Skipping: post recall {post_recall:.3f} < {args.min_recall}")
+                    continue
+                if contrast_score < args.min_contrast:
+                    print(f"  Skipping: contrast {contrast_score:.3f} < {args.min_contrast}")
+                    continue
 
-            paired_examples.append(
-                {
-                    "topic_id": pair["topic_id"],
-                    "entity": pair["entity"],
-                    "question": question,
-                    "pre_articles": pair["pre_articles"],
-                    "post_articles": pair["post_articles"],
-                    "changed_facts": pair["changed_facts"],
-                    "pre_decomposition": pre_decomp,
-                    "post_decomposition": post_decomp,
-                    "pre_gold_articles": pre_gold_articles,
-                    "post_gold_articles": post_gold_articles,
-                    "pre_recall": pre_recall,
-                    "post_recall": post_recall,
-                    "contrast_score": contrast_score,
-                }
-            )
-            print(
-                f"  Kept: pre_recall={pre_recall:.3f}, "
-                f"post_recall={post_recall:.3f}, contrast={contrast_score:.3f}"
-            )
+                paired_examples.append(
+                    {
+                        "topic_id": pair["topic_id"],
+                        "entity": pair["entity"],
+                        "question": question,
+                        "pre_articles": pair["pre_articles"],
+                        "post_articles": pair["post_articles"],
+                        "changed_facts": pair["changed_facts"],
+                        "pre_decomposition": pre_decomp,
+                        "post_decomposition": post_decomp,
+                        "pre_gold_articles": pre_gold_articles,
+                        "post_gold_articles": post_gold_articles,
+                        "pre_recall": pre_recall,
+                        "post_recall": post_recall,
+                        "contrast_score": contrast_score,
+                    }
+                )
+                print(
+                    f"  Kept: pre_recall={pre_recall:.3f}, "
+                    f"post_recall={post_recall:.3f}, contrast={contrast_score:.3f}"
+                )
+        elif args.concurrency <= 1:
+            for i, pair in enumerate(topic_pairs, start=1):
+                print(f"\n[{i}/{len(topic_pairs)}] {pair['entity']}")
+
+                print("  Generating question...")
+                question = generate_temporal_question_api_sync(pair, api_func_sync)
+                if not question:
+                    print("  Skipping: question generation failed")
+                    continue
+                print(f"  Question: {question}")
+
+                print("  Generating pre decomposition...")
+                pre_decomp = generate_temporal_decomposition_api_sync(
+                    pair, question, "pre", api_func_sync
+                )
+                print("  Generating post decomposition...")
+                post_decomp = generate_temporal_decomposition_api_sync(
+                    pair, question, "post", api_func_sync
+                )
+                if not pre_decomp or not post_decomp:
+                    print("  Skipping: missing decomposition")
+                    continue
+
+                pre_gold_articles = [a["doc_id"] for a in pair["pre_articles"]]
+                post_gold_articles = [a["doc_id"] for a in pair["post_articles"]]
+
+                print("  Scoring retrieval recall...")
+                pre_recall = score_decomposition_recall(
+                    pre_decomp,
+                    encoder,
+                    faiss_index,
+                    doc_ids,
+                    pre_gold_articles,
+                    corpus_embeddings=corpus_embeddings,
+                    nprobe=faiss_cfg.nprobe,
+                )
+                post_recall = score_decomposition_recall(
+                    post_decomp,
+                    encoder,
+                    faiss_index,
+                    doc_ids,
+                    post_gold_articles,
+                    corpus_embeddings=corpus_embeddings,
+                    nprobe=faiss_cfg.nprobe,
+                )
+                contrast_score = decomposition_contrast_score(pre_decomp, post_decomp)
+
+                if not args.debug and pre_recall < args.min_recall:
+                    print(f"  Skipping: pre recall {pre_recall:.3f} < {args.min_recall}")
+                    continue
+                if not args.debug and post_recall < args.min_recall:
+                    print(f"  Skipping: post recall {post_recall:.3f} < {args.min_recall}")
+                    continue
+                if contrast_score < args.min_contrast:
+                    print(f"  Skipping: contrast {contrast_score:.3f} < {args.min_contrast}")
+                    continue
+
+                paired_examples.append(
+                    {
+                        "topic_id": pair["topic_id"],
+                        "entity": pair["entity"],
+                        "question": question,
+                        "pre_articles": pair["pre_articles"],
+                        "post_articles": pair["post_articles"],
+                        "changed_facts": pair["changed_facts"],
+                        "pre_decomposition": pre_decomp,
+                        "post_decomposition": post_decomp,
+                        "pre_gold_articles": pre_gold_articles,
+                        "post_gold_articles": post_gold_articles,
+                        "pre_recall": pre_recall,
+                        "post_recall": post_recall,
+                        "contrast_score": contrast_score,
+                    }
+                )
+                print(
+                    f"  Kept: pre_recall={pre_recall:.3f}, "
+                    f"post_recall={post_recall:.3f}, contrast={contrast_score:.3f}"
+                )
+        else:
+            semaphore = asyncio.Semaphore(max(args.concurrency, 1))
+
+            async def process_pair(i: int, pair: dict):
+                async with semaphore:
+                    question = await generate_temporal_question_api(pair, api_func)
+                    if not question:
+                        return None
+
+                    pre_decomp = await generate_temporal_decomposition_api(pair, question, "pre", api_func)
+                    post_decomp = await generate_temporal_decomposition_api(pair, question, "post", api_func)
+                    if not pre_decomp or not post_decomp:
+                        return None
+
+                    pre_gold_articles = [a["doc_id"] for a in pair["pre_articles"]]
+                    post_gold_articles = [a["doc_id"] for a in pair["post_articles"]]
+
+                    pre_recall = score_decomposition_recall(
+                        pre_decomp,
+                        encoder,
+                        faiss_index,
+                        doc_ids,
+                        pre_gold_articles,
+                        corpus_embeddings=corpus_embeddings,
+                        nprobe=faiss_cfg.nprobe,
+                    )
+                    post_recall = score_decomposition_recall(
+                        post_decomp,
+                        encoder,
+                        faiss_index,
+                        doc_ids,
+                        post_gold_articles,
+                        corpus_embeddings=corpus_embeddings,
+                        nprobe=faiss_cfg.nprobe,
+                    )
+                    contrast_score = decomposition_contrast_score(pre_decomp, post_decomp)
+
+                    if (not args.debug) and (pre_recall < args.min_recall or post_recall < args.min_recall):
+                        return None
+                    if contrast_score < args.min_contrast:
+                        return None
+
+                    return {
+                        "topic_id": pair["topic_id"],
+                        "entity": pair["entity"],
+                        "question": question,
+                        "pre_articles": pair["pre_articles"],
+                        "post_articles": pair["post_articles"],
+                        "changed_facts": pair["changed_facts"],
+                        "pre_decomposition": pre_decomp,
+                        "post_decomposition": post_decomp,
+                        "pre_gold_articles": pre_gold_articles,
+                        "post_gold_articles": post_gold_articles,
+                        "pre_recall": pre_recall,
+                        "post_recall": post_recall,
+                        "contrast_score": contrast_score,
+                    }
+
+            async def process_all_pairs():
+                tasks = [
+                    asyncio.create_task(process_pair(i, pair))
+                    for i, pair in enumerate(topic_pairs, start=1)
+                ]
+                results = []
+                for task in asyncio.as_completed(tasks):
+                    result = await task
+                    if result is not None:
+                        results.append(result)
+                return results
+
+            paired_examples = asyncio.run(process_all_pairs())
 
         save_json(paired_examples, paired_examples_path)
         print(f"\nPaired examples: {len(paired_examples)} -> {paired_examples_path}")
