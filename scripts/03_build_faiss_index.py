@@ -1,5 +1,6 @@
 """Encode pre-cutoff corpus with BGE-M3 and build FAISS index."""
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -17,12 +18,24 @@ from sot.utils.config import load_config
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Use debug corpus files from configs/data/fnspid.yaml.",
+    )
+    args = parser.parse_args()
+
     cfg = load_config()
     fnspid_cfg = OmegaConf.load("configs/data/fnspid.yaml")
-    faiss_cfg = OmegaConf.load("configs/retrieval/faiss.yaml")
+    faiss_cfg_path = (
+        "configs/retrieval/faiss_debug.yaml" if args.debug else "configs/retrieval/faiss.yaml"
+    )
+    faiss_cfg = OmegaConf.load(faiss_cfg_path)
 
     data_root = Path(cfg.paths.data_root)
-    corpus_path = data_root / "fnspid" / "processed" / "pre_cutoff.parquet"
+    suffix = fnspid_cfg.debug.output_suffix if args.debug else ""
+    corpus_path = data_root / "fnspid" / "processed" / f"pre_cutoff{suffix}.parquet"
 
     print("Loading pre-cutoff corpus...")
     df = pd.read_parquet(corpus_path)
@@ -47,18 +60,20 @@ def main():
     index_dir = data_root / "fnspid" / "index"
     index_dir.mkdir(parents=True, exist_ok=True)
 
-    index_path = index_dir / "corpus.faiss"
+    index_path = index_dir / f"corpus{suffix}.faiss"
     save_index(index, index_path)
     print(f"Index saved: {index_path}")
 
     # Save doc IDs mapping (FAISS integer index -> original row index)
     doc_ids = list(range(len(df)))
-    np.save(index_dir / "doc_ids.npy", np.array(doc_ids))
-    print(f"Doc IDs saved: {index_dir / 'doc_ids.npy'}")
+    doc_ids_path = index_dir / f"doc_ids{suffix}.npy"
+    np.save(doc_ids_path, np.array(doc_ids))
+    print(f"Doc IDs saved: {doc_ids_path}")
 
     # Save embeddings for potential reuse
-    np.save(index_dir / "embeddings.npy", embeddings)
-    print(f"Embeddings saved: {index_dir / 'embeddings.npy'}")
+    embeddings_path = index_dir / f"embeddings{suffix}.npy"
+    np.save(embeddings_path, embeddings)
+    print(f"Embeddings saved: {embeddings_path}")
 
 
 if __name__ == "__main__":

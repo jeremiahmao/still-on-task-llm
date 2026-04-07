@@ -56,7 +56,7 @@ def main():
     articles = df.to_dict("records")
     print(f"Corpus: {len(articles)} articles")
 
-    qd_dir = data_root / "qd"
+    qd_dir = Path(cfg.paths.qd_data_root)
     qd_dir.mkdir(parents=True, exist_ok=True)
 
     questions_path = qd_dir / "raw_questions.json"

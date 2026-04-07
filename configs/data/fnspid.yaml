@@ -2,6 +2,15 @@ source: "Zihan1004/FNSPID"
 # Raw file paths within the HF repo
 news_file: "Stock_news/nasdaq_exteral_data.csv"
 all_news_file: "Stock_news/All_external.csv"
+# Local corpus-building input. Switch this between the full CSV and a
+# filtered local derivative depending on what you want downstream scripts to use.
+input_news_file: "Stock_news/nasdaq_exteral_data_2021_2022.csv"
+
+debug:
+  enabled: false
+  tickers:
+    - "NVDA"
+  output_suffix: "_debug"
 
 cutoff_date: "2022-01-01"
 subsample_pre_cutoff: 500000

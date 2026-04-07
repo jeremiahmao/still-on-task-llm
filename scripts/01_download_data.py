@@ -1,5 +1,6 @@
-"""Download FNSPID and FinQA datasets."""
+"""Download FNSPID and optionally FinQA datasets."""
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -14,6 +15,14 @@ from sot.utils.config import load_config
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--skip-finqa",
+        action="store_true",
+        help="Download only FNSPID. Useful for lightweight pipeline smoke tests.",
+    )
+    args = parser.parse_args()
+
     cfg = load_config()
     data_root = Path(cfg.paths.data_root)
 
@@ -31,9 +40,12 @@ def main():
     print(f"Columns: {list(df.columns)}")
     print(f"Rows: {len(df) if len(df) > 5 else 'sampled 5'}")
 
-    print("\n=== Downloading FinQA ===")
-    finqa_dir = download_finqa(data_root)
-    print(f"FinQA dataset at: {finqa_dir}")
+    if args.skip_finqa:
+        print("\nSkipping FinQA download (--skip-finqa).")
+    else:
+        print("\n=== Downloading FinQA ===")
+        finqa_dir = download_finqa(data_root)
+        print(f"FinQA dataset at: {finqa_dir}")
 
 
 if __name__ == "__main__":

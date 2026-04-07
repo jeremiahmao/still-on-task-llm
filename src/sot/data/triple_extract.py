@@ -1,6 +1,8 @@
 """LLM-based fact triple extraction from financial news articles."""
 
+import asyncio
 import json
+import random
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -49,8 +51,8 @@ def extract_triples_batch(
     id_column: str | None = None,
     batch_size: int = 1,
     max_new_tokens: int = 512,
-    checkpoint_path: str | None = None,
-    checkpoint_every: int = 100,
+    progress_path: str | None = None,
+    save_every: int = 25,
 ) -> list[FactTriple]:
     """Extract fact triples from a batch of articles using a local LLM.
 
@@ -62,36 +64,39 @@ def extract_triples_batch(
         id_column: Key for article ID (optional).
         batch_size: Number of articles to process at once.
         max_new_tokens: Max generation length.
-        checkpoint_path: If set, save progress here every checkpoint_every articles.
-        checkpoint_every: Save checkpoint every N articles.
+        progress_path: If set, append completed article results here as JSONL.
+        save_every: Flush progress to disk every N processed articles.
 
     Returns:
         List of extracted FactTriple objects.
     """
-    all_triples = []
-    start_idx = 0
+    processed_ids, all_triples = load_progress_jsonl(progress_path)
+    pending_records = []
+    processed_since_flush = 0
+    if progress_path and processed_ids:
+        print(
+            f"Resuming from progress log: {len(processed_ids)} articles, {len(all_triples)} triples"
+        )
 
-    # Resume from checkpoint if available
-    if checkpoint_path:
-        ckpt = Path(checkpoint_path)
-        if ckpt.exists():
-            with open(ckpt) as f:
-                ckpt_data = json.load(f)
-            all_triples = [FactTriple(**d) for d in ckpt_data["triples"]]
-            start_idx = ckpt_data["next_idx"]
-            print(
-                f"Resuming from checkpoint: {len(all_triples)} triples, starting at article {start_idx}"
-            )
-
-    for i in tqdm(range(start_idx, len(articles), batch_size), desc="Extracting triples"):
+    for i in tqdm(range(0, len(articles), batch_size), desc="Extracting triples"):
         batch = articles[i : i + batch_size]
 
-        for article in batch:
+        for batch_offset, article in enumerate(batch):
             text = article.get(text_column, "")
+            article_idx = i + batch_offset
+            article_id = article.get(id_column, article_idx) if id_column else article_idx
+            if article_id in processed_ids:
+                continue
             if not text or len(str(text).strip()) < 20:
+                pending_records.append(_make_progress_record(article_id, []))
+                processed_ids.add(article_id)
+                processed_since_flush += 1
+                if progress_path and processed_since_flush >= save_every:
+                    append_progress_jsonl(progress_path, pending_records)
+                    pending_records.clear()
+                    processed_since_flush = 0
                 continue
 
-            article_id = article.get(id_column, i) if id_column else i
             prompt = EXTRACTION_PROMPT.format(article_text=str(text)[:2000])
 
             inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048)
@@ -111,25 +116,58 @@ def extract_triples_batch(
             )
             parsed = _parse_triples(response, article_id)
             all_triples.extend(parsed)
+            pending_records.append(_make_progress_record(article_id, parsed))
+            processed_ids.add(article_id)
+            processed_since_flush += 1
+            if progress_path and processed_since_flush >= save_every:
+                append_progress_jsonl(progress_path, pending_records)
+                pending_records.clear()
+                processed_since_flush = 0
 
-        # Periodic checkpoint
-        if checkpoint_path and (i - start_idx + batch_size) % checkpoint_every < batch_size:
-            _save_checkpoint(checkpoint_path, all_triples, i + batch_size)
-
-    # Final checkpoint
-    if checkpoint_path:
-        _save_checkpoint(checkpoint_path, all_triples, len(articles))
+    if progress_path and pending_records:
+        append_progress_jsonl(progress_path, pending_records)
 
     return all_triples
 
 
-def _save_checkpoint(path: str, triples: list[FactTriple], next_idx: int) -> None:
-    """Save extraction progress to a checkpoint file."""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump({"triples": [asdict(t) for t in triples], "next_idx": next_idx}, f)
-    print(f"  Checkpoint saved: {len(triples)} triples, next_idx={next_idx}")
+def _make_progress_record(article_id, triples: list[FactTriple]) -> dict:
+    """Serialize one article's extraction result for append-only progress logs."""
+    return {
+        "article_id": article_id,
+        "triples": [asdict(t) for t in triples],
+    }
+
+
+def append_progress_jsonl(path: str | None, records: list[dict]) -> None:
+    """Append per-article extraction results to a JSONL file."""
+    if not path or not records:
+        return
+    progress_path = Path(path)
+    progress_path.parent.mkdir(parents=True, exist_ok=True)
+    with progress_path.open("a", encoding="utf-8") as f:
+        for record in records:
+            f.write(json.dumps(record) + "\n")
+
+
+def load_progress_jsonl(path: str | None) -> tuple[set, list[FactTriple]]:
+    """Load append-only progress logs and flatten them into triples."""
+    if not path:
+        return set(), []
+    progress_path = Path(path)
+    if not progress_path.exists():
+        return set(), []
+
+    processed_ids = set()
+    triples = []
+    with progress_path.open(encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            record = json.loads(line)
+            processed_ids.add(record.get("article_id"))
+            triples.extend(FactTriple(**triple) for triple in record.get("triples", []))
+    return processed_ids, triples
 
 
 def extract_triples_api(
@@ -137,6 +175,8 @@ def extract_triples_api(
     text_column: str,
     id_column: str | None = None,
     api_func=None,
+    progress_path: str | None = None,
+    save_every: int = 25,
 ) -> list[FactTriple]:
     """Extract triples using an external API (e.g., GPT-4o-mini).
 
@@ -153,19 +193,110 @@ def extract_triples_api(
     if api_func is None:
         raise ValueError("api_func must be provided for API-based extraction")
 
-    all_triples = []
+    processed_ids, all_triples = load_progress_jsonl(progress_path)
+    pending_records = []
+    processed_since_flush = 0
 
     for i, article in enumerate(tqdm(articles, desc="Extracting triples (API)")):
         text = article.get(text_column, "")
-        if not text or len(str(text).strip()) < 20:
-            continue
-
         article_id = article.get(id_column, i) if id_column else i
+        if article_id in processed_ids:
+            continue
+        if not text or len(str(text).strip()) < 20:
+            pending_records.append(_make_progress_record(article_id, []))
+            processed_ids.add(article_id)
+            processed_since_flush += 1
+            if progress_path and processed_since_flush >= save_every:
+                append_progress_jsonl(progress_path, pending_records)
+                pending_records.clear()
+                processed_since_flush = 0
+            continue
         prompt = EXTRACTION_PROMPT.format(article_text=str(text)[:2000])
 
         response = api_func(prompt)
         parsed = _parse_triples(response, article_id)
         all_triples.extend(parsed)
+        pending_records.append(_make_progress_record(article_id, parsed))
+        processed_ids.add(article_id)
+        processed_since_flush += 1
+        if progress_path and processed_since_flush >= save_every:
+            append_progress_jsonl(progress_path, pending_records)
+            pending_records.clear()
+            processed_since_flush = 0
+
+    if progress_path and pending_records:
+        append_progress_jsonl(progress_path, pending_records)
+
+    return all_triples
+
+
+async def extract_triples_api_async(
+    articles: list[dict],
+    text_column: str,
+    id_column: str | None = None,
+    api_func_async=None,
+    concurrency: int = 10,
+    max_retries: int = 6,
+    base_retry_seconds: float = 10.0,
+    progress_path: str | None = None,
+    save_every: int = 25,
+) -> list[FactTriple]:
+    """Extract triples using an external API concurrently."""
+    if api_func_async is None:
+        raise ValueError("api_func_async must be provided for async API-based extraction")
+
+    semaphore = asyncio.Semaphore(max(concurrency, 1))
+    processed_ids, all_triples = load_progress_jsonl(progress_path)
+    pending_records = []
+    completed_since_flush = 0
+    if progress_path and processed_ids:
+        print(
+            f"Resuming from progress log: {len(processed_ids)} articles, {len(all_triples)} triples"
+        )
+
+    async def process_article(i: int, article: dict) -> tuple[object, list[FactTriple]]:
+        text = article.get(text_column, "")
+        article_id = article.get(id_column, i) if id_column else i
+        if not text or len(str(text).strip()) < 20:
+            return article_id, []
+        prompt = EXTRACTION_PROMPT.format(article_text=str(text)[:2000])
+
+        for attempt in range(max_retries + 1):
+            try:
+                async with semaphore:
+                    response = await api_func_async(prompt)
+                return article_id, _parse_triples(response, article_id)
+            except Exception as exc:
+                message = str(exc).lower()
+                is_rate_limit = "rate limit" in message or "429" in message
+                if not is_rate_limit or attempt >= max_retries:
+                    raise
+
+                # Exponential backoff with a little jitter to avoid retry bursts.
+                delay = base_retry_seconds * (2**attempt) + random.uniform(0, 0.25)
+                await asyncio.sleep(delay)
+
+        return article_id, []
+
+    tasks = [
+        asyncio.create_task(process_article(i, article))
+        for i, article in enumerate(articles)
+        if (article.get(id_column, i) if id_column else i) not in processed_ids
+    ]
+
+    for task in tqdm(asyncio.as_completed(tasks), total=len(tasks), desc="Extracting triples (API)"):
+        article_id, parsed = await task
+        all_triples.extend(parsed)
+        pending_records.append(_make_progress_record(article_id, parsed))
+        processed_ids.add(article_id)
+        completed_since_flush += 1
+        if progress_path and completed_since_flush >= save_every:
+            append_progress_jsonl(progress_path, pending_records)
+            pending_records.clear()
+            completed_since_flush = 0
+
+    if progress_path and pending_records:
+        append_progress_jsonl(progress_path, pending_records)
 
     return all_triples
 

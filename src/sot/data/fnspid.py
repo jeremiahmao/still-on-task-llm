@@ -44,10 +44,10 @@ def temporal_split(
     cutoff_date: str,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Split FNSPID into pre-cutoff and post-cutoff DataFrames."""
-    df[date_column] = pd.to_datetime(df[date_column], errors="coerce")
+    df[date_column] = pd.to_datetime(df[date_column], errors="coerce", utc=True)
     df = df.dropna(subset=[date_column])
 
-    cutoff = pd.Timestamp(cutoff_date)
+    cutoff = pd.Timestamp(cutoff_date, tz="UTC")
     pre = df[df[date_column] < cutoff].copy()
     post = df[df[date_column] >= cutoff].copy()
     return pre, post

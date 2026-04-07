@@ -74,7 +74,7 @@ def main():
     # Load task data for replay (if needed)
     task_data = None
     if args.task == "qd":
-        qd_train_path = data_root / "qd" / "train.json"
+        qd_train_path = Path(base_cfg.paths.qd_data_root) / "train.json"
         if qd_train_path.exists():
             with open(qd_train_path) as f:
                 task_data = json.load(f)

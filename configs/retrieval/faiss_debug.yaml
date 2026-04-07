@@ -1,0 +1,5 @@
+encoder: "sentence-transformers/all-MiniLM-L6-v2"
+dim: 384
+index_type: "Flat"
+nprobe: 1
+batch_size: 64
