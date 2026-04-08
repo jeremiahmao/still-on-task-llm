@@ -128,6 +128,17 @@ def main():
         action="store_true",
         help="Skip data pipeline (assume data already exists in channel)",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Run with debug ticker subset for fast smoke test",
+    )
+    parser.add_argument(
+        "--teacher-provider",
+        default="openai",
+        choices=["local", "openai"],
+        help="Teacher LLM provider for data generation (default: openai)",
+    )
     args = parser.parse_args()
 
     repo = setup_paths()
@@ -136,12 +147,17 @@ def main():
     # Install the package
     subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."], cwd=str(repo))
 
+    # Common flags for data pipeline scripts
+    debug_flag = ["--debug"] if args.debug else []
+    teacher_flags = ["--provider", args.teacher_provider]
+    teacher_flags_qd = ["--teacher-provider", args.teacher_provider]
+
     if args.phase == "data":
         run_script("01_download_data.py")
-        run_script("02_build_corpus.py")
-        run_script("03_build_faiss_index.py")
-        run_script("04_extract_triples.py")
-        run_script("05_generate_qd_data.py")
+        run_script("02_build_corpus.py", debug_flag)
+        run_script("03_build_faiss_index.py", debug_flag)
+        run_script("04_extract_triples.py", debug_flag + teacher_flags)
+        run_script("05_generate_qd_data_foundational_model.py", debug_flag + teacher_flags_qd)
         run_script("06_build_locality_facts.py")
 
     elif args.phase == "task-tune":
@@ -162,10 +178,10 @@ def main():
     elif args.phase == "all":
         if not args.skip_data:
             run_script("01_download_data.py")
-            run_script("02_build_corpus.py")
-            run_script("03_build_faiss_index.py")
-            run_script("04_extract_triples.py")
-            run_script("05_generate_qd_data.py")
+            run_script("02_build_corpus.py", debug_flag)
+            run_script("03_build_faiss_index.py", debug_flag)
+            run_script("04_extract_triples.py", debug_flag + teacher_flags)
+            run_script("05_generate_qd_data_foundational_model.py", debug_flag + teacher_flags_qd)
             run_script("06_build_locality_facts.py")
 
         run_script("07_task_tune_qd.py")

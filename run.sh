@@ -12,6 +12,8 @@ pip install -e . -q
 
 # === Run ===
 PHASE="${1:-all}"
+shift 2>/dev/null || true  # remaining args passed through
+
 LOGFILE="logs/train_$(date +%Y%m%d_%H%M%S).log"
 mkdir -p logs
 
@@ -19,7 +21,7 @@ echo "Running phase: $PHASE"
 echo "Logging to: $LOGFILE"
 echo "Follow with: tail -f $LOGFILE"
 
-nohup python sagemaker/train.py --phase "$PHASE" > "$LOGFILE" 2>&1 &
+nohup python sagemaker/train.py --phase "$PHASE" "$@" > "$LOGFILE" 2>&1 &
 PID=$!
 echo "PID: $PID"
 echo "$PID" > logs/.pid
