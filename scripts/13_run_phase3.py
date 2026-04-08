@@ -9,12 +9,11 @@ import subprocess
 import sys
 
 # Run the methods that matter most for the paper's story
-METHODS = ["kl_reg_sft", "alphaedit", "copr"]
+METHODS = ["kl_reg_sft", "copr"]
 SCALE = 1000
 
 CONFIG_MAP = {
     "kl_reg_sft": "configs/update/kl_reg_sft.yaml",
-    "alphaedit": "configs/update/alphaedit.yaml",
     "copr": "configs/update/copr.yaml",
 }
 

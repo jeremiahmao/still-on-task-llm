@@ -9,7 +9,6 @@ fi
 
 # === Setup ===
 pip install -e . -q
-git submodule update --init --recursive
 
 # === Run ===
 PHASE="${1:-all}"

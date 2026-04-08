@@ -8,14 +8,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-METHODS = ["naive_sft", "kl_reg_sft", "alphaedit", "copr"]
+METHODS = ["naive_sft", "kl_reg_sft", "copr"]
 SCALE = 1000
 TASK = "qd"
 
 CONFIG_MAP = {
     "naive_sft": "configs/update/naive_sft.yaml",
     "kl_reg_sft": "configs/update/kl_reg_sft.yaml",
-    "alphaedit": "configs/update/alphaedit.yaml",
     "copr": "configs/update/copr.yaml",
 }
 

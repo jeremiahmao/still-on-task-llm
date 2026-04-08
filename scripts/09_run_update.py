@@ -13,7 +13,6 @@ from sot.data.triple_extract import FactTriple
 from sot.data.triple_render import render_triple
 from sot.models.base import load_model
 from sot.models.lora import load_lora, merge_lora
-from sot.update.alphaedit import AlphaEditUpdate
 from sot.update.copr import COPRUpdate
 from sot.update.kl_reg_sft import KLRegSFTUpdate
 from sot.update.naive_sft import NaiveSFTUpdate
@@ -25,7 +24,6 @@ from sot.utils.seed import seed_everything
 METHODS = {
     "naive_sft": NaiveSFTUpdate,
     "kl_reg_sft": KLRegSFTUpdate,
-    "alphaedit": AlphaEditUpdate,
     "copr": COPRUpdate,
 }
 

@@ -19,20 +19,20 @@ compared to weight-space editing (AlphaEdit)?
 
 ---
 
-## Methods (5 total, down from 7)
+## Methods (4 total)
 
 | Method | Type | Description | Status |
 |--------|------|-------------|--------|
 | No update | Lower bound | Task-tuned model, no knowledge injection | Core |
 | Naive SFT | Baseline | SFT on fact QA pairs (= KL-reg with lambda=0) | Core |
 | KL-reg SFT | Baseline | SFT + lambda * D_KL(pi_task \|\| pi_theta) | Core |
-| AlphaEdit | Weight-space | Null-space projected fact editing | Core |
 | COPR-adapted | Policy-space | Advantage-weighted fitting + task replay | Core |
 
 **Dropped:**
+- **AlphaEdit** — unlikely to work in repeated applications (per advisor
+  feedback); better to focus GPU time on COPR and gradient-learning baselines.
 - **Mixed replay** — similar to KL-reg SFT; adds a comparison axis (data mixing
-  vs. loss regularization) that dilutes the core weight-space vs. policy-space
-  story. Can mention as future work.
+  vs. loss regularization) that dilutes the core story. Can mention as future work.
 - **Full retrain** — the review noted it's hard to interpret as an upper bound;
   compute-prohibitive; not needed for the core comparison.
 
@@ -69,37 +69,35 @@ does not add to the scaling story that 1K→3K already provides.
 
 **Prerequisite:** Task-tune Qwen2.5-3B on QD via SFT.
 
-**Experiments (4 methods + baseline):**
+**Experiments (3 methods + baseline):**
 
 | Run | Method | Scale | Task | Metrics |
 |-----|--------|-------|------|---------|
 | 1 | No update | — | QD | preservation, locality |
 | 2 | Naive SFT | 1K | QD | preservation, absorption, locality |
 | 3 | KL-reg SFT | 1K | QD | preservation, absorption, locality |
-| 4 | AlphaEdit | 1K | QD | preservation, absorption, locality |
-| 5 | COPR-adapted | 1K | QD | preservation, absorption, locality |
+| 4 | COPR-adapted | 1K | QD | preservation, absorption, locality |
 
-**Success criteria:** All 5 runs complete with valid metrics. Results show
+**Success criteria:** All 4 runs complete with valid metrics. Results show
 meaningful differentiation between at least two methods on task preservation.
 
 ### Phase 2: Scaling to 3K Edits (SHOULD SHIP)
 **Goal:** Show how methods degrade as edit count increases.
 
-**Experiments (4 methods at 3K):**
+**Experiments (3 methods at 3K):**
 
 | Run | Method | Scale | Task | Metrics |
 |-----|--------|-------|------|---------|
-| 6 | Naive SFT | 3K | QD | preservation, absorption, locality |
-| 7 | KL-reg SFT | 3K | QD | preservation, absorption, locality |
-| 8 | AlphaEdit | 3K | QD | preservation, absorption, locality |
-| 9 | COPR-adapted | 3K | QD | preservation, absorption, locality |
+| 5 | Naive SFT | 3K | QD | preservation, absorption, locality |
+| 6 | KL-reg SFT | 3K | QD | preservation, absorption, locality |
+| 7 | COPR-adapted | 3K | QD | preservation, absorption, locality |
 
 **Success criteria:** Scaling curves (1K vs 3K) plotted for each method.
 
 ### Phase 3: FinQA Forgetting Control (TIME PERMITTING)
 **Goal:** Verify methods don't cause generic forgetting on unrelated tasks.
 
-Run top 2-3 methods from Phase 1 on a FinQA-tuned model at 1K edits.
+Run top 2 methods from Phase 1 on a FinQA-tuned model at 1K edits.
 Measure execution accuracy before/after update. Expected outcome: no
 degradation (knowledge updates shouldn't affect table arithmetic).
 
@@ -125,8 +123,7 @@ as a one-line confirmation. If any method degrades it, that's a finding.
 1. **Naive SFT vs KL-reg SFT:** Does KL regularization help at all?
 2. **KL-reg SFT vs COPR-adapted:** Does advantage-weighted fitting help beyond
    plain KL regularization? (This is the ablation from Contribution 3.)
-3. **AlphaEdit vs COPR-adapted:** Weight-space vs policy-space, head-to-head.
-4. **1K vs 3K scaling:** Where does each method start to degrade?
+3. **1K vs 3K scaling:** Where does each method start to degrade?
 
 ---
 
@@ -145,10 +142,10 @@ as a one-line confirmation. If any method degrades it, that's a finding.
 
 | Phase | Runs | Est. GPU-hours each | Total |
 |-------|------|-------------------|-------|
-| Phase 1 | 5 | ~2-4h | ~10-20h |
-| Phase 2 | 4 | ~3-6h | ~12-24h |
-| Phase 3 | 2-3 | ~2-4h | ~4-12h |
-| **Total** | **11-12** | | **~26-56h** |
+| Phase 1 | 4 | ~2-4h | ~8-16h |
+| Phase 2 | 3 | ~3-6h | ~9-18h |
+| Phase 3 | 2 | ~2-4h | ~4-8h |
+| **Total** | **9** | | **~21-42h** |
 
-This is a ~60% reduction from the original plan (7 methods x 3 scales x 2 tasks
-= 42 runs → 9-12 runs).
+This is a ~75% reduction from the original plan (7 methods x 3 scales x 2 tasks
+= 42 runs → 9 runs).

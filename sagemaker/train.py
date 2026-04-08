@@ -136,14 +136,6 @@ def main():
     # Install the package
     subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."], cwd=str(repo))
 
-    # Install submodule deps if needed
-    alphaedit_reqs = repo / "vendor" / "AlphaEdit" / "requirements.txt"
-    if alphaedit_reqs.exists():
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-r", str(alphaedit_reqs)],
-            check=False,
-        )
-
     if args.phase == "data":
         run_script("01_download_data.py")
         run_script("02_build_corpus.py")
