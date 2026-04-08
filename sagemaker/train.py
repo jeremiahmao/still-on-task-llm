@@ -153,7 +153,7 @@ def main():
     teacher_flags_qd = ["--teacher-provider", args.teacher_provider]
 
     if args.phase == "data":
-        run_script("01_download_data.py")
+        run_script("01_download_data.py", ["--skip-finqa"] if args.debug else [])
         run_script("02_build_corpus.py", debug_flag)
         run_script("03_build_faiss_index.py", debug_flag)
         run_script("04_extract_triples.py", debug_flag + teacher_flags)
@@ -177,7 +177,7 @@ def main():
 
     elif args.phase == "all":
         if not args.skip_data:
-            run_script("01_download_data.py")
+            run_script("01_download_data.py", ["--skip-finqa"] if args.debug else [])
             run_script("02_build_corpus.py", debug_flag)
             run_script("03_build_faiss_index.py", debug_flag)
             run_script("04_extract_triples.py", debug_flag + teacher_flags)
