@@ -20,6 +20,7 @@ dependencies = [
     "pyarrow>=15.0",
     "huggingface-hub>=0.22",
     "tqdm",
+    "openai>=1.0",
     "matplotlib>=3.10.8",
 ]
 
