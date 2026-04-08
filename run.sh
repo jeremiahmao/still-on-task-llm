@@ -8,7 +8,9 @@ if [ -f .env ]; then
 fi
 
 # === Setup ===
-pip install -e . -q
+echo "Installing package..."
+pip install -e . 2>&1 | tail -1
+echo "Setup complete."
 
 # === Run ===
 PHASE="${1:-all}"
@@ -17,16 +19,11 @@ shift 2>/dev/null || true  # remaining args passed through
 LOGFILE="logs/train_$(date +%Y%m%d_%H%M%S).log"
 mkdir -p logs
 
-echo "Running phase: $PHASE"
-echo "Logging to: $LOGFILE"
-echo "Follow with: tail -f $LOGFILE"
-
-nohup python sagemaker/train.py --phase "$PHASE" "$@" > "$LOGFILE" 2>&1 &
-PID=$!
-echo "PID: $PID"
-echo "$PID" > logs/.pid
-
 echo ""
-echo "Running in background. Commands:"
-echo "  tail -f $LOGFILE      # watch progress"
-echo "  kill $PID             # stop the run"
+echo "=== Starting phase: $PHASE ==="
+echo "Logging to: $LOGFILE"
+echo "Output shown below (also saved to log)."
+echo ""
+
+# Run in foreground with tee so output goes to both terminal and log
+python -u sagemaker/train.py --phase "$PHASE" "$@" 2>&1 | tee "$LOGFILE"
