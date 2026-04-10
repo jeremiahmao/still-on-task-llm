@@ -4,6 +4,7 @@ This produces the baseline checkpoint that all update methods start from.
 Prerequisite: QD training data at cfg.paths.qd_data_root/train.json.
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -20,15 +21,24 @@ from sot.utils.seed import seed_everything
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true", help="Use debug QD data from qd_temporal/debug/")
+    args = parser.parse_args()
+
     cfg = load_config()
+    fnspid_cfg = OmegaConf.load("configs/data/fnspid.yaml")
     train_cfg = OmegaConf.load("configs/training/query_decomp_sft.yaml")
     seed_everything(cfg.seed)
 
     data_root = Path(cfg.paths.data_root)
     checkpoint_root = Path(cfg.paths.checkpoint_root)
 
-    # Load QD training data from the configured dataset root
-    qd_data_root = Path(cfg.paths.qd_data_root)
+    # Load QD training data — debug uses qd_temporal/debug/, prod uses qd_data_root
+    if args.debug:
+        suffix = fnspid_cfg.debug.output_suffix.lstrip("_")
+        qd_data_root = Path(cfg.paths.qd_temporal_data_root) / suffix
+    else:
+        qd_data_root = Path(cfg.paths.qd_data_root)
     train_path = qd_data_root / "train.json"
     test_path = qd_data_root / "test.json"
 
@@ -48,7 +58,7 @@ def main():
 
     # Load base model
     print(f"\nLoading {cfg.model.name}...")
-    model, tokenizer = load_model(cfg.model.name, cfg.model.dtype)
+    model, tokenizer = load_model(cfg.model.name, cfg.model.dtype, device_map=None)
 
     # Apply LoRA
     lora_cfg = train_cfg.get("lora", {})
@@ -62,7 +72,7 @@ def main():
     model.print_trainable_parameters()
 
     # Train
-    output_dir = checkpoint_root / "qd_sft"
+    output_dir = checkpoint_root / ("qd_sft_debug" if args.debug else "qd_sft")
     print(f"\nTraining QD SFT -> {output_dir}")
     trainer = run_sft(
         model,

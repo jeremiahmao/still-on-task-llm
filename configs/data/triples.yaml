@@ -1,6 +1,6 @@
 # Fact triple extraction and filtering config
-min_cross_doc_agreement: 1  # Debug-friendly: keep single-article triples
-scales: [1000, 3000]
+min_cross_doc_agreement: 2  # Require agreement across >=2 articles for production
+scales: [200, 1000, 3000]
 
 # Relation type templates for NL rendering
 templates:

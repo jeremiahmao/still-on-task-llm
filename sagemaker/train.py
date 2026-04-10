@@ -58,10 +58,17 @@ def setup_paths():
     return repo
 
 
-def run_script(script_name: str, args: list[str] | None = None):
+def _build_cmd(script_path: str, args: list[str], distributed: bool) -> list[str]:
+    nproc = int(os.environ.get("NPROC_PER_NODE", "1"))
+    if distributed and nproc > 1:
+        return ["torchrun", f"--nproc_per_node={nproc}", script_path] + args
+    return [sys.executable, script_path] + args
+
+
+def run_script(script_name: str, args: list[str] | None = None, distributed: bool = False):
     """Run a pipeline script from the repo's scripts/ directory."""
     script = REPO_ROOT / "scripts" / script_name
-    cmd = [sys.executable, str(script)] + (args or [])
+    cmd = _build_cmd(str(script), args or [], distributed)
     print(f"\n{'=' * 60}")
     print(f"Running: {' '.join(cmd)}")
     print(f"{'=' * 60}")
@@ -158,13 +165,13 @@ def main():
         run_script("03_build_faiss_index.py", debug_flag)
         run_script("04_extract_triples.py", debug_flag + teacher_flags)
         run_script("05_generate_qd_data_foundational_model.py", debug_flag + teacher_flags_qd)
-        run_script("06_build_locality_facts.py")
+        run_script("06_build_locality_facts.py", debug_flag)
 
     elif args.phase == "task-tune":
         if args.task == "qd":
-            run_script("07_task_tune_qd.py")
+            run_script("07_task_tune_qd.py", debug_flag, distributed=True)
         else:
-            run_script("08_task_tune_finqa.py")
+            run_script("08_task_tune_finqa.py", distributed=True)
 
     elif args.phase == "phase1":
         run_script("11_run_phase1.py")
@@ -182,14 +189,14 @@ def main():
             run_script("03_build_faiss_index.py", debug_flag)
             run_script("04_extract_triples.py", debug_flag + teacher_flags)
             run_script("05_generate_qd_data_foundational_model.py", debug_flag + teacher_flags_qd)
-            run_script("06_build_locality_facts.py")
+            run_script("06_build_locality_facts.py", debug_flag)
 
-        run_script("07_task_tune_qd.py")
+        run_script("07_task_tune_qd.py", debug_flag, distributed=True)
         run_script("11_run_phase1.py")
         run_script("12_run_phase2.py")
 
         # Phase 3 requires FinQA tuning
-        run_script("08_task_tune_finqa.py")
+        run_script("08_task_tune_finqa.py", distributed=True)
         run_script("13_run_phase3.py")
 
         run_script("14_generate_tables.py")

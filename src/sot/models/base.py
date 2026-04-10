@@ -7,7 +7,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 def load_model(
     name: str = "Qwen/Qwen2.5-3B",
     dtype: str = "bfloat16",
-    device_map: str = "auto",
+    device_map: str | None = "auto",
 ) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
     """Load a causal LM and its tokenizer.
 
@@ -17,7 +17,7 @@ def load_model(
 
     model = AutoModelForCausalLM.from_pretrained(
         name,
-        torch_dtype=torch_dtype,
+        dtype=torch_dtype,
         device_map=device_map,
         trust_remote_code=True,
     )

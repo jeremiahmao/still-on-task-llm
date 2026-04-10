@@ -4,8 +4,16 @@ Run after Phase 1 validates the pipeline at 1K edits.
 See FINAL_PLAN.md for the full execution plan.
 """
 
+import os
 import subprocess
 import sys
+
+
+def _torchrun(script, *args):
+    nproc = int(os.environ.get("NPROC_PER_NODE", "1"))
+    if nproc > 1:
+        return ["torchrun", f"--nproc_per_node={nproc}", script] + list(args)
+    return [sys.executable, script] + list(args)
 
 METHODS = ["naive_sft", "kl_reg_sft", "copr"]
 SCALE = 3000
@@ -31,18 +39,13 @@ def main():
         print(f"{'=' * 60}")
 
         config = CONFIG_MAP[method]
-        cmd = [
-            sys.executable,
+        cmd = _torchrun(
             "scripts/09_run_update.py",
-            "--method",
-            method,
-            "--scale",
-            str(SCALE),
-            "--task",
-            TASK,
-            "--config",
-            config,
-        ]
+            "--method", method,
+            "--scale", str(SCALE),
+            "--task", TASK,
+            "--config", config,
+        )
 
         result = subprocess.run(cmd)
         if result.returncode != 0:

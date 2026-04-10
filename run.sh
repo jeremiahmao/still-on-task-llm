@@ -12,6 +12,14 @@ echo "Installing package..."
 pip install -e . 2>&1 | tail -1
 echo "Setup complete."
 
+# Detect GPU count for distributed training
+NPROC_PER_NODE=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | wc -l)
+NPROC_PER_NODE=${NPROC_PER_NODE:-1}
+export NPROC_PER_NODE
+echo "GPUs detected: $NPROC_PER_NODE"
+
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 # === Run ===
 PHASE="${1:-all}"
 shift 2>/dev/null || true  # remaining args passed through

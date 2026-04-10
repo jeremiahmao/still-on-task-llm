@@ -4,8 +4,8 @@ from pathlib import Path
 
 from datasets import Dataset
 from omegaconf import DictConfig
-from transformers import AutoTokenizer, TrainingArguments
-from trl import SFTTrainer
+from transformers import AutoTokenizer
+from trl import SFTConfig, SFTTrainer
 
 
 def run_sft(
@@ -53,28 +53,30 @@ def run_sft(
     train_dataset = Dataset.from_list(train_data)
     eval_dataset = Dataset.from_list(eval_data) if eval_data else None
 
-    training_args = TrainingArguments(
+    warmup_steps = max(1, int(warmup_ratio * epochs * len(train_dataset) / (batch_size * grad_accum)))
+
+    training_args = SFTConfig(
         output_dir=str(output_dir),
         num_train_epochs=epochs,
         per_device_train_batch_size=batch_size,
         gradient_accumulation_steps=grad_accum,
         learning_rate=lr,
-        warmup_ratio=warmup_ratio,
+        warmup_steps=warmup_steps,
         bf16=True,
         logging_steps=10,
         save_strategy="epoch",
         eval_strategy="epoch" if eval_dataset else "no",
         report_to="wandb",
         remove_unused_columns=False,
+        max_length=max_seq_length,
     )
 
     trainer = SFTTrainer(
         model=model,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         args=training_args,
-        max_seq_length=max_seq_length,
     )
 
     trainer.train()

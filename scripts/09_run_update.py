@@ -79,7 +79,7 @@ def main():
 
     # Load the task-tuned model (merged LoRA)
     print("Loading task-tuned model...")
-    model, tokenizer = load_model(base_cfg.model.name, base_cfg.model.dtype)
+    model, tokenizer = load_model(base_cfg.model.name, base_cfg.model.dtype, device_map=None)
     checkpoint_path = Path(base_cfg.paths.checkpoint_root) / f"{args.task}_sft" / "final"
     if checkpoint_path.exists():
         model = load_lora(model, checkpoint_path)

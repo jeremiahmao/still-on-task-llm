@@ -12,6 +12,61 @@ debug:
     - "NVDA"
   output_suffix: "_debug"
 
+# Production ticker list: top 50 NASDAQ stocks by balanced pre/post-cutoff
+# coverage (min of pre and post article count), ETFs excluded.
+# Selected 2026-04-09 from FNSPID corpus (~110K post-cutoff articles total).
+tickers:
+  - "GOOG"   # 4189 post
+  - "AMD"    # 4094 post
+  - "DIS"    # 4002 post
+  - "BRK"    # 4844 post
+  - "NVDA"   # 8005 post
+  - "CVX"    # 3799 post
+  - "WMT"    # 3710 post
+  - "INTC"   # 3512 post
+  - "XOM"    # 3937 post
+  - "GS"     # 3180 post
+  - "T"      # 2352 post
+  - "CRM"    # 2329 post
+  - "PYPL"   # 2276 post
+  - "KO"     # 2261 post
+  - "MS"     # 2244 post
+  - "COST"   # 2237 post
+  - "V"      # 2146 post
+  - "MRK"    # 2058 post
+  - "WFC"    # 2036 post
+  - "BABA"   # 1999 post
+  - "QCOM"   # 1912 post
+  - "NKE"    # 1885 post
+  - "TSLA"   # 8712 post
+  - "AAL"    # 1874 post
+  - "NIO"    # 1826 post
+  - "OXY"    # 1794 post
+  - "SBUX"   # 1790 post
+  - "ABBV"   # 1777 post
+  - "ADBE"   # 1711 post
+  - "PEP"    # 1691 post
+  - "TSM"    # 1650 post
+  - "MU"     # 1616 post
+  - "BHP"    # 1599 post
+  - "ANET"   # 1544 post
+  - "C"      # 1482 post
+  - "COP"    # 1462 post
+  - "ALB"    # 1459 post
+  - "WBA"    # 1440 post
+  - "CAT"    # 1414 post
+  - "PANW"   # 1409 post
+  - "NEE"    # 1408 post
+  - "CMCSA"  # 1361 post
+  - "SNAP"   # 1361 post
+  - "ABT"    # 1347 post
+  - "BA"     # 1343 post
+  - "GE"     # 1329 post
+  - "AMGN"   # 1319 post
+  - "FDX"    # 1314 post
+  - "ENPH"   # 1311 post
+  - "ORCL"   # 1304 post
+
 cutoff_date: "2022-01-01"
 subsample_pre_cutoff: 500000
 subsample_post_cutoff: null  # Use all for triple extraction

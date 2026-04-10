@@ -1,5 +1,6 @@
 """Build stratified locality test facts from extracted triples."""
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -28,6 +29,10 @@ def build_sector_map(df: pd.DataFrame, ticker_col: str) -> dict[str, str]:
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true", help="Use debug suffix from fnspid.yaml")
+    args = parser.parse_args()
+
     cfg = load_config()
     fnspid_cfg = OmegaConf.load("configs/data/fnspid.yaml")
     triples_cfg = OmegaConf.load("configs/data/triples.yaml")
@@ -35,8 +40,10 @@ def main():
     data_root = Path(cfg.paths.data_root)
     triples_dir = data_root / "fnspid" / "triples"
 
+    suffix = fnspid_cfg.debug.output_suffix if args.debug else ""
+
     # Load all filtered triples (superset)
-    filtered_path = triples_dir / "filtered_triples.json"
+    filtered_path = triples_dir / f"filtered_triples{suffix}.json"
     if not filtered_path.exists():
         print(f"ERROR: {filtered_path} not found. Run 04_extract_triples.py first.")
         sys.exit(1)
@@ -45,7 +52,8 @@ def main():
     print(f"All filtered triples: {len(all_triples)}")
 
     # Load the edited triples at 1K scale (locality is relative to what was edited)
-    edited_path = triples_dir / "triples_1000.json"
+    scaled_dir = triples_dir / suffix.lstrip("_") if suffix else triples_dir
+    edited_path = scaled_dir / "triples_1000.json"
     if not edited_path.exists():
         print(f"ERROR: {edited_path} not found. Run 04_extract_triples.py first.")
         sys.exit(1)
@@ -54,7 +62,7 @@ def main():
     print(f"Edited triples (1K): {len(edited_triples)}")
 
     # Build sector map from pre-cutoff corpus
-    pre_path = data_root / "fnspid" / "processed" / "pre_cutoff.parquet"
+    pre_path = data_root / "fnspid" / "processed" / f"pre_cutoff{suffix}.parquet"
     pre_df = pd.read_parquet(pre_path)
     sector_map = build_sector_map(pre_df, fnspid_cfg.ticker_column)
     print(f"Sector map: {len(sector_map)} tickers")
@@ -80,7 +88,7 @@ def main():
     print(f"  Total: {len(locality_facts)}")
 
     # Save
-    output_path = data_root / "fnspid" / "locality_facts.json"
+    output_path = data_root / "fnspid" / f"locality_facts{suffix}.json"
     with open(output_path, "w") as f:
         json.dump(locality_facts, f, indent=2)
     print(f"\nSaved to {output_path}")

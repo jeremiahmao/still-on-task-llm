@@ -49,25 +49,50 @@ def main():
     metrics_to_run = (
         args.metrics.split(",")
         if args.metrics != "all"
-        else ["preservation", "absorption", "forgetting", "locality"]
+        else ["preservation", "post_preservation", "absorption", "forgetting", "locality"]
     )
 
     results = {}
 
-    # Task preservation (Recall@10 on QD test set)
+    # Shared encoder for both preservation metrics
+    encoder = None
+
+    # Task preservation — Recall@10 on pre-cutoff QD test set
     if "preservation" in metrics_to_run and args.task == "qd":
-        print("\n--- Task Preservation ---")
-        test_path = Path(cfg.paths.qd_data_root) / "test.json"
-        if test_path.exists():
+        print("\n--- Task Preservation (pre-cutoff) ---")
+        test_path = Path(cfg.paths.qd_temporal_data_root) / "test.json"
+        index_path = data_root / "fnspid" / "index" / "corpus.faiss"
+        doc_ids_path = data_root / "fnspid" / "index" / "doc_ids.npy"
+        if test_path.exists() and index_path.exists():
             with open(test_path) as f:
                 test_data = json.load(f)
-            encoder = Encoder()
-            index = load_index(data_root / "fnspid" / "index" / "corpus.faiss")
-            doc_ids = np.load(data_root / "fnspid" / "index" / "doc_ids.npy").tolist()
-
+            if encoder is None:
+                encoder = Encoder()
+            index = load_index(index_path)
+            doc_ids = np.load(doc_ids_path).tolist()
             pres = evaluate_task_preservation(model, tokenizer, test_data, encoder, index, doc_ids)
             results["task_preservation"] = pres
             print(f"  Recall@10: {pres['mean']:.4f} (std={pres['std']:.4f})")
+
+    # Post-cutoff task adaptation — Recall@10 on post-cutoff corpus
+    # Measures whether updated models retrieve post-2022 articles better
+    if "post_preservation" in metrics_to_run and args.task == "qd":
+        print("\n--- Post-Cutoff Task Adaptation ---")
+        post_test_path = Path(cfg.paths.qd_temporal_data_root) / "post_test.json"
+        post_index_path = data_root / "fnspid" / "index" / "corpus_post.faiss"
+        post_doc_ids_path = data_root / "fnspid" / "index" / "doc_ids_post.npy"
+        if post_test_path.exists() and post_index_path.exists():
+            with open(post_test_path) as f:
+                post_test_data = json.load(f)
+            if encoder is None:
+                encoder = Encoder()
+            post_index = load_index(post_index_path)
+            post_doc_ids = np.load(post_doc_ids_path).tolist()
+            post_pres = evaluate_task_preservation(
+                model, tokenizer, post_test_data, encoder, post_index, post_doc_ids
+            )
+            results["post_task_preservation"] = post_pres
+            print(f"  Recall@10: {post_pres['mean']:.4f} (std={post_pres['std']:.4f})")
 
     # Knowledge absorption
     if "absorption" in metrics_to_run:

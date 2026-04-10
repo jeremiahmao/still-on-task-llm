@@ -488,21 +488,41 @@ def main():
         print(f"\nPaired examples: {len(paired_examples)} -> {paired_examples_path}")
 
     print("\nExporting train/test splits from the pre-cutoff side...")
-    paired_train, paired_test = split_train_test(paired_examples, test_ratio=args.test_ratio, seed=cfg.seed)
+    if args.debug:
+        paired_train, paired_test = paired_examples, []
+    else:
+        paired_train, paired_test = split_train_test(paired_examples, test_ratio=args.test_ratio, seed=cfg.seed)
 
     train_data = [build_temporal_training_example(item) for item in paired_train]
     test_data = [build_temporal_training_example(item) for item in paired_test]
 
+    # Post-cutoff test set: same questions, gold = post-2022 articles.
+    # Used to measure whether updated models retrieve post-cutoff docs better.
+    post_test_data = [
+        {
+            "question": item["question"],
+            "gold_articles": item["post_gold_articles"],
+            "changed_facts": item["changed_facts"],
+            "topic_id": item["topic_id"],
+            "entity": item["entity"],
+        }
+        for item in paired_examples
+    ]
+    post_test_path = output_dir / "post_test.json"
+
     save_json(train_data, train_path)
     save_json(test_data, test_path)
+    save_json(post_test_data, post_test_path)
     metadata["n_topic_pairs"] = len(topic_pairs)
     metadata["n_paired_examples"] = len(paired_examples)
     metadata["n_train"] = len(train_data)
     metadata["n_test"] = len(test_data)
+    metadata["n_post_test"] = len(post_test_data)
     save_json(metadata, metadata_path)
 
     print(f"Train set: {len(train_data)} -> {train_path}")
     print(f"Test set:  {len(test_data)} -> {test_path}")
+    print(f"Post-cutoff test set: {len(post_test_data)} -> {post_test_path}")
     print(f"Metadata: {metadata_path}")
     print("\nDone. Temporal QD data ready.")
 

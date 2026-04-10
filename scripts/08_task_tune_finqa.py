@@ -40,7 +40,7 @@ def main():
 
     # Load base model
     print(f"\nLoading {cfg.model.name}...")
-    model, tokenizer = load_model(cfg.model.name, cfg.model.dtype)
+    model, tokenizer = load_model(cfg.model.name, cfg.model.dtype, device_map=None)
 
     # Apply LoRA
     lora_cfg = train_cfg.get("lora", {})

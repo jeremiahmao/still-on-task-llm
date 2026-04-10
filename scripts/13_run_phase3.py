@@ -5,8 +5,16 @@ Expected outcome: no degradation (knowledge updates shouldn't affect table arith
 See FINAL_PLAN.md for the full execution plan.
 """
 
+import os
 import subprocess
 import sys
+
+
+def _torchrun(script, *args):
+    nproc = int(os.environ.get("NPROC_PER_NODE", "1"))
+    if nproc > 1:
+        return ["torchrun", f"--nproc_per_node={nproc}", script] + list(args)
+    return [sys.executable, script] + list(args)
 
 # Run the methods that matter most for the paper's story
 METHODS = ["kl_reg_sft", "copr"]
@@ -44,18 +52,13 @@ def main():
         print(f"{'=' * 60}")
 
         config = CONFIG_MAP[method]
-        cmd = [
-            sys.executable,
+        cmd = _torchrun(
             "scripts/09_run_update.py",
-            "--method",
-            method,
-            "--scale",
-            str(SCALE),
-            "--task",
-            "finqa",
-            "--config",
-            config,
-        ]
+            "--method", method,
+            "--scale", str(SCALE),
+            "--task", "finqa",
+            "--config", config,
+        )
 
         result = subprocess.run(cmd)
         if result.returncode != 0:
