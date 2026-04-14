@@ -250,7 +250,7 @@ def main():
     parser.add_argument("--min-articles-per-side", type=int, default=5)
     parser.add_argument("--bundle-size", type=int, default=3)
     parser.add_argument("--min-recall", type=float, default=0.7)
-    parser.add_argument("--min-contrast", type=float, default=0.35)
+    parser.add_argument("--min-contrast", type=float, default=0.0)
     parser.add_argument("--test-ratio", type=float, default=0.2)
     parser.add_argument("--concurrency", type=int, default=5)
     parser.add_argument("--max-retries", type=int, default=6)
