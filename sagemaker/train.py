@@ -81,6 +81,9 @@ def run_script(script_name: str, args: list[str] | None = None, distributed: boo
 def copy_to_model_dir():
     """Copy outputs and key artifacts to SM_MODEL_DIR for S3 upload."""
     model_dir = Path(SM_MODEL_DIR)
+    if not model_dir.exists():
+        print(f"Skipping model dir copy ({model_dir} does not exist — not a SageMaker training job)")
+        return
 
     # Copy outputs/ (eval results, metadata, configs)
     outputs = REPO_ROOT / "outputs"

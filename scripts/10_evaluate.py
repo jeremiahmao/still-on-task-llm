@@ -139,8 +139,6 @@ def main():
         print("\n--- Generic Forgetting (FinQA) ---")
         finqa_path = data_root / "finqa" / "dataset"
         if finqa_path.exists():
-            from omegaconf import OmegaConf
-
             from sot.data.finqa import prepare_finqa_dataset
 
             finqa_cfg = OmegaConf.load("configs/data/finqa.yaml")
