@@ -13,6 +13,7 @@ def evaluate_locality(
     tokenizer: AutoTokenizer,
     untouched_facts: list[dict],
     max_new_tokens: int = 64,
+    batch_size: int = 32,
 ) -> dict:
     """Evaluate whether knowledge updates disrupted untouched facts.
 
@@ -28,17 +29,28 @@ def evaluate_locality(
         Dict with per-stratum accuracy and overall accuracy.
     """
     model.eval()
-    by_stratum: dict[str, list[dict]] = defaultdict(list)
 
+    # Build all prompts upfront
+    prompts = []
     for fact in untouched_facts:
-        question = fact["question"]
-        gold = fact["answer"]
-        stratum = fact.get("stratum", "unknown")
+        chat = [{"role": "user", "content": fact["question"]}]
+        prompts.append(
+            tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+        )
 
-        chat = [{"role": "user", "content": question}]
-        prompt = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=256)
+    # Generate in batches
+    all_responses = []
+    for i in range(0, len(prompts), batch_size):
+        batch_prompts = prompts[i : i + batch_size]
+        inputs = tokenizer(
+            batch_prompts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=256,
+        )
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
+        prompt_len = inputs["input_ids"].shape[1]
 
         with torch.no_grad():
             outputs = model.generate(
@@ -49,14 +61,18 @@ def evaluate_locality(
                 pad_token_id=tokenizer.pad_token_id,
             )
 
-        response = tokenizer.decode(
-            outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
-        ).strip()
+        for j in range(len(batch_prompts)):
+            response = tokenizer.decode(
+                outputs[j][prompt_len:], skip_special_tokens=True
+            ).strip()
+            all_responses.append(response)
 
-        correct = response.strip().lower() == gold.strip().lower()
-        by_stratum[stratum].append({"correct": correct, "question": question})
+    by_stratum: dict[str, list[dict]] = defaultdict(list)
+    for fact, response in zip(untouched_facts, all_responses):
+        stratum = fact.get("stratum", "unknown")
+        correct = response.strip().lower() == fact["answer"].strip().lower()
+        by_stratum[stratum].append({"correct": correct, "question": fact["question"]})
 
-    # Compute per-stratum accuracy
     results = {}
     total_correct = 0
     total_n = 0
@@ -102,12 +118,11 @@ def prepare_locality_facts(
     locality_facts = []
     for triple in all_triples:
         if triple.key() in edited_keys:
-            continue  # Skip edited triples
+            continue
 
         entity = triple.subject.lower().strip()
         sector = sector_map.get(triple.subject.strip(), "unknown")
 
-        # Determine stratum
         if entity in edited_entities:
             stratum = "same_entity"
         elif sector in edited_sectors and sector != "unknown":

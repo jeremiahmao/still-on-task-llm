@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(curl -s https://inference.cerebras.ai/v1/models)",
+      "WebSearch",
+      "WebFetch(domain:inference-docs.cerebras.ai)",
+      "WebFetch(domain:www.cerebras.ai)"
+    ]
+  }
+}

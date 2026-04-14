@@ -38,13 +38,17 @@ def main():
     seed_everything(cfg.seed)
 
     data_root = Path(cfg.paths.data_root)
-    model_path = Path(args.model_path)
+    model_path = Path(args.model_path).resolve()
 
     print(f"Loading model from {model_path}...")
     model = AutoModelForCausalLM.from_pretrained(
-        str(model_path / "model"), torch_dtype="auto", device_map="auto"
+        str(model_path / "model"), torch_dtype="auto", device_map="auto",
+        attn_implementation="sdpa",
     )
     tokenizer = AutoTokenizer.from_pretrained(str(model_path / "model"))
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
 
     metrics_to_run = (
         args.metrics.split(",")
@@ -103,7 +107,10 @@ def main():
             with open(metadata_path) as f:
                 meta = json.load(f)
             scale = meta.get("scale", 200)
-            triples_path = data_root / "fnspid" / "triples" / f"triples_{scale}.json"
+            triples_dir = data_root / "fnspid" / "triples"
+            triples_path = triples_dir / f"triples_{scale}.json"
+            if not triples_path.exists():
+                triples_path = triples_dir / "debug" / f"triples_{scale}.json"
             if triples_path.exists():
                 with open(triples_path) as f:
                     raw_triples = json.load(f)

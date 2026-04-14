@@ -24,18 +24,34 @@ class FactTriple:
         return f"{self.subject.lower().strip()}|{self.relation.lower().strip()}|{self.object.lower().strip()}"
 
 
-EXTRACTION_PROMPT = """Extract all financial fact triples from the following news article.
-Each triple should be in the format: (entity, relation, value).
+EXTRACTION_PROMPT = """You are a financial information extraction system. Extract structured fact triples from the news article below.
 
-Focus on:
-- Leadership changes (CEO, CFO, president appointments)
-- Acquisitions and mergers
-- Revenue and earnings figures
-- Major partnerships or contracts
-- Stock splits, dividends, or other corporate actions
+Each triple must have:
+- "subject": The primary entity (company name, person, or organization)
+- "relation": One of the standard relation types listed below
+- "object": The factual value (name, number, date, or entity)
 
-Return ONLY a JSON list of triples, each with "subject", "relation", and "object" keys.
-If no triples can be extracted, return an empty list [].
+Standard relation types (use these EXACT names when applicable):
+- CEO, CFO, president, chairman, CTO (for leadership roles)
+- acquired_by, acquisition (use "acquired_by" when subject was acquired, "acquisition" when subject acquired another)
+- revenue, net_income, operating_income, earnings_per_share (include the time period in the object)
+- partnership, contract (for business deals)
+- stock_split, dividend, share_buyback (for corporate actions)
+- headquarters, founded, employees (for company facts)
+
+Rules:
+1. Extract ONLY facts explicitly stated in the article — do not infer or guess.
+2. Use the company's common name as the subject (e.g., "Nvidia" not "NVDA").
+3. For financial figures, include currency and period (e.g., "$60.9 billion for FY2024").
+4. Each triple must be independently verifiable from the article text.
+5. If no triples can be extracted, return an empty list [].
+
+Example output:
+[
+  {{"subject": "Nvidia", "relation": "CEO", "object": "Jensen Huang"}},
+  {{"subject": "Nvidia", "relation": "revenue", "object": "$60.9 billion for FY2024"}},
+  {{"subject": "Microsoft", "relation": "acquisition", "object": "Activision Blizzard"}}
+]
 
 Article:
 {article_text}

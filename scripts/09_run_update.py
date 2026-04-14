@@ -5,6 +5,8 @@ import json
 import sys
 from pathlib import Path
 
+import torch
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from omegaconf import OmegaConf
@@ -12,7 +14,7 @@ from omegaconf import OmegaConf
 from sot.data.triple_extract import FactTriple
 from sot.data.triple_render import render_triple
 from sot.models.base import load_model
-from sot.models.lora import load_lora, merge_lora
+from sot.models.lora import apply_lora, get_lora_config, load_lora, merge_lora
 from sot.update.copr import COPRUpdate
 from sot.update.kl_reg_sft import KLRegSFTUpdate
 from sot.update.naive_sft import NaiveSFTUpdate
@@ -35,6 +37,7 @@ def main():
     parser.add_argument("--task", default="qd", choices=["qd", "finqa"])
     parser.add_argument("--config", default=None, help="Method-specific config YAML")
     parser.add_argument("--overrides", nargs="*", default=[], help="OmegaConf dot-list overrides")
+    parser.add_argument("--debug", action="store_true", help="Use debug triples subdirectory")
     args = parser.parse_args()
 
     base_cfg = load_config()
@@ -48,7 +51,10 @@ def main():
     output_root = Path(base_cfg.paths.output_root)
 
     # Load fact triples at the specified scale and render to QA pairs
-    triples_path = data_root / "fnspid" / "triples" / f"triples_{args.scale}.json"
+    triples_dir = data_root / "fnspid" / "triples"
+    if args.debug:
+        triples_dir = triples_dir / "debug"
+    triples_path = triples_dir / f"triples_{args.scale}.json"
     with open(triples_path) as f:
         raw_triples = json.load(f)
 
@@ -77,21 +83,51 @@ def main():
             with open(qd_train_path) as f:
                 task_data = json.load(f)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     # Load the task-tuned model (merged LoRA)
     print("Loading task-tuned model...")
     model, tokenizer = load_model(base_cfg.model.name, base_cfg.model.dtype, device_map=None)
     checkpoint_path = Path(base_cfg.paths.checkpoint_root) / f"{args.task}_sft" / "final"
+    if not checkpoint_path.exists() and args.debug:
+        checkpoint_path = Path(base_cfg.paths.checkpoint_root) / f"{args.task}_sft_debug" / "final"
     if checkpoint_path.exists():
         model = load_lora(model, checkpoint_path)
         model = merge_lora(model)
         print(f"Loaded and merged LoRA from {checkpoint_path}")
+    else:
+        print(f"WARNING: No task-tuned checkpoint at {checkpoint_path}")
+        print("  Running update on the raw base model — results will be misleading!")
+        print("  Run task tuning first (07_task_tune_qd.py or 08_task_tune_finqa.py).")
+
+    # Move to GPU and re-apply LoRA so update methods train efficiently.
+    # Without this, custom training loops run on CPU (device_map=None loads on CPU),
+    # and full-model AdamW on 3B params needs 24 GB of optimizer states (OOMs on L4).
+    # LoRA (r=16) reduces trainable params to ~50 M — Adam states fit easily.
+    model = model.to(device)
+    update_lora_cfg = get_lora_config(r=16, alpha=32)
+    model = apply_lora(model, update_lora_cfg)
+    model.print_trainable_parameters()
 
     # Apply update method
     method = METHODS[args.method]()
     print(f"\nApplying {method.name} at scale {args.scale}...")
 
+    # For COPR, set a cache path so sampling survives OOM crashes
+    if args.method == "copr":
+        run_id = f"{args.method}_{args.task}_scale{args.scale}"
+        cache_dir = output_root / run_id
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        method_cfg = OmegaConf.merge(
+            method_cfg, {"cache_path": str(cache_dir / "copr_cache.json")}
+        )
+
     with track_compute() as stats:
         updated_model = method.apply(model, tokenizer, fact_qa_pairs, task_data, method_cfg)
+
+    # Merge update LoRA before saving so evaluate.py sees a plain model directory
+    if hasattr(updated_model, "merge_and_unload"):
+        updated_model = updated_model.merge_and_unload()
 
     # Save
     run_id = f"{args.method}_{args.task}_scale{args.scale}"

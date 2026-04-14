@@ -68,9 +68,11 @@ def subsample_stratified(
 
     df = df.copy()
     df["_year"] = df.iloc[:, 0]  # Will be overridden below
-    # Use the date column (first datetime column found)
-    dt_cols = df.select_dtypes(include=["datetime64"]).columns
-    if len(dt_cols) > 0:
+    # Use the date column (first datetime column found).
+    # Must handle both naive datetime64 and timezone-aware datetime64[ns, UTC]
+    # (temporal_split converts to UTC-aware, which select_dtypes(include=["datetime64"]) misses).
+    dt_cols = [c for c in df.columns if pd.api.types.is_datetime64_any_dtype(df[c])]
+    if dt_cols:
         df["_year"] = df[dt_cols[0]].dt.year
 
     # Group by ticker + year, sample proportionally

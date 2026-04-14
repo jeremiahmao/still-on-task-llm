@@ -91,6 +91,11 @@ def build_temporal_topic_pairs(
     """
     rng = random.Random(seed)
 
+    # Reset indices so iterrows() yields 0-based positional IDs that match
+    # the FAISS index doc_ids (which are np.arange(len(df))).
+    pre_df = pre_df.reset_index(drop=True)
+    post_df = post_df.reset_index(drop=True)
+
     pre_groups = pre_df.groupby(ticker_column)
     post_groups = post_df.groupby(ticker_column)
     candidate_entities = sorted(set(pre_groups.groups) & set(post_groups.groups))

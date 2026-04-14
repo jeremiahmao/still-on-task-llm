@@ -27,6 +27,12 @@ CONFIG_MAP = {
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true", help="Use debug triples subdirectory")
+    args = parser.parse_args()
+    debug_flag = ["--debug"] if args.debug else []
+
     print(f"=== Phase 2: QD at {SCALE} edits ===")
     total = len(METHODS)
     completed = 0
@@ -45,6 +51,7 @@ def main():
             "--scale", str(SCALE),
             "--task", TASK,
             "--config", config,
+            *debug_flag,
         )
 
         result = subprocess.run(cmd)

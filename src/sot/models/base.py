@@ -20,6 +20,7 @@ def load_model(
         dtype=torch_dtype,
         device_map=device_map,
         trust_remote_code=True,
+        attn_implementation="sdpa",
     )
 
     tokenizer = AutoTokenizer.from_pretrained(name, trust_remote_code=True)

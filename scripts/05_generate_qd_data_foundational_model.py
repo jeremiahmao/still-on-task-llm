@@ -85,6 +85,114 @@ def _build_openai_api_func(
     return call_api
 
 
+def _build_cerebras_api_func(
+    model_name: str,
+    max_retries: int = 6,
+    base_retry_seconds: float = 10.0,
+    tpm_limit: int = 500_000,
+    rpm_limit: int = 500,
+):
+    """Build an async API function targeting the Cerebras Inference API."""
+    try:
+        from openai import AsyncOpenAI
+    except ImportError as exc:
+        raise ImportError(
+            "Cerebras teacher requested but the 'openai' package is not installed."
+        ) from exc
+
+    api_key = os.environ.get("CEREBRAS_API_KEY")
+    if not api_key:
+        raise RuntimeError("CEREBRAS_API_KEY is required when --teacher-provider=cerebras")
+
+    client = AsyncOpenAI(
+        base_url="https://api.cerebras.ai/v1",
+        api_key=api_key,
+    )
+
+    from sot.utils.rate_limit import AsyncRateLimiter, estimate_tokens
+
+    limiter = AsyncRateLimiter(tpm_limit, rpm_limit)
+
+    async def call_api(prompt: str, text_format: dict | None = None) -> str:
+        est = estimate_tokens(prompt) + 300
+        await limiter.acquire(est)
+        for attempt in range(max_retries + 1):
+            try:
+                kwargs = {
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+                if text_format is not None:
+                    kwargs["response_format"] = {"type": "json_object"}
+
+                response = await client.chat.completions.create(**kwargs)
+                return response.choices[0].message.content
+            except Exception as exc:
+                message = str(exc).lower()
+                is_rate_limit = "rate limit" in message or "429" in message
+                if not is_rate_limit or attempt >= max_retries:
+                    raise
+                delay = base_retry_seconds * (2**attempt) + random.uniform(0, 0.25)
+                await asyncio.sleep(delay)
+
+    return call_api
+
+
+def _build_cerebras_api_func_sync(
+    model_name: str,
+    max_retries: int = 6,
+    base_retry_seconds: float = 10.0,
+    tpm_limit: int = 500_000,
+    rpm_limit: int = 500,
+):
+    """Build a sync API function targeting the Cerebras Inference API."""
+    try:
+        from openai import OpenAI
+    except ImportError as exc:
+        raise ImportError(
+            "Cerebras teacher requested but the 'openai' package is not installed."
+        ) from exc
+
+    api_key = os.environ.get("CEREBRAS_API_KEY")
+    if not api_key:
+        raise RuntimeError("CEREBRAS_API_KEY is required when --teacher-provider=cerebras")
+
+    client = OpenAI(
+        base_url="https://api.cerebras.ai/v1",
+        api_key=api_key,
+    )
+
+    from sot.utils.rate_limit import SyncRateLimiter, estimate_tokens
+
+    limiter = SyncRateLimiter(tpm_limit, rpm_limit)
+
+    def call_api(prompt: str, text_format: dict | None = None) -> str:
+        est = estimate_tokens(prompt) + 300
+        limiter.acquire(est)
+        for attempt in range(max_retries + 1):
+            try:
+                kwargs = {
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+                if text_format is not None:
+                    kwargs["response_format"] = {"type": "json_object"}
+
+                response = client.chat.completions.create(**kwargs)
+                return response.choices[0].message.content
+            except Exception as exc:
+                message = str(exc).lower()
+                is_rate_limit = "rate limit" in message or "429" in message
+                if not is_rate_limit or attempt >= max_retries:
+                    raise
+                delay = base_retry_seconds * (2**attempt) + random.uniform(0, 0.25)
+                import time
+
+                time.sleep(delay)
+
+    return call_api
+
+
 def _build_openai_api_func_sync(
     model_name: str,
     max_retries: int = 6,
@@ -135,7 +243,7 @@ def main():
         action="store_true",
         help="Use debug corpora, triples, and FAISS index from configs/data/fnspid.yaml.",
     )
-    parser.add_argument("--teacher-provider", choices=["local", "openai"], default="local")
+    parser.add_argument("--teacher-provider", choices=["local", "openai", "cerebras"], default="local")
     parser.add_argument("--teacher-model", default=None)
     parser.add_argument("--output-dir", default=None)
     parser.add_argument("--max-pairs", type=int, default=1000)
@@ -148,6 +256,18 @@ def main():
     parser.add_argument("--max-retries", type=int, default=6)
     parser.add_argument("--base-retry-seconds", type=float, default=10.0)
     parser.add_argument("--force", action="store_true")
+    parser.add_argument(
+        "--tpm-limit",
+        type=int,
+        default=500_000,
+        help="Tokens-per-minute rate limit for Cerebras API (default: 500000).",
+    )
+    parser.add_argument(
+        "--rpm-limit",
+        type=int,
+        default=500,
+        help="Requests-per-minute rate limit for Cerebras API (default: 500).",
+    )
     parser.add_argument("--overrides", nargs="*", default=[], help="OmegaConf dot-list overrides")
     args = parser.parse_args()
 
@@ -184,8 +304,12 @@ def main():
             print(f"ERROR: {path} not found. Run earlier pipeline steps first.")
             sys.exit(1)
 
-    teacher_model_name = args.teacher_model or (
-        "gpt-5-mini" if args.teacher_provider == "openai" else cfg.model.name
+    _default_teacher_models = {
+        "openai": "gpt-5-mini",
+        "cerebras": "qwen-3-235b-a22b-instruct-2507",
+    }
+    teacher_model_name = args.teacher_model or _default_teacher_models.get(
+        args.teacher_provider, cfg.model.name
     )
     metadata = {
         "teacher_provider": args.teacher_provider,
@@ -247,6 +371,26 @@ def main():
         if args.teacher_provider == "local":
             print(f"\nLoading local teacher model: {teacher_model_name}")
             model, tokenizer = load_model(teacher_model_name, cfg.model.dtype)
+        elif args.teacher_provider == "cerebras":
+            print(f"\nConfiguring Cerebras teacher: {teacher_model_name}")
+            print(f"  TPM limit: {args.tpm_limit:,}, RPM limit: {args.rpm_limit:,}")
+            if args.concurrency <= 1:
+                print("Using synchronous Cerebras teacher path")
+                api_func_sync = _build_cerebras_api_func_sync(
+                    teacher_model_name,
+                    max_retries=args.max_retries,
+                    base_retry_seconds=args.base_retry_seconds,
+                    tpm_limit=args.tpm_limit,
+                    rpm_limit=args.rpm_limit,
+                )
+            else:
+                api_func = _build_cerebras_api_func(
+                    teacher_model_name,
+                    max_retries=args.max_retries,
+                    base_retry_seconds=args.base_retry_seconds,
+                    tpm_limit=args.tpm_limit,
+                    rpm_limit=args.rpm_limit,
+                )
         else:
             print(f"\nConfiguring OpenAI teacher: {teacher_model_name}")
             if args.concurrency <= 1:

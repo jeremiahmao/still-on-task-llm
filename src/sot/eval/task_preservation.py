@@ -7,6 +7,12 @@ from sot.retrieval.encoder import Encoder
 from sot.retrieval.index import search
 from sot.retrieval.recall import decomposition_recall
 
+_SYSTEM_PROMPT = (
+    "You are a financial search expert. Given a complex financial question, "
+    "decompose it into 2-4 simpler sub-queries that can be used to retrieve "
+    "relevant documents from a financial news database."
+)
+
 
 def evaluate_task_preservation(
     model: PreTrainedModel,
@@ -18,6 +24,7 @@ def evaluate_task_preservation(
     k: int = 10,
     nprobe: int = 64,
     max_new_tokens: int = 256,
+    batch_size: int = 8,
 ) -> dict:
     """Evaluate whether the model's decomposition skill is preserved.
 
@@ -34,33 +41,37 @@ def evaluate_task_preservation(
         k: Top-k for retrieval.
         nprobe: FAISS nprobe.
         max_new_tokens: Max generation length for decompositions.
+        batch_size: Generation batch size.
 
     Returns:
         Dict with Recall@10 stats.
     """
     model.eval()
-    all_sub_query_results = []
-    all_gold_ids = []
 
+    # Build all prompts upfront
+    prompts = []
     for item in test_data:
-        question = item["question"]
-        gold = set(item.get("gold_articles", []))
-
-        # Generate decomposition
         chat = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a financial search expert. Given a complex financial question, "
-                    "decompose it into 2-4 simpler sub-queries that can be used to retrieve "
-                    "relevant documents from a financial news database."
-                ),
-            },
-            {"role": "user", "content": question},
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": item["question"]},
         ]
-        prompt = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024)
+        prompts.append(
+            tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+        )
+
+    # Generate decompositions in batches
+    all_raw_responses = []
+    for i in range(0, len(prompts), batch_size):
+        batch_prompts = prompts[i : i + batch_size]
+        inputs = tokenizer(
+            batch_prompts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=1024,
+        )
         inputs = {ki: v.to(model.device) for ki, v in inputs.items()}
+        prompt_len = inputs["input_ids"].shape[1]
 
         with torch.no_grad():
             outputs = model.generate(
@@ -71,25 +82,30 @@ def evaluate_task_preservation(
                 pad_token_id=tokenizer.pad_token_id,
             )
 
-        response = tokenizer.decode(
-            outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
-        ).strip()
+        for j in range(len(batch_prompts)):
+            response = tokenizer.decode(
+                outputs[j][prompt_len:], skip_special_tokens=True
+            ).strip()
+            all_raw_responses.append(response)
 
-        # Parse sub-queries from response (expect "- sub_query" format)
+    # Parse sub-queries and retrieve per item
+    all_sub_query_results = []
+    all_gold_ids = []
+
+    for item, response in zip(test_data, all_raw_responses):
+        gold = set(item.get("gold_articles", []))
+
         sub_queries = [
             line.lstrip("- ").strip()
             for line in response.split("\n")
             if line.strip() and len(line.strip()) > 5
         ]
-
         if not sub_queries:
-            sub_queries = [question]  # Fallback to original question
+            sub_queries = [item["question"]]
 
-        # Embed and retrieve per sub-query
         sq_embeddings = encoder.encode(sub_queries, show_progress=False)
         scores, indices = search(faiss_index, sq_embeddings, k=k, nprobe=nprobe)
 
-        # Collect retrieved doc IDs per sub-query
         sq_results = []
         for row in indices:
             retrieved = set()

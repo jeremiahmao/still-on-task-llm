@@ -142,9 +142,9 @@ def main():
     )
     parser.add_argument(
         "--teacher-provider",
-        default="openai",
-        choices=["local", "openai"],
-        help="Teacher LLM provider for data generation (default: openai)",
+        default="cerebras",
+        choices=["local", "openai", "cerebras"],
+        help="Teacher LLM provider for data generation (default: cerebras)",
     )
     args = parser.parse_args()
 
@@ -174,13 +174,13 @@ def main():
             run_script("08_task_tune_finqa.py", distributed=True)
 
     elif args.phase == "phase1":
-        run_script("11_run_phase1.py")
+        run_script("11_run_phase1.py", debug_flag)
 
     elif args.phase == "phase2":
-        run_script("12_run_phase2.py")
+        run_script("12_run_phase2.py", debug_flag)
 
     elif args.phase == "phase3":
-        run_script("13_run_phase3.py")
+        run_script("13_run_phase3.py", debug_flag)
 
     elif args.phase == "all":
         if not args.skip_data:
@@ -192,12 +192,12 @@ def main():
             run_script("06_build_locality_facts.py", debug_flag)
 
         run_script("07_task_tune_qd.py", debug_flag, distributed=True)
-        run_script("11_run_phase1.py")
-        run_script("12_run_phase2.py")
+        run_script("11_run_phase1.py", debug_flag)
+        run_script("12_run_phase2.py", debug_flag)
 
         # Phase 3 requires FinQA tuning
         run_script("08_task_tune_finqa.py", distributed=True)
-        run_script("13_run_phase3.py")
+        run_script("13_run_phase3.py", debug_flag)
 
         run_script("14_generate_tables.py")
 

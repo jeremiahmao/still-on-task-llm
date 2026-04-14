@@ -21,8 +21,7 @@ def compute_recall_at_k(
     for retrieved, gold in zip(retrieved_ids, gold_ids, strict=False):
         if len(gold) == 0:
             continue
-        top_k = set(list(retrieved)[:k]) if len(retrieved) > k else retrieved
-        recall = len(top_k & gold) / len(gold)
+        recall = len(retrieved & gold) / len(gold)
         recalls.append(recall)
 
     recalls = np.array(recalls)

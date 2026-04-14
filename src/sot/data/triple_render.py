@@ -57,8 +57,12 @@ def render_all(
 
 
 def load_templates_from_config(cfg: DictConfig) -> dict[str, str]:
-    """Load templates from a triples config."""
-    return dict(cfg.get("templates", {}))
+    """Load templates from a triples config.
+
+    Keys are lowercased to match render_triple's lookup (which lowercases
+    the triple's relation before lookup).
+    """
+    return {k.lower(): v for k, v in cfg.get("templates", {}).items()}
 
 
 def fact_qa_to_chat(qa: FactQA) -> dict:

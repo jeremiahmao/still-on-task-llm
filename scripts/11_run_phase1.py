@@ -27,13 +27,15 @@ CONFIG_MAP = {
 }
 
 
-def run_no_update_baseline():
+def run_no_update_baseline(debug: bool = False):
     """Evaluate the task-tuned model with no knowledge injection."""
     print(f"\n{'=' * 60}")
     print("Evaluating no-update baseline...")
     print(f"{'=' * 60}")
 
     checkpoint_dir = "checkpoints/qd_sft/final"
+    if not Path(checkpoint_dir).exists() and debug:
+        checkpoint_dir = "checkpoints/qd_sft_debug/final"
     if not Path(checkpoint_dir).exists():
         print(f"WARNING: No checkpoint at {checkpoint_dir}. Skipping baseline.")
         return False
@@ -41,9 +43,25 @@ def run_no_update_baseline():
     run_dir = Path("outputs/no_update_qd")
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    model_link = run_dir / "model"
-    if not model_link.exists():
-        model_link.symlink_to(Path(checkpoint_dir).resolve())
+    model_dir = run_dir / "model"
+    if not model_dir.exists():
+        # Checkpoint only has LoRA adapter files — merge into a full model
+        # so 10_evaluate.py can load it with AutoModelForCausalLM.from_pretrained().
+        sys.path.insert(0, str(Path(__file__).resolve().parents[0].parent / "src"))
+        from sot.models.base import load_model
+        from sot.models.lora import load_lora, merge_lora
+        from sot.utils.config import load_config
+
+        cfg = load_config()
+        print("  Loading base model + LoRA adapter for baseline merge...")
+        model, tokenizer = load_model(cfg.model.name, cfg.model.dtype, device_map="auto")
+        model = load_lora(model, checkpoint_dir)
+        model = merge_lora(model)
+        model.save_pretrained(str(model_dir))
+        tokenizer.save_pretrained(str(model_dir))
+        del model
+        import torch; torch.cuda.empty_cache()
+        print(f"  Saved merged baseline to {model_dir}")
 
     eval_cmd = [
         sys.executable,
@@ -60,12 +78,18 @@ def run_no_update_baseline():
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true", help="Use debug triples subdirectory")
+    args = parser.parse_args()
+    debug_flag = ["--debug"] if args.debug else []
+
     total = len(METHODS)
     completed = 0
     failed = []
 
     # No-update baseline first
-    if not run_no_update_baseline():
+    if not run_no_update_baseline(debug=args.debug):
         failed.append("no_update")
 
     # Run each method at 1K edits
@@ -82,6 +106,7 @@ def main():
             "--scale", str(SCALE),
             "--task", TASK,
             "--config", config,
+            *debug_flag,
         )
 
         result = subprocess.run(cmd)
