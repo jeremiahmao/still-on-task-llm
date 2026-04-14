@@ -74,6 +74,8 @@ def run_no_update_baseline(debug: bool = False):
         "--metrics",
         "preservation,locality",
     ]
+    if debug:
+        eval_cmd.append("--debug")
     result = subprocess.run(eval_cmd)
     return result.returncode == 0
 
@@ -131,6 +133,7 @@ def main():
             TASK,
             "--metrics",
             "preservation,absorption,locality",
+            *debug_flag,
         ]
         subprocess.run(eval_cmd)
 

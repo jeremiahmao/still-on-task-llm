@@ -74,6 +74,7 @@ def main():
         "finqa",
         "--metrics",
         "forgetting",
+        *debug_flag,
     ]
     subprocess.run(eval_cmd)
 
@@ -108,6 +109,7 @@ def main():
             "finqa",
             "--metrics",
             "forgetting,absorption",
+            *debug_flag,
         ]
         subprocess.run(eval_cmd)
 

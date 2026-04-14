@@ -73,6 +73,7 @@ def main():
             TASK,
             "--metrics",
             "preservation,absorption,locality",
+            *debug_flag,
         ]
         subprocess.run(eval_cmd)
 

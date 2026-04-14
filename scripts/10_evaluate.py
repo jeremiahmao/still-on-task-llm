@@ -9,6 +9,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from omegaconf import OmegaConf
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from sot.data.triple_extract import FactTriple
@@ -32,10 +33,13 @@ def main():
         default="all",
         help="Comma-separated: preservation,absorption,forgetting,locality",
     )
+    parser.add_argument("--debug", action="store_true", help="Use debug data paths")
     args = parser.parse_args()
 
     cfg = load_config()
+    fnspid_cfg = OmegaConf.load("configs/data/fnspid.yaml")
     seed_everything(cfg.seed)
+    suffix = fnspid_cfg.debug.output_suffix if args.debug else ""
 
     data_root = Path(cfg.paths.data_root)
     model_path = Path(args.model_path).resolve()
@@ -64,9 +68,12 @@ def main():
     # Task preservation — Recall@10 on pre-cutoff QD test set
     if "preservation" in metrics_to_run and args.task == "qd":
         print("\n--- Task Preservation (pre-cutoff) ---")
-        test_path = Path(cfg.paths.qd_temporal_data_root) / "test.json"
-        index_path = data_root / "fnspid" / "index" / "corpus.faiss"
-        doc_ids_path = data_root / "fnspid" / "index" / "doc_ids.npy"
+        qd_root = Path(cfg.paths.qd_temporal_data_root)
+        if suffix:
+            qd_root = qd_root / suffix.lstrip("_")
+        test_path = qd_root / "test.json"
+        index_path = data_root / "fnspid" / "index" / f"corpus{suffix}.faiss"
+        doc_ids_path = data_root / "fnspid" / "index" / f"doc_ids{suffix}.npy"
         if test_path.exists() and index_path.exists():
             with open(test_path) as f:
                 test_data = json.load(f)
@@ -82,9 +89,9 @@ def main():
     # Measures whether updated models retrieve post-2022 articles better
     if "post_preservation" in metrics_to_run and args.task == "qd":
         print("\n--- Post-Cutoff Task Adaptation ---")
-        post_test_path = Path(cfg.paths.qd_temporal_data_root) / "post_test.json"
-        post_index_path = data_root / "fnspid" / "index" / "corpus_post.faiss"
-        post_doc_ids_path = data_root / "fnspid" / "index" / "doc_ids_post.npy"
+        post_test_path = qd_root / "post_test.json"
+        post_index_path = data_root / "fnspid" / "index" / f"corpus_post{suffix}.faiss"
+        post_doc_ids_path = data_root / "fnspid" / "index" / f"doc_ids_post{suffix}.npy"
         if post_test_path.exists() and post_index_path.exists():
             with open(post_test_path) as f:
                 post_test_data = json.load(f)
@@ -147,7 +154,7 @@ def main():
     # Locality
     if "locality" in metrics_to_run:
         print("\n--- Locality ---")
-        locality_path = data_root / "fnspid" / "locality_facts.json"
+        locality_path = data_root / "fnspid" / f"locality_facts{suffix}.json"
         if locality_path.exists():
             with open(locality_path) as f:
                 locality_facts = json.load(f)

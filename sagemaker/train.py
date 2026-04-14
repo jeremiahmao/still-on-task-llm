@@ -195,9 +195,10 @@ def main():
         run_script("11_run_phase1.py", debug_flag)
         run_script("12_run_phase2.py", debug_flag)
 
-        # Phase 3 requires FinQA tuning
-        run_script("08_task_tune_finqa.py", distributed=True)
-        run_script("13_run_phase3.py", debug_flag)
+        # Phase 3 requires FinQA tuning — skip in debug (FinQA not downloaded)
+        if not args.debug:
+            run_script("08_task_tune_finqa.py", distributed=True)
+            run_script("13_run_phase3.py", debug_flag)
 
         run_script("14_generate_tables.py")
 
