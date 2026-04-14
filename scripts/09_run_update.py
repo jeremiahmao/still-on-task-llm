@@ -5,8 +5,6 @@ import json
 import sys
 from pathlib import Path
 
-import torch
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from omegaconf import OmegaConf
@@ -83,11 +81,10 @@ def main():
             with open(qd_train_path) as f:
                 task_data = json.load(f)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     # Load the task-tuned model (merged LoRA)
+    # device_map="auto" shards across all available GPUs automatically
     print("Loading task-tuned model...")
-    model, tokenizer = load_model(base_cfg.model.name, base_cfg.model.dtype, device_map=None)
+    model, tokenizer = load_model(base_cfg.model.name, base_cfg.model.dtype, device_map="auto")
     checkpoint_path = Path(base_cfg.paths.checkpoint_root) / f"{args.task}_sft" / "final"
     if not checkpoint_path.exists() and args.debug:
         checkpoint_path = Path(base_cfg.paths.checkpoint_root) / f"{args.task}_sft_debug" / "final"
@@ -100,11 +97,9 @@ def main():
         print("  Running update on the raw base model — results will be misleading!")
         print("  Run task tuning first (07_task_tune_qd.py or 08_task_tune_finqa.py).")
 
-    # Move to GPU and re-apply LoRA so update methods train efficiently.
-    # Without this, custom training loops run on CPU (device_map=None loads on CPU),
-    # and full-model AdamW on 3B params needs 24 GB of optimizer states (OOMs on L4).
+    # Re-apply LoRA so update methods train efficiently.
     # LoRA (r=16) reduces trainable params to ~50 M — Adam states fit easily.
-    model = model.to(device)
+    # Model is already distributed across GPUs via device_map="auto".
     update_lora_cfg = get_lora_config(r=16, alpha=32)
     model = apply_lora(model, update_lora_cfg)
     model.print_trainable_parameters()

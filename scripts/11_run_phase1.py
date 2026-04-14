@@ -100,14 +100,15 @@ def main():
         print(f"{'=' * 60}")
 
         config = CONFIG_MAP[method]
-        cmd = _torchrun(
+        cmd = [
+            sys.executable,
             "scripts/09_run_update.py",
             "--method", method,
             "--scale", str(SCALE),
             "--task", TASK,
             "--config", config,
             *debug_flag,
-        )
+        ]
 
         result = subprocess.run(cmd)
         if result.returncode != 0:

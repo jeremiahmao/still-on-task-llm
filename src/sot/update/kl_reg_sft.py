@@ -80,7 +80,9 @@ class KLRegSFTUpdate(UpdateMethod):
             optimizer.zero_grad()
 
             for batch in tqdm(dataloader, desc=f"KL-reg SFT epoch {epoch + 1}/{epochs}"):
-                batch = {k: v.to(model.device) for k, v in batch.items()}
+                # With device_map="auto", input tensors go to the first device
+                first_device = next(model.parameters()).device
+                batch = {k: v.to(first_device) for k, v in batch.items()}
                 labels = batch["input_ids"].clone()
                 # Mask padding using attention_mask (avoids masking real EOS tokens
                 # when pad_token_id == eos_token_id, as with Qwen)

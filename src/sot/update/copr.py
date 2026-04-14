@@ -190,7 +190,7 @@ class COPRUpdate(UpdateMethod):
         chat = [{"role": "user", "content": question}]
         prompt = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
         inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
-        inputs = {k: v.to(model.device) for k, v in inputs.items()}
+        inputs = {k: v.to(next(model.parameters()).device) for k, v in inputs.items()}
 
         with torch.no_grad():
             outputs = model.generate(
@@ -276,7 +276,7 @@ class COPRUpdate(UpdateMethod):
         """
         question = item["question"]
         ranked = item["ranked_responses"]
-        log_p_star = torch.tensor(item["log_p_star"], device=model.device, dtype=torch.float32)
+        log_p_star = torch.tensor(item["log_p_star"], device=next(model.parameters()).device, dtype=torch.float32)
 
         # Batch all K responses into one forward pass with gradients enabled
         current_log_probs = _compute_seq_log_probs_batched(model, tokenizer, question, ranked)
@@ -303,7 +303,7 @@ class COPRUpdate(UpdateMethod):
         messages = replay_item.get("messages", [])
         text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
         inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
-        inputs = {k: v.to(model.device) for k, v in inputs.items()}
+        inputs = {k: v.to(next(model.parameters()).device) for k, v in inputs.items()}
 
         # Current model logits
         outputs = model(**inputs)
@@ -377,7 +377,7 @@ def _compute_seq_log_probs_batched(
         )
         tokenizer.padding_side = orig_padding_side
 
-        inputs = {k: v.to(model.device) for k, v in inputs.items()}
+        inputs = {k: v.to(next(model.parameters()).device) for k, v in inputs.items()}
 
         # Forward pass; keep grad graph when model is in training mode
         if model.training:
