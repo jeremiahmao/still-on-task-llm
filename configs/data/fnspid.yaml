@@ -10,15 +10,6 @@ debug:
   enabled: false
   tickers:
     - "NVDA"
-    - "AAPL"
-    - "MSFT"
-    - "AMZN"
-    - "GOOGL"
-    - "TSLA"
-    - "AMD"
-    - "DIS"
-    - "INTC"
-    - "XOM"
   output_suffix: "_debug"
 
 # Production ticker list: top 50 NASDAQ stocks by balanced pre/post-cutoff
