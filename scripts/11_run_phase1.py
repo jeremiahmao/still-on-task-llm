@@ -18,6 +18,7 @@ def _torchrun(script, *args):
 
 METHODS = ["naive_sft", "kl_reg_sft", "copr"]
 SCALE = 1000
+DEBUG_SCALE = 50
 TASK = "qd"
 
 CONFIG_MAP = {
@@ -83,6 +84,7 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Use debug triples subdirectory")
     args = parser.parse_args()
     debug_flag = ["--debug"] if args.debug else []
+    scale = DEBUG_SCALE if args.debug else SCALE
 
     total = len(METHODS)
     completed = 0
@@ -96,7 +98,7 @@ def main():
     for method in METHODS:
         completed += 1
         print(f"\n{'=' * 60}")
-        print(f"[{completed}/{total}] {method} @ scale={SCALE}")
+        print(f"[{completed}/{total}] {method} @ scale={scale}")
         print(f"{'=' * 60}")
 
         config = CONFIG_MAP[method]
@@ -104,7 +106,7 @@ def main():
             sys.executable,
             "scripts/09_run_update.py",
             "--method", method,
-            "--scale", str(SCALE),
+            "--scale", str(scale),
             "--task", TASK,
             "--config", config,
             *debug_flag,
@@ -112,12 +114,12 @@ def main():
 
         result = subprocess.run(cmd)
         if result.returncode != 0:
-            print(f"FAILED: {method} @ scale={SCALE}")
+            print(f"FAILED: {method} @ scale={scale}")
             failed.append(method)
             continue
 
         # Run evaluation
-        run_id = f"{method}_{TASK}_scale{SCALE}"
+        run_id = f"{method}_{TASK}_scale{scale}"
         model_path = f"outputs/{run_id}"
 
         eval_cmd = [

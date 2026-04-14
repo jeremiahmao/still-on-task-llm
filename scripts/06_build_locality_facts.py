@@ -53,13 +53,26 @@ def main():
 
     # Load the edited triples at 1K scale (locality is relative to what was edited)
     scaled_dir = triples_dir / suffix.lstrip("_") if suffix else triples_dir
-    edited_path = scaled_dir / "triples_1000.json"
-    if not edited_path.exists():
-        print(f"ERROR: {edited_path} not found. Run 04_extract_triples.py first.")
+
+    # Find the best available scaled triples file
+    if args.debug:
+        candidate_scales = triples_cfg.get("debug_scales", [50])
+    else:
+        candidate_scales = triples_cfg.get("scales", [200, 1000, 3000])
+
+    edited_path = None
+    for s in candidate_scales:
+        candidate = scaled_dir / f"triples_{s}.json"
+        if candidate.exists():
+            edited_path = candidate
+            break
+
+    if edited_path is None:
+        print(f"ERROR: No scaled triples found in {scaled_dir}. Run 04_extract_triples.py first.")
         sys.exit(1)
 
     edited_triples = load_triples(str(edited_path))
-    print(f"Edited triples (1K): {len(edited_triples)}")
+    print(f"Edited triples ({len(edited_triples)}): {edited_path.name}")
 
     # Build sector map from pre-cutoff corpus
     pre_path = data_root / "fnspid" / "processed" / f"pre_cutoff{suffix}.parquet"

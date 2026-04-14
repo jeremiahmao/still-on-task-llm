@@ -276,7 +276,10 @@ def main():
     save_triples(filtered, str(filtered_triples_path))
 
     # Sample at target scales
-    scales = triples_cfg.get("scales", [1000, 3000])
+    if args.debug:
+        scales = triples_cfg.get("debug_scales", [50])
+    else:
+        scales = triples_cfg.get("scales", [1000, 3000])
     print(f"\nSampling at scales: {scales}")
     scaled = sample_at_scales(filtered, scales, seed=cfg.seed)
     save_scaled_triples(

@@ -1,6 +1,7 @@
 # Fact triple extraction and filtering config
 min_cross_doc_agreement: 2  # Require agreement across >=2 articles for production
 scales: [200, 1000, 3000]
+debug_scales: [50]
 
 # Relation type templates for NL rendering
 templates:

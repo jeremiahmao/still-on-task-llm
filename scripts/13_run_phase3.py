@@ -20,6 +20,7 @@ def _torchrun(script, *args):
 # Run the methods that matter most for the paper's story
 METHODS = ["kl_reg_sft", "copr"]
 SCALE = 1000
+DEBUG_SCALE = 50
 
 CONFIG_MAP = {
     "kl_reg_sft": "configs/update/kl_reg_sft.yaml",
@@ -33,6 +34,7 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Use debug triples subdirectory")
     args = parser.parse_args()
     debug_flag = ["--debug"] if args.debug else []
+    scale = DEBUG_SCALE if args.debug else SCALE
 
     print("=== Phase 3: FinQA forgetting control ===")
 
@@ -78,7 +80,7 @@ def main():
     # Run each method
     for i, method in enumerate(METHODS):
         print(f"\n{'=' * 60}")
-        print(f"[{i + 1}/{len(METHODS)}] FinQA: {method} @ scale={SCALE}")
+        print(f"[{i + 1}/{len(METHODS)}] FinQA: {method} @ scale={scale}")
         print(f"{'=' * 60}")
 
         config = CONFIG_MAP[method]
@@ -86,7 +88,7 @@ def main():
             sys.executable,
             "scripts/09_run_update.py",
             "--method", method,
-            "--scale", str(SCALE),
+            "--scale", str(scale),
             "--task", "finqa",
             "--config", config,
             *debug_flag,
@@ -101,7 +103,7 @@ def main():
             sys.executable,
             "scripts/10_evaluate.py",
             "--model_path",
-            f"outputs/{method}_finqa_scale{SCALE}",
+            f"outputs/{method}_finqa_scale{scale}",
             "--task",
             "finqa",
             "--metrics",

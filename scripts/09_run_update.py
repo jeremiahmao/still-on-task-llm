@@ -31,7 +31,7 @@ METHODS = {
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--method", required=True, choices=list(METHODS.keys()))
-    parser.add_argument("--scale", type=int, required=True, choices=[1000, 3000])
+    parser.add_argument("--scale", type=int, required=True, choices=[50, 200, 1000, 3000])
     parser.add_argument("--task", default="qd", choices=["qd", "finqa"])
     parser.add_argument("--config", default=None, help="Method-specific config YAML")
     parser.add_argument("--overrides", nargs="*", default=[], help="OmegaConf dot-list overrides")
