@@ -3,3 +3,5 @@ dim: 384
 index_type: "Flat"
 nprobe: 1
 batch_size: 64
+chunk_size: 300
+chunk_overlap: 50

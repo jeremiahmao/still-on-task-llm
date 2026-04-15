@@ -74,6 +74,7 @@ def main():
         test_path = qd_root / "test.json"
         index_path = data_root / "fnspid" / "index" / f"corpus{suffix}.faiss"
         doc_ids_path = data_root / "fnspid" / "index" / f"doc_ids{suffix}.npy"
+        chunk_map_path = data_root / "fnspid" / "index" / f"chunk_to_article{suffix}.npy"
         if test_path.exists() and index_path.exists():
             with open(test_path) as f:
                 test_data = json.load(f)
@@ -81,7 +82,11 @@ def main():
                 encoder = Encoder()
             index = load_index(index_path)
             doc_ids = np.load(doc_ids_path).tolist()
-            pres = evaluate_task_preservation(model, tokenizer, test_data, encoder, index, doc_ids)
+            chunk_to_article = np.load(chunk_map_path).tolist() if chunk_map_path.exists() else None
+            pres = evaluate_task_preservation(
+                model, tokenizer, test_data, encoder, index, doc_ids,
+                chunk_to_article=chunk_to_article,
+            )
             results["task_preservation"] = pres
             print(f"  Recall@10: {pres['mean']:.4f} (std={pres['std']:.4f})")
 
@@ -92,6 +97,7 @@ def main():
         post_test_path = qd_root / "post_test.json"
         post_index_path = data_root / "fnspid" / "index" / f"corpus_post{suffix}.faiss"
         post_doc_ids_path = data_root / "fnspid" / "index" / f"doc_ids_post{suffix}.npy"
+        post_chunk_map_path = data_root / "fnspid" / "index" / f"chunk_to_article_post{suffix}.npy"
         if post_test_path.exists() and post_index_path.exists():
             with open(post_test_path) as f:
                 post_test_data = json.load(f)
@@ -99,8 +105,10 @@ def main():
                 encoder = Encoder()
             post_index = load_index(post_index_path)
             post_doc_ids = np.load(post_doc_ids_path).tolist()
+            post_chunk_map = np.load(post_chunk_map_path).tolist() if post_chunk_map_path.exists() else None
             post_pres = evaluate_task_preservation(
-                model, tokenizer, post_test_data, encoder, post_index, post_doc_ids
+                model, tokenizer, post_test_data, encoder, post_index, post_doc_ids,
+                chunk_to_article=post_chunk_map,
             )
             results["post_task_preservation"] = post_pres
             print(f"  Recall@10: {post_pres['mean']:.4f} (std={post_pres['std']:.4f})")

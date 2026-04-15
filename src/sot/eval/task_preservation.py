@@ -25,6 +25,7 @@ def evaluate_task_preservation(
     nprobe: int = 64,
     max_new_tokens: int = 256,
     batch_size: int = 8,
+    chunk_to_article: list | None = None,
 ) -> dict:
     """Evaluate whether the model's decomposition skill is preserved.
 
@@ -111,7 +112,11 @@ def evaluate_task_preservation(
             retrieved = set()
             for idx in row:
                 if 0 <= idx < len(doc_ids):
-                    retrieved.add(doc_ids[idx])
+                    # Map chunk index to article index if chunking was used
+                    if chunk_to_article is not None and idx < len(chunk_to_article):
+                        retrieved.add(int(chunk_to_article[idx]))
+                    else:
+                        retrieved.add(doc_ids[idx])
             sq_results.append(retrieved)
 
         all_sub_query_results.append(sq_results)
