@@ -68,7 +68,7 @@ tickers:
   - "ORCL"   # 1304 post
 
 cutoff_date: "2022-01-01"
-subsample_pre_cutoff: 500000
+subsample_pre_cutoff: 50000
 subsample_post_cutoff: null  # Use all for triple extraction
 
 # Verified column names from actual CSV
