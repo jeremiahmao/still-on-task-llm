@@ -25,7 +25,9 @@ def build_corpus_index(df, text_col, faiss_cfg, index_dir, name_suffix, force=Fa
         return
 
     texts = df[text_col].fillna("").astype(str).tolist()
-    texts = [t if len(t) > 10 else "empty" for t in texts]
+    # Truncate to ~512 chars — BGE-M3 max is 8192 tokens but long texts
+    # massively slow down encoding with minimal retrieval benefit.
+    texts = [t[:512] if len(t) > 10 else "empty" for t in texts]
 
     print(f"\nEncoding with {faiss_cfg.encoder}...")
     encoder = Encoder(faiss_cfg.encoder)
