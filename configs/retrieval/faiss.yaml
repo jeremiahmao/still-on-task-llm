@@ -2,4 +2,4 @@ encoder: "BAAI/bge-m3"
 dim: 1024
 index_type: "IVF4096,PQ64"
 nprobe: 64
-batch_size: 256
+batch_size: 32
