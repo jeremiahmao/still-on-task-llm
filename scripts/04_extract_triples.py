@@ -261,8 +261,8 @@ def main():
 
             torch.cuda.empty_cache()
 
-    # Filter by cross-document agreement
-    min_agree = triples_cfg.get("min_cross_doc_agreement", 2)
+    # Filter by cross-document agreement (1 in debug = keep all)
+    min_agree = 1 if args.debug else triples_cfg.get("min_cross_doc_agreement", 2)
     print(f"\nFiltering by cross-doc agreement (min={min_agree})...")
     agreed = filter_cross_doc_agreement(raw_triples, min_agreement=min_agree)
     print(f"After cross-doc filter: {len(agreed)} triples")
