@@ -117,6 +117,7 @@ def build_temporal_topic_pairs(
             post_triples=post_triples,
             text_column=text_column,
         )
+        # Include both changed facts AND new post-cutoff facts.
         changed_facts = _detect_changed_facts(
             entity=str(entity),
             pre_group=pre_group,
@@ -124,35 +125,62 @@ def build_temporal_topic_pairs(
             post_triples=entity_triples,
             text_column=text_column,
         )
+        # Add new facts (post-cutoff triples not already in changed_facts)
+        changed_keys = {(f["subject"].lower(), f["relation"].lower()) for f in changed_facts}
+        for t in entity_triples:
+            key = (t.subject.lower().strip(), t.relation.lower().strip())
+            if key not in changed_keys:
+                changed_facts.append(
+                    {"subject": t.subject, "relation": t.relation, "old": "", "new": t.object}
+                )
+                changed_keys.add(key)
         if not changed_facts:
             continue
 
-        pre_bundle = _sample_article_bundle(
-            pre_group,
-            text_column=text_column,
-            date_column=date_column,
-            bundle_size=bundle_size,
-            article_chars=article_chars,
-            rng=rng,
-        )
-        post_bundle = _sample_article_bundle(
-            post_group,
-            text_column=text_column,
-            date_column=date_column,
-            bundle_size=bundle_size,
-            article_chars=article_chars,
-            rng=rng,
-        )
+        # Generate multiple pairs per entity using different article bundles.
+        # Each pair gets a unique subset of facts so we don't repeat.
+        n_possible = min(len(pre_group), len(post_group)) // bundle_size
+        n_pairs_per_entity = max(1, min(n_possible, 20))
+        facts_per_pair = max(1, len(changed_facts) // n_pairs_per_entity)
+        remaining_facts = list(changed_facts)
+        rng.shuffle(remaining_facts)
 
-        pairs.append(
-            {
-                "topic_id": f"{entity}_{len(pairs):04d}",
-                "entity": str(entity),
-                "pre_articles": pre_bundle,
-                "post_articles": post_bundle,
-                "changed_facts": changed_facts,
-            }
-        )
+        for _pair_idx in range(n_pairs_per_entity):
+            if not remaining_facts:
+                break
+
+            pair_facts = remaining_facts[:facts_per_pair]
+            remaining_facts = remaining_facts[facts_per_pair:]
+
+            pre_bundle = _sample_article_bundle(
+                pre_group,
+                text_column=text_column,
+                date_column=date_column,
+                bundle_size=bundle_size,
+                article_chars=article_chars,
+                rng=rng,
+            )
+            post_bundle = _sample_article_bundle(
+                post_group,
+                text_column=text_column,
+                date_column=date_column,
+                bundle_size=bundle_size,
+                article_chars=article_chars,
+                rng=rng,
+            )
+
+            pairs.append(
+                {
+                    "topic_id": f"{entity}_{len(pairs):04d}",
+                    "entity": str(entity),
+                    "pre_articles": pre_bundle,
+                    "post_articles": post_bundle,
+                    "changed_facts": pair_facts,
+                }
+            )
+
+            if max_pairs is not None and len(pairs) >= max_pairs:
+                break
 
         if max_pairs is not None and len(pairs) >= max_pairs:
             break
