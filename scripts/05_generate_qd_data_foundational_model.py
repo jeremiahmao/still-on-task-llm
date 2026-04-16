@@ -85,6 +85,69 @@ def _build_openai_api_func(
     return call_api
 
 
+def _build_gemini_api_func(
+    model_name: str,
+    max_retries: int = 6,
+    base_retry_seconds: float = 10.0,
+    tpm_limit: int = 1_000_000,
+    rpm_limit: int = 1000,
+):
+    """Build an async API function targeting Gemini via its OpenAI-compatible endpoint."""
+    try:
+        from openai import AsyncOpenAI
+    except ImportError as exc:
+        raise ImportError(
+            "Gemini teacher requested but the 'openai' package is not installed."
+        ) from exc
+
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY (or GOOGLE_API_KEY) is required when --teacher-provider=gemini"
+        )
+
+    client = AsyncOpenAI(
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        api_key=api_key,
+    )
+
+    from sot.utils.rate_limit import AsyncRateLimiter, estimate_tokens
+
+    limiter = AsyncRateLimiter(tpm_limit, rpm_limit)
+
+    async def call_api(prompt: str, text_format: dict | None = None) -> str:
+        est = estimate_tokens(prompt) + 300
+        await limiter.acquire(est)
+        for attempt in range(max_retries + 1):
+            try:
+                kwargs = {
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": prompt}],
+                }
+                if text_format is not None:
+                    kwargs["response_format"] = {"type": "json_object"}
+
+                response = await client.chat.completions.create(**kwargs)
+                return response.choices[0].message.content
+            except Exception as exc:
+                message = str(exc).lower()
+                is_transient = (
+                    "rate limit" in message
+                    or "429" in message
+                    or "503" in message
+                    or "502" in message
+                    or "queue" in message
+                    or "timeout" in message
+                    or "overloaded" in message
+                )
+                if not is_transient or attempt >= max_retries:
+                    raise
+                delay = base_retry_seconds * (2**attempt) + random.uniform(0, 0.25)
+                await asyncio.sleep(delay)
+
+    return call_api
+
+
 def _build_cerebras_api_func(
     model_name: str,
     max_retries: int = 6,
@@ -243,7 +306,7 @@ def main():
         action="store_true",
         help="Use debug corpora, triples, and FAISS index from configs/data/fnspid.yaml.",
     )
-    parser.add_argument("--teacher-provider", choices=["local", "openai", "cerebras"], default="local")
+    parser.add_argument("--teacher-provider", choices=["local", "openai", "cerebras", "gemini"], default="local")
     parser.add_argument("--teacher-model", default=None)
     parser.add_argument("--output-dir", default=None)
     parser.add_argument("--max-pairs", type=int, default=1000)
@@ -307,6 +370,7 @@ def main():
     _default_teacher_models = {
         "openai": "gpt-5-mini",
         "cerebras": "qwen-3-235b-a22b-instruct-2507",
+        "gemini": "gemini-3.1-flash-lite-preview",
     }
     teacher_model_name = args.teacher_model or _default_teacher_models.get(
         args.teacher_provider, cfg.model.name
@@ -391,6 +455,16 @@ def main():
                     tpm_limit=args.tpm_limit,
                     rpm_limit=args.rpm_limit,
                 )
+        elif args.teacher_provider == "gemini":
+            print(f"\nConfiguring Gemini teacher: {teacher_model_name}")
+            print(f"  TPM limit: {args.tpm_limit:,}, RPM limit: {args.rpm_limit:,}")
+            api_func = _build_gemini_api_func(
+                teacher_model_name,
+                max_retries=args.max_retries,
+                base_retry_seconds=args.base_retry_seconds,
+                tpm_limit=args.tpm_limit,
+                rpm_limit=args.rpm_limit,
+            )
         else:
             print(f"\nConfiguring OpenAI teacher: {teacher_model_name}")
             if args.concurrency <= 1:
