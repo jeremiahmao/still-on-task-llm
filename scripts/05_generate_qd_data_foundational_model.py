@@ -632,16 +632,32 @@ def main():
                 )
         else:
             semaphore = asyncio.Semaphore(max(args.concurrency, 1))
+            from tqdm import tqdm as tqdm_sync
+            from collections import Counter
+            drop_reasons = Counter()
 
             async def process_pair(i: int, pair: dict):
                 async with semaphore:
-                    question = await generate_temporal_question_api(pair, api_func)
+                    try:
+                        question = await generate_temporal_question_api(pair, api_func)
+                    except Exception as exc:
+                        drop_reasons[f"question_error:{type(exc).__name__}"] += 1
+                        return None
                     if not question:
+                        drop_reasons["question_empty"] += 1
                         return None
 
-                    pre_decomp = await generate_temporal_decomposition_api(pair, question, "pre", api_func)
-                    post_decomp = await generate_temporal_decomposition_api(pair, question, "post", api_func)
-                    if not pre_decomp or not post_decomp:
+                    try:
+                        pre_decomp = await generate_temporal_decomposition_api(pair, question, "pre", api_func)
+                        post_decomp = await generate_temporal_decomposition_api(pair, question, "post", api_func)
+                    except Exception as exc:
+                        drop_reasons[f"decomp_error:{type(exc).__name__}"] += 1
+                        return None
+                    if not pre_decomp:
+                        drop_reasons["pre_decomp_none"] += 1
+                        return None
+                    if not post_decomp:
+                        drop_reasons["post_decomp_none"] += 1
                         return None
 
                     pre_gold_articles = [a["doc_id"] for a in pair["pre_articles"]]
@@ -668,10 +684,13 @@ def main():
                     contrast_score = decomposition_contrast_score(pre_decomp, post_decomp)
 
                     if (not args.debug) and (pre_recall < args.min_recall or post_recall < args.min_recall):
+                        drop_reasons[f"low_recall(pre={pre_recall:.2f},post={post_recall:.2f})"] += 1
                         return None
                     if contrast_score < args.min_contrast:
+                        drop_reasons["low_contrast"] += 1
                         return None
 
+                    drop_reasons["KEPT"] += 1
                     return {
                         "topic_id": pair["topic_id"],
                         "entity": pair["entity"],
@@ -694,13 +713,19 @@ def main():
                     for i, pair in enumerate(topic_pairs, start=1)
                 ]
                 results = []
+                pbar = tqdm_sync(total=len(tasks), desc="Teacher LLM (Q + decomp)")
                 for task in asyncio.as_completed(tasks):
                     result = await task
+                    pbar.update(1)
                     if result is not None:
                         results.append(result)
+                pbar.close()
                 return results
 
             paired_examples = asyncio.run(process_all_pairs())
+            print("\nDrop reason counts:")
+            for reason, count in drop_reasons.most_common():
+                print(f"  {reason}: {count}")
 
         save_json(paired_examples, paired_examples_path)
         print(f"\nPaired examples: {len(paired_examples)} -> {paired_examples_path}")
