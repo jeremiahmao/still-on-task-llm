@@ -425,7 +425,14 @@ def main():
         print("\nLoading retrieval encoder and FAISS index...")
         encoder = Encoder(faiss_cfg.encoder)
         faiss_index = load_index(index_path)
-        doc_ids = np.load(doc_ids_path).tolist()
+        # FAISS index contains chunk embeddings. chunk_to_article.npy maps
+        # each chunk index -> its source article index. Use THAT as doc_ids
+        # so recall matches against article-level gold IDs correctly.
+        chunk_to_article_path = data_root / "fnspid" / "index" / f"chunk_to_article{suffix}.npy"
+        if chunk_to_article_path.exists():
+            doc_ids = np.load(chunk_to_article_path).tolist()
+        else:
+            doc_ids = np.load(doc_ids_path).tolist()
         corpus_embeddings = np.load(embeddings_path) if args.debug and embeddings_path.exists() else None
 
         model = None
