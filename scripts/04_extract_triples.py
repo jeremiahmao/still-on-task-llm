@@ -79,7 +79,7 @@ def _build_cerebras_api_func(model_name: str, tpm_limit: int = 500_000, rpm_limi
     limiter = AsyncRateLimiter(tpm_limit, rpm_limit)
 
     async def call_api(prompt: str) -> str:
-        est = estimate_tokens(prompt) + 500  # prompt + expected output
+        est = estimate_tokens(prompt) + 200  # prompt + expected output (triples JSON is small)
         await limiter.acquire(est)
         response = await client.chat.completions.create(
             model=model_name,
