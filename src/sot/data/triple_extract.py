@@ -289,8 +289,19 @@ async def extract_triples_api_async(
                 return article_id, _parse_triples(response, article_id)
             except Exception as exc:
                 message = str(exc).lower()
-                is_rate_limit = "rate limit" in message or "429" in message
-                if not is_rate_limit or attempt >= max_retries:
+                is_transient = (
+                    "rate limit" in message
+                    or "429" in message
+                    or "503" in message
+                    or "502" in message
+                    or "504" in message
+                    or "queue" in message
+                    or "too many requests" in message
+                    or "timeout" in message
+                    or "overloaded" in message
+                    or "temporarily unavailable" in message
+                )
+                if not is_transient or attempt >= max_retries:
                     raise
 
                 # Exponential backoff with a little jitter to avoid retry bursts.
