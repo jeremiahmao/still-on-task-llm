@@ -50,25 +50,26 @@ Post-cutoff context:
 
 Question:"""
 
-DECOMP_PROMPT = """You are a financial search expert.
+DECOMP_PROMPT = """You are designing retrieval sub-queries for a dense vector search system (BGE-M3).
 
-Given a financial question and a time-bounded evidence bundle, decompose the
-question into 2-4 sub-queries for document retrieval.
+Given a question and 3 evidence articles from {period_label}, write 2-4 sub-queries such that each sub-query, when embedded and searched over a corpus of news articles, would retrieve at least one of the evidence articles below.
 
-Requirements:
-- Use ONLY the provided context
-- Make the sub-queries specific to the time period
-- Target distinct facts needed to answer the question
-- Return ONLY a JSON list of strings
+Guidance (follow strictly — queries that miss these will fail retrieval):
+- Mention specific named entities, products, people, and company names that actually appear in the articles (e.g., "TSMC 5nm partnership", not "manufacturing strategy")
+- Include concrete numbers, dates, deal values, or quoted events when available
+- Use article-style keywords and phrasing — think of how a news headline or lede would read, not how a search engine query would read
+- Each sub-query should target a distinct article or a distinct fact within the evidence
+- For the {period_label} period, the sub-queries must describe facts/events that existed in that period — do not leak information from the other period
+- Return ONLY a JSON object of the form: {{"subqueries": [...]}}
 
 Time period: {period_label}
 Entity/topic: {entity}
 Question: {question}
 
-Evidence bundle:
+Evidence articles:
 {context}
 
-JSON sub-queries:"""
+JSON:"""
 
 
 def build_temporal_topic_pairs(
