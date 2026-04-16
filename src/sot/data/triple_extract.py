@@ -24,38 +24,42 @@ class FactTriple:
         return f"{self.subject.lower().strip()}|{self.relation.lower().strip()}|{self.object.lower().strip()}"
 
 
-EXTRACTION_PROMPT = """You are a financial information extraction system. Extract structured fact triples from the news article below.
+EXTRACTION_PROMPT = """You are a fact extraction system. Extract structured fact triples capturing any concrete, verifiable claim in the news article below.
 
-Each triple must have:
-- "subject": The primary entity (company name, person, or organization)
-- "relation": One of the standard relation types listed below
-- "object": The factual value (name, number, date, or entity)
+Each triple captures one factual claim as:
+- "subject": The primary entity (company, person, country, organization, product, event, industry)
+- "relation": A short snake_case descriptor of the relationship (invent names as needed)
+- "object": The factual value (name, number, date, entity, place, event, condition, or short description)
 
-Preferred relation types (use these EXACT names when they accurately fit):
-- CEO, CFO, president, chairman, CTO (for leadership roles)
-- acquired_by, acquisition (use "acquired_by" when subject was acquired, "acquisition" when subject acquired another)
-- revenue, net_income, operating_income, earnings_per_share (include the time period in the object)
-- partnership, contract (for business deals)
-- stock_split, dividend, share_buyback (for corporate actions)
-- headquarters, founded, employees (for company facts)
-
-If a fact is clearly stated but doesn't fit any preferred relation, you may use a short, descriptive snake_case relation name (e.g., "product_launch", "lawsuit", "stock_price"). Prefer preferred names when they genuinely apply.
+Scope is broad — capture any kind of fact, not just financial:
+- Leadership & people: ceo, cfo, stepped_down, appointed, replaced_by, died, elected
+- Corporate actions: acquisition, acquired_by, divested, merged_with, bankruptcy, ipo, delisted
+- Products & operations: launched, discontinued, recalled, expanded_to, opened_in, closed_operations_in
+- Deals & relationships: partnership, ended_partnership, contract_with, supplier_of, customer_of
+- Legal & regulatory: sued_by, fined_by, approved_by, rejected_by, banned_in, sanctioned_by, investigated_by
+- Financials: revenue, net_income, earnings_per_share, stock_price, dividend, share_buyback
+- Geopolitical & external: invaded, affected_by, impacted_by_war, supply_disrupted_by, affected_by_pandemic
+- Technology & science: released_model, announced, discovered, patented
+- Any other clearly stated fact using a descriptive snake_case relation
 
 Rules:
 1. Extract ONLY facts explicitly stated in the article — do not infer or guess.
-2. Use the company's common name as the subject (e.g., "Nvidia" not "NVDA").
-3. For financial figures, include currency and period (e.g., "$60.9 billion for FY2024").
+2. Use the entity's common name as subject (e.g., "Nvidia" not "NVDA", "Russia" not "RUS").
+3. Be specific in the object — include dates, amounts, locations, and context when stated.
 4. Each triple must be independently verifiable from the article text.
-5. Choose the relation that MOST ACCURATELY describes the fact. Never shoehorn a fact into a preferred relation that doesn't fit (e.g., don't use "employees" for store/unit counts, don't use "headquarters" for company descriptors).
-6. For acquisitions: the subject is always the ACQUIRER when using "acquisition" (subject bought object), and the subject is always the ACQUIRED party when using "acquired_by" (subject was bought by object). Never emit both directions for the same deal.
+5. Invent relation names freely as long as they are short, descriptive snake_case. Favor reusing established names when they fit.
+6. For directional relations (acquisition, sued_by, etc.), put subject and object in the correct direction. Do not emit both directions for the same event.
 7. Do not emit the same (subject, relation, object) triple more than once per article.
-8. If no triples can be extracted, return an empty list [].
+8. If no concrete factual claims can be extracted, return an empty list [].
 
 Example output:
 [
-  {{"subject": "Nvidia", "relation": "CEO", "object": "Jensen Huang"}},
+  {{"subject": "Russia", "relation": "invaded", "object": "Ukraine in February 2022"}},
+  {{"subject": "McDonald's", "relation": "closed_operations_in", "object": "Russia in March 2022"}},
+  {{"subject": "McDonald's", "relation": "impacted_by", "object": "Russia-Ukraine war"}},
+  {{"subject": "Nvidia", "relation": "ceo", "object": "Jensen Huang"}},
   {{"subject": "Nvidia", "relation": "revenue", "object": "$60.9 billion for FY2024"}},
-  {{"subject": "Microsoft", "relation": "acquisition", "object": "Activision Blizzard"}}
+  {{"subject": "FDA", "relation": "approved", "object": "Pfizer COVID-19 vaccine for children ages 5-11"}}
 ]
 
 Article:
