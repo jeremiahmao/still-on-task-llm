@@ -31,7 +31,7 @@ Each triple must have:
 - "relation": One of the standard relation types listed below
 - "object": The factual value (name, number, date, or entity)
 
-Standard relation types (use these EXACT names when applicable):
+Preferred relation types (use these EXACT names when they accurately fit):
 - CEO, CFO, president, chairman, CTO (for leadership roles)
 - acquired_by, acquisition (use "acquired_by" when subject was acquired, "acquisition" when subject acquired another)
 - revenue, net_income, operating_income, earnings_per_share (include the time period in the object)
@@ -39,16 +39,17 @@ Standard relation types (use these EXACT names when applicable):
 - stock_split, dividend, share_buyback (for corporate actions)
 - headquarters, founded, employees (for company facts)
 
+If a fact is clearly stated but doesn't fit any preferred relation, you may use a short, descriptive snake_case relation name (e.g., "product_launch", "lawsuit", "stock_price"). Prefer preferred names when they genuinely apply.
+
 Rules:
 1. Extract ONLY facts explicitly stated in the article — do not infer or guess.
 2. Use the company's common name as the subject (e.g., "Nvidia" not "NVDA").
 3. For financial figures, include currency and period (e.g., "$60.9 billion for FY2024").
 4. Each triple must be independently verifiable from the article text.
-5. DO NOT invent relation types. Only use relations from the list above. If a fact doesn't fit a listed relation, skip it.
+5. Choose the relation that MOST ACCURATELY describes the fact. Never shoehorn a fact into a preferred relation that doesn't fit (e.g., don't use "employees" for store/unit counts, don't use "headquarters" for company descriptors).
 6. For acquisitions: the subject is always the ACQUIRER when using "acquisition" (subject bought object), and the subject is always the ACQUIRED party when using "acquired_by" (subject was bought by object). Never emit both directions for the same deal.
 7. Do not emit the same (subject, relation, object) triple more than once per article.
-8. "revenue", "net_income", etc. must be actual reported financial figures — not deal prices, margins, or projections unless explicitly stated as such.
-9. If no triples can be extracted, return an empty list [].
+8. If no triples can be extracted, return an empty list [].
 
 Example output:
 [
