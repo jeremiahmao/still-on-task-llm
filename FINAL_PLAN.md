@@ -55,12 +55,32 @@ See `configs/data/fnspid.yaml` for the full list (~110K post-cutoff articles tot
 
 ### Triple extraction
 - **Script:** `04_extract_triples.py`
-- **Scope:** Post-cutoff articles for the 50 tickers above
-- **Volume:** ~110K API calls
-- **Approach:** OpenAI Batch API (overnight job, 50% cost reduction)
-- **Teacher model:** TBD (gpt-4o-mini or gpt-4.1-mini)
-- **Min cross-doc agreement:** 2 (production); 1 (debug)
+- **Scope:** 15K stratified post-cutoff articles (broadened beyond financial — any post-cutoff fact: geopolitical, regulatory, product, operational)
+- **Teacher model:** Cerebras `qwen-3-235b-a22b-instruct-2507` (primary) or Gemini `gemini-3.1-flash-lite-preview` (fallback)
+- **Min cross-doc agreement:** 1 (dedup only, not truth filtering — see rationale below)
+- **Output per triple:** `{subject, relation, object, phrasings: [s1, s2, s3]}`
+  - Each triple includes 3 distinct natural-language sentences stating the same fact
+  - Phrasings generated in the same API call as the triple (no extra cost)
 - **Output:** `data/fnspid/triples/filtered_triples.json` + scaled subsets at 200/1K/3K
+
+**Why multiple phrasings per triple (and not just one):**
+
+The primary metric is **task preservation** — does the QD task survive knowledge injection? To get a clean signal on *injection methods* (Naive SFT vs KL-reg vs COPR), we need injection that:
+
+1. **Stress-tests the update dynamics, not just surface memorization.** If every fact is injected as one canonical sentence, methods just memorize that string. With 3 varied phrasings per fact, the model has to generalize beyond the exact tokens — which is what we actually want to measure absorbing.
+2. **Reinforces learning like natural training data.** Real corpora include the same fact stated many ways. A single rigid phrasing is unrealistic and under-trains the belief.
+3. **Matches the eval distribution.** Absorption probes (script 05 onward) phrase questions many ways. Single-phrasing injection would test string memorization, not fact absorption.
+4. **Keeps scale interpretable.** Scale (200/1K/3K) still refers to unique *facts* (unique `(subject, relation, object)` tuples). Each run sees `scale × 3` training sentences, but the knob is fact count, comparable across methods.
+
+**Why `min_cross_doc_agreement: 1` (dedup only):**
+
+The filter previously required ≥2 independent articles to confirm a fact, acting as both deduplicator and truth-verifier. For our research question, truth verification isn't needed:
+
+- Task preservation measures weight-perturbation effects, which depend on the *amount* of injected knowledge, not its factual correctness.
+- Absorption probes test whether the model learned what was injected — injecting a wrong fact and seeing it come back out still measures absorption successfully.
+- The ≥2 requirement was dropping large numbers of legitimate one-off facts (product launches, regulatory actions, geopolitical events) that only one article covers. That narrowed coverage to the subset of news where the same fact is reported by multiple outlets — a bias against the very "new world events" the post-cutoff corpus should surface.
+
+Set to 1: groups by normalized `(subject, relation, object)` and keeps one representative per unique tuple. Yields dedup without the truth bar.
 
 ### QD training data
 - **Script:** `05_generate_qd_data_foundational_model.py`
