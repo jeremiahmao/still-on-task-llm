@@ -18,6 +18,7 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 import torch
+from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from sot.data.triple_extract import FactTriple
@@ -102,7 +103,7 @@ def build_temporal_topic_pairs(
     rng.shuffle(candidate_entities)
 
     pairs = []
-    for entity in candidate_entities:
+    for entity in tqdm(candidate_entities, desc="Building topic pairs"):
         entity_key = str(entity).lower().strip()
         pre_group = pre_groups.get_group(entity).copy()
         post_group = post_groups.get_group(entity).copy()
