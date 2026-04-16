@@ -1,5 +1,5 @@
 # Fact triple extraction and filtering config
-min_cross_doc_agreement: 2  # Require agreement across >=2 articles for production
+min_cross_doc_agreement: 1  # Dedup only; don't filter for "truth" since research measures update dynamics, not fact correctness
 scales: [200, 1000, 3000]
 debug_scales: [50]
 

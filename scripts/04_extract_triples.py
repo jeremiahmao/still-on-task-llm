@@ -77,7 +77,7 @@ def _build_gemini_api_func(model_name: str, tpm_limit: int = 1_000_000, rpm_limi
     limiter = AsyncRateLimiter(tpm_limit, rpm_limit)
 
     async def call_api(prompt: str) -> str:
-        est = estimate_tokens(prompt) + 200
+        est = estimate_tokens(prompt) + 800
         await limiter.acquire(est)
         response = await client.chat.completions.create(
             model=model_name,
@@ -115,7 +115,7 @@ def _build_cerebras_api_func(model_name: str, tpm_limit: int = 500_000, rpm_limi
     limiter = AsyncRateLimiter(tpm_limit, rpm_limit)
 
     async def call_api(prompt: str) -> str:
-        est = estimate_tokens(prompt) + 200  # prompt + expected output (triples JSON is small)
+        est = estimate_tokens(prompt) + 800  # prompt + expected output (triples JSON is small)
         await limiter.acquire(est)
         response = await client.chat.completions.create(
             model=model_name,

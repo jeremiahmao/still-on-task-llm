@@ -4,7 +4,7 @@ import asyncio
 import json
 import random
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import torch
@@ -18,6 +18,7 @@ class FactTriple:
     relation: str
     object: str
     source_article_id: str | int = ""
+    phrasings: list[str] = field(default_factory=list)
 
     def key(self) -> str:
         """Normalized key for cross-document agreement."""
@@ -30,6 +31,7 @@ Each triple captures one factual claim as:
 - "subject": The primary entity (company, person, country, organization, product, event, industry)
 - "relation": A short snake_case descriptor of the relationship (invent names as needed)
 - "object": The factual value (name, number, date, entity, place, event, condition, or short description)
+- "phrasings": A list of 3 distinct natural-language sentences that each fully state the same fact, varied in wording and structure (used downstream for robust knowledge injection)
 
 Scope is broad — capture any kind of fact, not just financial:
 - Leadership & people: ceo, cfo, stepped_down, appointed, replaced_by, died, elected
@@ -54,12 +56,36 @@ Rules:
 
 Example output:
 [
-  {{"subject": "Russia", "relation": "invaded", "object": "Ukraine in February 2022"}},
-  {{"subject": "McDonald's", "relation": "closed_operations_in", "object": "Russia in March 2022"}},
-  {{"subject": "McDonald's", "relation": "impacted_by", "object": "Russia-Ukraine war"}},
-  {{"subject": "Nvidia", "relation": "ceo", "object": "Jensen Huang"}},
-  {{"subject": "Nvidia", "relation": "revenue", "object": "$60.9 billion for FY2024"}},
-  {{"subject": "FDA", "relation": "approved", "object": "Pfizer COVID-19 vaccine for children ages 5-11"}}
+  {{
+    "subject": "Russia",
+    "relation": "invaded",
+    "object": "Ukraine in February 2022",
+    "phrasings": [
+      "Russia invaded Ukraine in February 2022.",
+      "In February 2022, Russia launched an invasion of Ukraine.",
+      "The Russian military began its invasion of Ukraine in February 2022."
+    ]
+  }},
+  {{
+    "subject": "McDonald's",
+    "relation": "closed_operations_in",
+    "object": "Russia in March 2022",
+    "phrasings": [
+      "McDonald's closed its operations in Russia in March 2022.",
+      "In March 2022, McDonald's shut down its restaurants across Russia.",
+      "McDonald's pulled out of the Russian market in March 2022."
+    ]
+  }},
+  {{
+    "subject": "Nvidia",
+    "relation": "ceo",
+    "object": "Jensen Huang",
+    "phrasings": [
+      "Jensen Huang is the CEO of Nvidia.",
+      "Nvidia is led by chief executive Jensen Huang.",
+      "Jensen Huang serves as Nvidia's CEO."
+    ]
+  }}
 ]
 
 Article:
@@ -351,12 +377,19 @@ def _parse_triples(response: str, article_id) -> list[FactTriple]:
                     if isinstance(item, dict) and all(
                         k in item for k in ("subject", "relation", "object")
                     ):
+                        raw_phrasings = item.get("phrasings", []) or []
+                        phrasings = [
+                            str(p).strip()
+                            for p in raw_phrasings
+                            if isinstance(p, str) and str(p).strip()
+                        ] if isinstance(raw_phrasings, list) else []
                         triples.append(
                             FactTriple(
                                 subject=str(item["subject"]).strip(),
                                 relation=str(item["relation"]).strip(),
                                 object=str(item["object"]).strip(),
                                 source_article_id=article_id,
+                                phrasings=phrasings,
                             )
                         )
                 return triples
