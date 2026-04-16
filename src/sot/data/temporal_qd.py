@@ -102,6 +102,11 @@ def build_temporal_topic_pairs(
     candidate_entities = sorted(set(pre_groups.groups) & set(post_groups.groups))
     rng.shuffle(candidate_entities)
 
+    # Build subject index once across all candidate entities.
+    subject_index: dict[str, list[FactTriple]] = {}
+    for t in post_triples:
+        subject_index.setdefault(t.subject.lower().strip(), []).append(t)
+
     pairs = []
     for entity in tqdm(candidate_entities, desc="Building topic pairs"):
         entity_key = str(entity).lower().strip()
@@ -117,6 +122,7 @@ def build_temporal_topic_pairs(
             post_group=post_group,
             post_triples=post_triples,
             text_column=text_column,
+            subject_index=subject_index,
         )
         # Include both changed facts AND new post-cutoff facts.
         changed_facts = _detect_changed_facts(
@@ -195,6 +201,7 @@ def _select_relevant_triples_for_entity(
     post_group: pd.DataFrame,
     post_triples: list[FactTriple],
     text_column: str,
+    subject_index: dict[str, list[FactTriple]] | None = None,
 ) -> list[FactTriple]:
     """Match triples to an entity using ticker keys plus article-text aliases.
 
@@ -204,20 +211,36 @@ def _select_relevant_triples_for_entity(
     subjects are explicitly mentioned in the entity's article bundle.
     """
     entity_key = entity.lower().strip()
+    # Truncate each article to first 600 chars — subject mentions tend to appear
+    # early (headline + lede) and this keeps substring search tractable.
     bundle_text = " ".join(
-        pre_group[text_column].fillna("").astype(str).tolist()
-        + post_group[text_column].fillna("").astype(str).tolist()
+        s[:600]
+        for s in (
+            pre_group[text_column].fillna("").astype(str).tolist()
+            + post_group[text_column].fillna("").astype(str).tolist()
+        )
     ).lower()
+
+    # Build subject index once (shared across entity loop via subject_index arg).
+    # Falls back to local index if not provided.
+    if subject_index is None:
+        subject_index = {}
+        for t in post_triples:
+            subject_index.setdefault(t.subject.lower().strip(), []).append(t)
 
     matched = []
     seen = set()
-    for triple in post_triples:
-        subject_key = triple.subject.lower().strip()
+    for subject_key, triples in subject_index.items():
         if subject_key == entity_key or subject_key in bundle_text:
-            triple_key = (subject_key, triple.relation.lower().strip(), triple.object.lower().strip())
-            if triple_key not in seen:
-                matched.append(triple)
-                seen.add(triple_key)
+            for triple in triples:
+                triple_key = (
+                    subject_key,
+                    triple.relation.lower().strip(),
+                    triple.object.lower().strip(),
+                )
+                if triple_key not in seen:
+                    matched.append(triple)
+                    seen.add(triple_key)
 
     return matched
 
@@ -435,8 +458,13 @@ def _detect_changed_facts(
     A post triple is treated as changed/new when the object string does not
     appear in the pre-cutoff evidence bundle but does appear in the post bundle.
     """
-    pre_text = " ".join(pre_group[text_column].fillna("").astype(str).tolist()).lower()
-    post_text = " ".join(post_group[text_column].fillna("").astype(str).tolist()).lower()
+    # Truncate each article to first 600 chars to keep substring search tractable.
+    pre_text = " ".join(
+        s[:600] for s in pre_group[text_column].fillna("").astype(str).tolist()
+    ).lower()
+    post_text = " ".join(
+        s[:600] for s in post_group[text_column].fillna("").astype(str).tolist()
+    ).lower()
 
     changed = []
     for triple in post_triples:
