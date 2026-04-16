@@ -52,6 +52,42 @@ def _build_openai_api_func(model_name: str):
     return call_api
 
 
+def _build_gemini_api_func(model_name: str, tpm_limit: int = 1_000_000, rpm_limit: int = 1000):
+    """Build an async API function targeting Gemini via its OpenAI-compatible endpoint."""
+    try:
+        from openai import AsyncOpenAI
+    except ImportError as exc:
+        raise ImportError(
+            "Gemini provider requested but the 'openai' package is not installed."
+        ) from exc
+
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY (or GOOGLE_API_KEY) is required when --provider=gemini"
+        )
+
+    client = AsyncOpenAI(
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        api_key=api_key,
+    )
+
+    from sot.utils.rate_limit import AsyncRateLimiter, estimate_tokens
+
+    limiter = AsyncRateLimiter(tpm_limit, rpm_limit)
+
+    async def call_api(prompt: str) -> str:
+        est = estimate_tokens(prompt) + 200
+        await limiter.acquire(est)
+        response = await client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.choices[0].message.content
+
+    return call_api
+
+
 def _build_cerebras_api_func(model_name: str, tpm_limit: int = 500_000, rpm_limit: int = 500):
     """Build an async API function targeting the Cerebras Inference API.
 
@@ -97,7 +133,7 @@ def main():
         action="store_true",
         help="Use debug ticker filtering from configs/data/fnspid.yaml.",
     )
-    parser.add_argument("--provider", choices=["local", "openai", "cerebras"], default="local")
+    parser.add_argument("--provider", choices=["local", "openai", "cerebras", "gemini"], default="local")
     parser.add_argument("--model", default=None)
     parser.add_argument(
         "--concurrency",
@@ -178,6 +214,7 @@ def main():
     _default_models = {
         "openai": "gpt-5-mini",
         "cerebras": "qwen-3-235b-a22b-instruct-2507",
+        "gemini": "gemini-3.1-flash-lite-preview",
     }
     model_name = args.model or _default_models.get(args.provider, cfg.model.name)
 
@@ -216,6 +253,24 @@ def main():
             print(f"  TPM limit: {args.tpm_limit:,}, RPM limit: {args.rpm_limit:,}")
             api_func = _build_cerebras_api_func(model_name, tpm_limit=args.tpm_limit, rpm_limit=args.rpm_limit)
             print(f"Using async Cerebras extraction with concurrency={args.concurrency}")
+            raw_triples = asyncio.run(
+                extract_triples_api_async(
+                    articles,
+                    text_column=text_col,
+                    id_column=None,
+                    api_func_async=api_func,
+                    concurrency=args.concurrency,
+                    max_retries=args.max_retries,
+                    base_retry_seconds=args.base_retry_seconds,
+                    progress_path=str(progress_path),
+                    save_every=args.save_every,
+                )
+            )
+        elif args.provider == "gemini":
+            print(f"\nConfiguring Gemini extractor: {model_name}")
+            print(f"  TPM limit: {args.tpm_limit:,}, RPM limit: {args.rpm_limit:,}")
+            api_func = _build_gemini_api_func(model_name, tpm_limit=args.tpm_limit, rpm_limit=args.rpm_limit)
+            print(f"Using async Gemini extraction with concurrency={args.concurrency}")
             raw_triples = asyncio.run(
                 extract_triples_api_async(
                     articles,
