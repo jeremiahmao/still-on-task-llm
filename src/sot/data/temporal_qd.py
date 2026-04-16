@@ -50,17 +50,29 @@ Post-cutoff context:
 
 Question:"""
 
-DECOMP_PROMPT = """You are designing retrieval sub-queries for a dense vector search system (BGE-M3).
+DECOMP_PROMPT = """You are generating retrieval passages for a dense vector search system (BGE-M3) to retrieve news articles.
 
-Given a question and 3 evidence articles from {period_label}, write 2-4 sub-queries such that each sub-query, when embedded and searched over a corpus of news articles, would retrieve at least one of the evidence articles below.
+BGE-M3 retrieves better when the query looks like the target document itself. Instead of writing questions, write 2-4 hypothetical article SNIPPETS — short declarative sentences that look like they could appear verbatim inside a relevant news article. This is the HyDE pattern (Gao et al. 2022, arXiv:2212.10496) and it substantially outperforms question-form queries on dense retrievers.
 
-Guidance (follow strictly — queries that miss these will fail retrieval):
-- Mention specific named entities, products, people, and company names that actually appear in the articles (e.g., "TSMC 5nm partnership", not "manufacturing strategy")
-- Include concrete numbers, dates, deal values, or quoted events when available
-- Use article-style keywords and phrasing — think of how a news headline or lede would read, not how a search engine query would read
-- Each sub-query should target a distinct article or a distinct fact within the evidence
-- For the {period_label} period, the sub-queries must describe facts/events that existed in that period — do not leak information from the other period
-- Return ONLY a JSON object of the form: {{"subqueries": [...]}}
+Each snippet must:
+- Be a DECLARATIVE sentence (not a question), roughly 20-40 words long
+- Sound like a sentence from an actual news article — a headline or lede — NOT a search query
+- Contain SPECIFIC named entities (company names, people, products, places) that appear in the evidence
+- Contain concrete numbers, dates, deal values, or named events when available
+- Cover a DIFFERENT facet or sub-fact of the question (no near-duplicates)
+- Describe only facts/events from the {period_label} time window — do NOT reference facts from the other period
+- Read like a sentence you might plausibly see in one of the evidence articles
+
+Entity preservation is critical — prefer "TSMC 5nm Arizona fab expansion announced for 2024" over "manufacturing strategy". Abstract phrasing fails dense retrieval.
+
+Return ONLY a JSON object of the form: {{"subqueries": ["snippet 1", "snippet 2", ...]}}
+
+Example for question "How has TSMC's geographic strategy evolved?" in the post-2022 period:
+{{"subqueries": [
+  "TSMC announced a $40 billion expansion of its Arizona fab complex for 3nm and 2nm production, backed by U.S. CHIPS Act incentives.",
+  "Taiwan Semiconductor Manufacturing Company broke ground on its Kumamoto Japan facility in 2022, targeting automotive chips for Sony and Denso.",
+  "TSMC's Phoenix Arizona site faced construction delays in 2023, pushing 4nm mass production from 2024 to 2025."
+]}}
 
 Time period: {period_label}
 Entity/topic: {entity}
