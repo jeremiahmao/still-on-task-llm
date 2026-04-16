@@ -69,7 +69,7 @@ tickers:
 
 cutoff_date: "2022-01-01"
 subsample_pre_cutoff: 50000
-subsample_post_cutoff: null  # Use all for triple extraction
+subsample_post_cutoff: 15000
 
 # Verified column names from actual CSV
 date_column: "Date"

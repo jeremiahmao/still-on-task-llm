@@ -44,7 +44,11 @@ Rules:
 2. Use the company's common name as the subject (e.g., "Nvidia" not "NVDA").
 3. For financial figures, include currency and period (e.g., "$60.9 billion for FY2024").
 4. Each triple must be independently verifiable from the article text.
-5. If no triples can be extracted, return an empty list [].
+5. DO NOT invent relation types. Only use relations from the list above. If a fact doesn't fit a listed relation, skip it.
+6. For acquisitions: the subject is always the ACQUIRER when using "acquisition" (subject bought object), and the subject is always the ACQUIRED party when using "acquired_by" (subject was bought by object). Never emit both directions for the same deal.
+7. Do not emit the same (subject, relation, object) triple more than once per article.
+8. "revenue", "net_income", etc. must be actual reported financial figures — not deal prices, margins, or projections unless explicitly stated as such.
+9. If no triples can be extracted, return an empty list [].
 
 Example output:
 [

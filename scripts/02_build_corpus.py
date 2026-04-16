@@ -80,6 +80,13 @@ def main():
         pre = subsample_stratified(pre, fnspid_cfg.ticker_column, n, seed=cfg.seed)
         print(f"Subsampled: {len(pre)} articles")
 
+    # Subsample post-cutoff
+    n_post = fnspid_cfg.get("subsample_post_cutoff", None)
+    if n_post and n_post < len(post):
+        print(f"\nSubsampling post-cutoff to {n_post} (stratified by ticker + year)...")
+        post = subsample_stratified(post, fnspid_cfg.ticker_column, n_post, seed=cfg.seed)
+        print(f"Subsampled: {len(post)} articles")
+
     # Save
     corpus_dir = data_root / "fnspid" / "processed"
     corpus_dir.mkdir(parents=True, exist_ok=True)
