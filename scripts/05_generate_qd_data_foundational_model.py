@@ -422,18 +422,33 @@ def main():
         print(f"Loading cached paired examples from {paired_examples_path}")
         paired_examples = load_json(paired_examples_path)
     else:
-        print("\nLoading retrieval encoder and FAISS index...")
+        print("\nLoading retrieval encoder and FAISS indices (pre + post)...")
         encoder = Encoder(faiss_cfg.encoder)
-        faiss_index = load_index(index_path)
+        faiss_index_pre = load_index(index_path)
         # FAISS index contains chunk embeddings. chunk_to_article.npy maps
-        # each chunk index -> its source article index. Use THAT as doc_ids
-        # so recall matches against article-level gold IDs correctly.
-        chunk_to_article_path = data_root / "fnspid" / "index" / f"chunk_to_article{suffix}.npy"
-        if chunk_to_article_path.exists():
-            doc_ids = np.load(chunk_to_article_path).tolist()
+        # each chunk index -> its source article index.
+        chunk_to_article_pre_path = data_root / "fnspid" / "index" / f"chunk_to_article{suffix}.npy"
+        if chunk_to_article_pre_path.exists():
+            doc_ids_pre = np.load(chunk_to_article_pre_path).tolist()
         else:
-            doc_ids = np.load(doc_ids_path).tolist()
+            doc_ids_pre = np.load(doc_ids_path).tolist()
+
+        # Load post-cutoff index + mapping for scoring post decompositions.
+        post_index_path = data_root / "fnspid" / "index" / f"corpus_post{suffix}.faiss"
+        post_chunk_path = data_root / "fnspid" / "index" / f"chunk_to_article_post{suffix}.npy"
+        if post_index_path.exists() and post_chunk_path.exists():
+            faiss_index_post = load_index(post_index_path)
+            doc_ids_post = np.load(post_chunk_path).tolist()
+        else:
+            print(f"WARN: post-cutoff index not found at {post_index_path}; post_recall will be 0.")
+            faiss_index_post = None
+            doc_ids_post = []
+
         corpus_embeddings = np.load(embeddings_path) if args.debug and embeddings_path.exists() else None
+
+        # Back-compat aliases (earlier code in this file references these names).
+        faiss_index = faiss_index_pre
+        doc_ids = doc_ids_pre
 
         model = None
         tokenizer = None
@@ -511,20 +526,24 @@ def main():
                 pre_recall = score_decomposition_recall(
                     pre_decomp,
                     encoder,
-                    faiss_index,
-                    doc_ids,
+                    faiss_index_pre,
+                    doc_ids_pre,
                     pre_gold_articles,
                     corpus_embeddings=corpus_embeddings,
                     nprobe=faiss_cfg.nprobe,
                 )
-                post_recall = score_decomposition_recall(
-                    post_decomp,
-                    encoder,
-                    faiss_index,
-                    doc_ids,
-                    post_gold_articles,
-                    corpus_embeddings=corpus_embeddings,
-                    nprobe=faiss_cfg.nprobe,
+                post_recall = (
+                    score_decomposition_recall(
+                        post_decomp,
+                        encoder,
+                        faiss_index_post,
+                        doc_ids_post,
+                        post_gold_articles,
+                        corpus_embeddings=None,
+                        nprobe=faiss_cfg.nprobe,
+                    )
+                    if faiss_index_post is not None
+                    else 0.0
                 )
                 contrast_score = decomposition_contrast_score(pre_decomp, post_decomp)
 
@@ -589,20 +608,24 @@ def main():
                 pre_recall = score_decomposition_recall(
                     pre_decomp,
                     encoder,
-                    faiss_index,
-                    doc_ids,
+                    faiss_index_pre,
+                    doc_ids_pre,
                     pre_gold_articles,
                     corpus_embeddings=corpus_embeddings,
                     nprobe=faiss_cfg.nprobe,
                 )
-                post_recall = score_decomposition_recall(
-                    post_decomp,
-                    encoder,
-                    faiss_index,
-                    doc_ids,
-                    post_gold_articles,
-                    corpus_embeddings=corpus_embeddings,
-                    nprobe=faiss_cfg.nprobe,
+                post_recall = (
+                    score_decomposition_recall(
+                        post_decomp,
+                        encoder,
+                        faiss_index_post,
+                        doc_ids_post,
+                        post_gold_articles,
+                        corpus_embeddings=None,
+                        nprobe=faiss_cfg.nprobe,
+                    )
+                    if faiss_index_post is not None
+                    else 0.0
                 )
                 contrast_score = decomposition_contrast_score(pre_decomp, post_decomp)
 
@@ -673,21 +696,24 @@ def main():
                     pre_recall = score_decomposition_recall(
                         pre_decomp,
                         encoder,
-                        faiss_index,
-                        doc_ids,
+                        faiss_index_pre,
+                        doc_ids_pre,
                         pre_gold_articles,
                         corpus_embeddings=corpus_embeddings,
                         nprobe=faiss_cfg.nprobe,
                     )
-                    post_recall = score_decomposition_recall(
-                        post_decomp,
-                        encoder,
-                        faiss_index,
-                        doc_ids,
-                        post_gold_articles,
-                        corpus_embeddings=corpus_embeddings,
-                        nprobe=faiss_cfg.nprobe,
-                    )
+                    if faiss_index_post is not None:
+                        post_recall = score_decomposition_recall(
+                            post_decomp,
+                            encoder,
+                            faiss_index_post,
+                            doc_ids_post,
+                            post_gold_articles,
+                            corpus_embeddings=None,
+                            nprobe=faiss_cfg.nprobe,
+                        )
+                    else:
+                        post_recall = 0.0
                     contrast_score = decomposition_contrast_score(pre_decomp, post_decomp)
 
                     if (not args.debug) and (pre_recall < args.min_recall or post_recall < args.min_recall):
