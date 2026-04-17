@@ -33,17 +33,18 @@ def main():
     data_root = Path(cfg.paths.data_root)
     checkpoint_root = Path(cfg.paths.checkpoint_root)
 
-    # Load QD training data — debug uses qd_temporal/debug/, prod uses qd_data_root
+    # Load QD training data — both debug and prod use qd_temporal_data_root
+    # (the `qd_data_root` legacy config path is stale; script 05 writes temporal data).
     if args.debug:
         suffix = fnspid_cfg.debug.output_suffix.lstrip("_")
         qd_data_root = Path(cfg.paths.qd_temporal_data_root) / suffix
     else:
-        qd_data_root = Path(cfg.paths.qd_data_root)
+        qd_data_root = Path(cfg.paths.qd_temporal_data_root)
     train_path = qd_data_root / "train.json"
     test_path = qd_data_root / "test.json"
 
     if not train_path.exists():
-        print(f"ERROR: {train_path} not found. Run 05_generate_qd_data.py first.")
+        print(f"ERROR: {train_path} not found. Run 05_generate_qd_data_foundational_model.py first.")
         sys.exit(1)
 
     with open(train_path) as f:
