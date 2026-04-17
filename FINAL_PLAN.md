@@ -16,14 +16,17 @@ on pre-cutoff FNSPID data, then updated with post-cutoff fact triples.
 
 ---
 
-## Methods (4 total)
+## Methods (5 total)
 
 | Method | Type | Description |
 |--------|------|-------------|
 | No update | Lower bound | Task-tuned model, zero knowledge injection |
 | Naive SFT | Baseline | SFT on fact QA pairs (KL-reg with lambda=0) |
 | KL-reg SFT | Baseline | SFT + lambda * D_KL(pi_task \|\| pi_theta), lambda=0.1 |
-| COPR-adapted | Policy-space | Advantage-weighted fitting + 5% task replay |
+| COPR (paper-faithful) | Baseline | Advantage-weighted MSE fitting + SFT anchor on gold + 5% task replay. Follows Zhang et al. 2025 exactly. |
+| **COPR + gold injection** | **Ours (novel)** | Paper-faithful COPR with the gold answer injected into the candidate set before ranking. Addresses "all self-samples miss gold" failure mode specific to knowledge injection. |
+
+**Note on earlier iteration:** An initial implementation used KL divergence instead of the paper's MSE and omitted the SFT anchor term. Corrected before final results. The comparison is between paper-faithful COPR and our gold-injection variant.
 
 **Dropped from interim report:**
 - **AlphaEdit** — advisor feedback: edits are fragile under prior fine-tuning;

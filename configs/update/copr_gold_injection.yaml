@@ -1,0 +1,20 @@
+method: copr_gold_injection
+# Inherits all paper-faithful COPR knobs; adds gold-answer injection into candidates.
+K: 4  # Gold injection guarantees one correct candidate, so fewer self-samples needed
+beta: 0.1
+replay_pct: 0.05
+partial_match_threshold: 0.5
+max_new_tokens: 128
+
+# Paper SFT anchor (still applied — gold injection doesn't replace it)
+gold_nll_alpha: 0.25
+gold_nll_gate_threshold: 0.5
+always_apply_gold_nll: false
+
+training:
+  lr: 1.0e-5
+  epochs: 3
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  max_seq_length: 512
+  bf16: true

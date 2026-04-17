@@ -1,14 +1,20 @@
-"""COPR-adapted: advantage-weighted policy fitting with factual correctness rankings.
+"""COPR-adapted: paper-faithful implementation for knowledge injection.
 
-This is the novel contribution. COPR (Zhang et al., ACL Findings 2025) was designed for
-continual preference alignment using human-ranked responses. We adapt it for factual
-knowledge injection by:
-  1. Replacing human preference rankings with factual correctness rankings
-  2. Using a 5% task replay buffer for regularization
-  3. Training with the COPR fitting + regularization objectives
+COPR (Zhang et al., ACL Findings 2025) was designed for continual preference alignment
+using human-ranked responses. We adapt it for factual knowledge injection by:
+  1. Replacing human preference rankings with factual correctness rankings (EM/F1)
+  2. Using a 5% task replay buffer for regularization (KL against task-optimal)
+  3. Training with the COPR objective: MSE fit loss + SFT anchor on top candidate
 
-The adaptation is a testable heuristic — factual answers aren't naturally ordered like
-preferences, and the ranking may behave unevenly across relation types.
+This implementation follows the paper exactly:
+  - Fit loss is MSE `mean((log_P_theta - log_P*)^2)`, NOT KL divergence.
+  - An NLL anchor on the top-ranked response (typically the gold answer when
+    available) is added with weight `gold_nll_alpha`. This is the SFT floor the
+    paper specifies to prevent fit-loss collapse.
+
+The gold-injection variant (see copr_gold_injection.py) extends this with an
+additional candidate-set augmentation — that is our novel knowledge-injection
+contribution, not in the paper.
 """
 
 import copy
@@ -54,6 +60,10 @@ class COPRUpdate(UpdateMethod):
         lr = cfg.get("training", {}).get("lr", 1e-5) if cfg else 1e-5
         epochs = cfg.get("training", {}).get("epochs", 3) if cfg else 3
         cache_path = cfg.get("cache_path", None) if cfg else None
+        # Paper-faithful SFT anchor on the top-ranked response
+        gold_nll_alpha = cfg.get("gold_nll_alpha", 0.25) if cfg else 0.25
+        gold_nll_gate_threshold = cfg.get("gold_nll_gate_threshold", 0.5) if cfg else 0.5
+        always_apply_gold_nll = cfg.get("always_apply_gold_nll", False) if cfg else False
 
         # Create frozen reference model for P* computation and regularization
         ref_model = copy.deepcopy(model)
@@ -93,8 +103,10 @@ class COPRUpdate(UpdateMethod):
 
         for epoch in range(epochs):
             total_fit_loss = 0.0
+            total_gold_nll = 0.0
             total_reg_loss = 0.0
             n_fit = 0
+            n_gold = 0
             n_reg = 0
 
             # Interleave fit and reg batches
@@ -102,14 +114,34 @@ class COPRUpdate(UpdateMethod):
             replay_iter = iter(replay_buffer * max(1, len(fit_data) // max(len(replay_buffer), 1)))
 
             for item in tqdm(fit_data, desc=f"COPR epoch {epoch + 1}/{epochs}"):
-                # --- Fit loss: KL(P_theta || P*) over ranked responses ---
+                # --- Fit loss: MSE on normalized log-probs vs log P* ---
                 fit_loss = self._compute_fit_loss(model, tokenizer, item)
                 total_fit_loss += fit_loss.item()
                 n_fit += 1
-
-                # Backward fit_loss first to free its computation graph (K=8
-                # responses through a 3B model retains several GB of activations).
                 fit_loss.backward()
+
+                # --- Gold NLL anchor (paper's SFT floor) ---
+                # Fire when self-samples are all weak, unless config overrides.
+                apply_anchor = always_apply_gold_nll
+                if not apply_anchor:
+                    # Look at sample quality (excluding the gold itself if present)
+                    non_gold = [
+                        r for r in item["ranked_responses"] if r != item["gold_answer"]
+                    ]
+                    max_f1 = (
+                        max(_token_f1(r, item["gold_answer"]) for r in non_gold)
+                        if non_gold
+                        else 0.0
+                    )
+                    apply_anchor = max_f1 < gold_nll_gate_threshold
+
+                if apply_anchor and gold_nll_alpha > 0:
+                    gold_nll = self._compute_gold_nll_loss(
+                        model, tokenizer, item["question"], item["gold_answer"]
+                    )
+                    (gold_nll_alpha * gold_nll).backward()
+                    total_gold_nll += gold_nll.item()
+                    n_gold += 1
 
                 # --- Reg loss: KL on replay buffer example ---
                 try:
@@ -125,8 +157,13 @@ class COPRUpdate(UpdateMethod):
                 optimizer.zero_grad()
 
             avg_fit = total_fit_loss / max(n_fit, 1)
+            avg_gold = total_gold_nll / max(n_gold, 1) if n_gold else 0.0
             avg_reg = total_reg_loss / max(n_reg, 1)
-            print(f"  Epoch {epoch + 1}: fit_loss={avg_fit:.4f}, reg_loss={avg_reg:.4f}")
+            print(
+                f"  Epoch {epoch + 1}: fit_mse={avg_fit:.4f}, "
+                f"gold_nll={avg_gold:.4f} (fired on {n_gold}/{n_fit}), "
+                f"reg_loss={avg_reg:.4f}"
+            )
 
         # Clean up
         del ref_model
@@ -270,23 +307,70 @@ class COPRUpdate(UpdateMethod):
         tokenizer: AutoTokenizer,
         item: dict,
     ) -> torch.Tensor:
-        """Compute L_fit = KL(P_theta || P*) over the K ranked responses.
+        """Compute L_fit = mean_j (log P_theta(y_j|x) - log P*(y_j|x))^2.
 
-        P_theta(y_j|x) = exp(log π_θ(y_j|x)) / Σ_j' exp(log π_θ(y_j'|x))
+        Paper-faithful MSE: uniform weight across all K candidates. KL would
+        under-weight low-probability responses that happen to be correct.
         """
         question = item["question"]
         ranked = item["ranked_responses"]
-        log_p_star = torch.tensor(item["log_p_star"], device=next(model.parameters()).device, dtype=torch.float32)
+        log_p_star = torch.tensor(
+            item["log_p_star"],
+            device=next(model.parameters()).device,
+            dtype=torch.float32,
+        )
 
         # Batch all K responses into one forward pass with gradients enabled
         current_log_probs = _compute_seq_log_probs_batched(model, tokenizer, question, ranked)
         current_log_probs = torch.stack(current_log_probs)
 
         log_p_theta = current_log_probs - torch.logsumexp(current_log_probs, dim=0)
-        p_theta = log_p_theta.exp()
-        kl = (p_theta * (log_p_theta - log_p_star)).sum()
+        mse = ((log_p_theta - log_p_star) ** 2).mean()
+        return mse
 
-        return kl
+    def _compute_gold_nll_loss(
+        self,
+        model: PreTrainedModel,
+        tokenizer: AutoTokenizer,
+        question: str,
+        gold_answer: str,
+    ) -> torch.Tensor:
+        """NLL of the gold answer tokens conditional on the question prompt.
+
+        This is the SFT anchor term from the COPR paper — prevents fit_loss
+        from collapsing when the candidate set is weak.
+        """
+        chat = [
+            {"role": "user", "content": question},
+            {"role": "assistant", "content": gold_answer},
+        ]
+        full = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=False)
+        prompt_text = tokenizer.apply_chat_template(
+            [{"role": "user", "content": question}],
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+        prompt_len = len(tokenizer(prompt_text, add_special_tokens=False)["input_ids"])
+
+        inputs = tokenizer(full, return_tensors="pt", truncation=True, max_length=512)
+        inputs = {k: v.to(next(model.parameters()).device) for k, v in inputs.items()}
+
+        outputs = model(**inputs)
+        logits = outputs.logits[:, :-1, :]
+        labels = inputs["input_ids"][:, 1:]
+        log_probs = F.log_softmax(logits, dim=-1)
+        token_log_probs = log_probs.gather(2, labels.unsqueeze(-1)).squeeze(-1)
+
+        attn_mask = inputs["attention_mask"][:, 1:]
+        answer_mask = attn_mask.bool().clone()
+        if prompt_len - 1 > 0:
+            answer_mask[:, : max(0, prompt_len - 1)] = False
+
+        if not answer_mask.any():
+            return torch.tensor(0.0, device=token_log_probs.device, requires_grad=True)
+
+        nll = -(token_log_probs * answer_mask).sum() / answer_mask.sum().clamp(min=1)
+        return nll
 
     def _compute_reg_loss(
         self,

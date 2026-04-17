@@ -15,7 +15,7 @@ def _torchrun(script, *args):
         return ["torchrun", f"--nproc_per_node={nproc}", script] + list(args)
     return [sys.executable, script] + list(args)
 
-METHODS = ["naive_sft", "kl_reg_sft", "copr", "copr_v2"]
+METHODS = ["naive_sft", "kl_reg_sft", "copr", "copr_gold_injection"]
 SCALE = 3000
 DEBUG_SCALE = 50
 TASK = "qd"
@@ -24,7 +24,7 @@ CONFIG_MAP = {
     "naive_sft": "configs/update/naive_sft.yaml",
     "kl_reg_sft": "configs/update/kl_reg_sft.yaml",
     "copr": "configs/update/copr.yaml",
-    "copr_v2": "configs/update/copr_v2.yaml",
+    "copr_gold_injection": "configs/update/copr_gold_injection.yaml",
 }
 
 
