@@ -34,6 +34,12 @@ def main():
         help="Comma-separated: preservation,absorption,forgetting,locality",
     )
     parser.add_argument("--debug", action="store_true", help="Use debug data paths")
+    parser.add_argument(
+        "--locality-subsample",
+        type=int,
+        default=None,
+        help="Randomly subsample locality facts to N items (stratified). Speeds up eval massively.",
+    )
     args = parser.parse_args()
 
     cfg = load_config()
@@ -164,6 +170,22 @@ def main():
         if locality_path.exists():
             with open(locality_path) as f:
                 locality_facts = json.load(f)
+            # Optional: stratified subsample for speed. Keeps same strata ratios.
+            if args.locality_subsample is not None and args.locality_subsample < len(locality_facts):
+                import random
+                from collections import defaultdict
+                rng = random.Random(cfg.seed)
+                by_stratum = defaultdict(list)
+                for f in locality_facts:
+                    by_stratum[f.get("stratum", "unknown")].append(f)
+                n_total = len(locality_facts)
+                sampled = []
+                for stratum, items in by_stratum.items():
+                    share = max(1, int(round(args.locality_subsample * len(items) / n_total)))
+                    sampled.extend(rng.sample(items, min(share, len(items))))
+                rng.shuffle(sampled)
+                locality_facts = sampled
+                print(f"  Subsampled locality facts to {len(locality_facts)} items (stratified)")
             loc = evaluate_locality(model, tokenizer, locality_facts)
             results["locality"] = loc
             for stratum, stats in loc.items():
