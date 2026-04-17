@@ -1,0 +1,19 @@
+method: copr_v2
+K: 4  # Candidates per fact (gold injection guarantees at least 1 correct; fewer self-samples needed)
+beta: 0.1  # Temperature for optimal policy
+replay_pct: 0.05  # 5% task data replay (can bump to 0.10 if preservation drops)
+partial_match_threshold: 0.5
+max_new_tokens: 128
+
+# v2-specific knobs
+gold_nll_alpha: 0.25  # Weight on the NLL-of-gold anchor loss (COPR paper's SFT term)
+gold_nll_gate_threshold: 0.5  # Apply anchor only if max sampled F1 < this (0 = always)
+always_apply_gold_nll: false  # If true, anchor fires every step regardless of sample quality
+
+training:
+  lr: 1.0e-5
+  epochs: 3
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  max_seq_length: 512
+  bf16: true

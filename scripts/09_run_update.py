@@ -14,6 +14,7 @@ from sot.data.triple_render import render_triple
 from sot.models.base import load_model
 from sot.models.lora import apply_lora, get_lora_config, load_lora, merge_lora
 from sot.update.copr import COPRUpdate
+from sot.update.copr_v2 import COPRv2Update
 from sot.update.kl_reg_sft import KLRegSFTUpdate
 from sot.update.naive_sft import NaiveSFTUpdate
 from sot.utils.config import load_config, save_config
@@ -25,6 +26,7 @@ METHODS = {
     "naive_sft": NaiveSFTUpdate,
     "kl_reg_sft": KLRegSFTUpdate,
     "copr": COPRUpdate,
+    "copr_v2": COPRv2Update,
 }
 
 
