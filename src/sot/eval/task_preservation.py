@@ -52,9 +52,19 @@ def evaluate_task_preservation(
     # Build all prompts upfront
     prompts = []
     for item in test_data:
+        # Examples may have a top-level "question" OR nested in "messages" (chat format).
+        question = item.get("question")
+        if question is None:
+            msgs = item.get("messages", [])
+            for msg in msgs:
+                if msg.get("role") == "user":
+                    question = msg.get("content")
+                    break
+        if not question:
+            continue
         chat = [
             {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": item["question"]},
+            {"role": "user", "content": question},
         ]
         prompts.append(
             tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
@@ -96,13 +106,21 @@ def evaluate_task_preservation(
     for item, response in zip(test_data, all_raw_responses):
         gold = set(item.get("gold_articles", []))
 
+        # Extract question (same fallback as above)
+        item_question = item.get("question")
+        if item_question is None:
+            for msg in item.get("messages", []):
+                if msg.get("role") == "user":
+                    item_question = msg.get("content")
+                    break
+
         sub_queries = [
             line.lstrip("- ").strip()
             for line in response.split("\n")
             if line.strip() and len(line.strip()) > 5
         ]
-        if not sub_queries:
-            sub_queries = [item["question"]]
+        if not sub_queries and item_question:
+            sub_queries = [item_question]
 
         sq_embeddings = encoder.encode(sub_queries, show_progress=False)
         scores, indices = search(faiss_index, sq_embeddings, k=k, nprobe=nprobe)
