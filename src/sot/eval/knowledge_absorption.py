@@ -1,6 +1,7 @@
 """Knowledge absorption: accuracy on fact-probe questions."""
 
 import torch
+from tqdm import tqdm
 from transformers import AutoTokenizer, PreTrainedModel
 
 
@@ -31,7 +32,8 @@ def evaluate_knowledge_absorption(
 
     # Generate in batches (tokenizer already uses left-padding, correct for generation)
     all_responses = []
-    for i in range(0, len(prompts), batch_size):
+    n_batches = (len(prompts) + batch_size - 1) // batch_size
+    for i in tqdm(range(0, len(prompts), batch_size), total=n_batches, desc="Absorption eval"):
         batch_prompts = prompts[i : i + batch_size]
         inputs = tokenizer(
             batch_prompts,

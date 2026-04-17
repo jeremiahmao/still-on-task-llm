@@ -3,6 +3,7 @@
 import re
 
 import torch
+from tqdm import tqdm
 from transformers import AutoTokenizer, PreTrainedModel
 
 
@@ -43,7 +44,8 @@ def evaluate_generic_forgetting(
 
     # Generate in batches (small batch_size — FinQA prompts can be ~1K tokens)
     all_responses = []
-    for i in range(0, len(prompts), batch_size):
+    n_batches = (len(prompts) + batch_size - 1) // batch_size
+    for i in tqdm(range(0, len(prompts), batch_size), total=n_batches, desc="FinQA eval"):
         batch_prompts = prompts[i : i + batch_size]
         inputs = tokenizer(
             batch_prompts,

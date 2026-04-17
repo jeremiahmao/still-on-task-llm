@@ -5,6 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import torch
+from tqdm import tqdm
 from transformers import AutoTokenizer, PreTrainedModel
 
 
@@ -40,7 +41,9 @@ def evaluate_locality(
 
     # Generate in batches
     all_responses = []
-    for i in range(0, len(prompts), batch_size):
+    n_batches = (len(prompts) + batch_size - 1) // batch_size
+    pbar = tqdm(range(0, len(prompts), batch_size), total=n_batches, desc="Locality eval")
+    for i in pbar:
         batch_prompts = prompts[i : i + batch_size]
         inputs = tokenizer(
             batch_prompts,

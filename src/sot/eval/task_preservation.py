@@ -1,6 +1,7 @@
 """Task preservation: Recall@10 on held-out query decomposition test set."""
 
 import torch
+from tqdm import tqdm
 from transformers import AutoTokenizer, PreTrainedModel
 
 from sot.retrieval.encoder import Encoder
@@ -72,7 +73,8 @@ def evaluate_task_preservation(
 
     # Generate decompositions in batches
     all_raw_responses = []
-    for i in range(0, len(prompts), batch_size):
+    n_batches = (len(prompts) + batch_size - 1) // batch_size
+    for i in tqdm(range(0, len(prompts), batch_size), total=n_batches, desc="Preservation eval"):
         batch_prompts = prompts[i : i + batch_size]
         inputs = tokenizer(
             batch_prompts,
