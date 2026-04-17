@@ -139,14 +139,28 @@ def main():
                 for t in raw_triples:
                     triple = FactTriple(**t)
                     qa = render_triple(triple)
-                    fact_qa.append({"question": qa.question, "answer": qa.answer})
+                    fact_qa.append(
+                        {
+                            "question": qa.question,
+                            "answer": qa.answer,
+                            "phrasings": qa.phrasings,
+                        }
+                    )
                 absorb = evaluate_knowledge_absorption(model, tokenizer, fact_qa)
                 results["knowledge_absorption"] = {
                     "exact_match": absorb["exact_match"],
                     "mean_f1": absorb["mean_f1"],
+                    "contains": absorb.get("contains", 0.0),
+                    "fact_mean_f1": absorb.get("fact_mean_f1", absorb["mean_f1"]),
+                    "fact_worst_f1": absorb.get("fact_worst_f1", absorb["mean_f1"]),
+                    "contains_any_phrasing": absorb.get("contains_any_phrasing", 0.0),
+                    "contains_all_phrasings": absorb.get("contains_all_phrasings", 0.0),
+                    "n_facts": absorb.get("n_facts", 0),
+                    "n_probes": absorb.get("n_probes", 0),
                 }
-                print(f"  Exact match: {absorb['exact_match']:.4f}")
-                print(f"  Mean F1: {absorb['mean_f1']:.4f}")
+                print(f"  Probe-level: EM={absorb['exact_match']:.4f}  contains={absorb.get('contains', 0):.4f}  F1={absorb['mean_f1']:.4f}")
+                print(f"  Per-fact F1: mean={absorb.get('fact_mean_f1', 0):.4f}  worst={absorb.get('fact_worst_f1', 0):.4f}")
+                print(f"  Contains@any phrasing: {absorb.get('contains_any_phrasing', 0):.4f}  Contains@all: {absorb.get('contains_all_phrasings', 0):.4f}")
 
     # Generic forgetting (FinQA)
     if "forgetting" in metrics_to_run:

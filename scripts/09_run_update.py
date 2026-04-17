@@ -64,6 +64,7 @@ def main():
             {
                 "question": qa.question,
                 "answer": qa.answer,
+                "phrasings": qa.phrasings,
                 "triple": {
                     "subject": triple.subject,
                     "relation": triple.relation,

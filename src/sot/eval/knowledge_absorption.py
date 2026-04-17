@@ -1,8 +1,44 @@
-"""Knowledge absorption: accuracy on fact-probe questions."""
+"""Knowledge absorption: accuracy on fact-probe questions.
+
+For paraphrase-robustness: if each fact_qa has multiple phrasings (cloze prompts
+built from each phrasing), the model is probed with ALL of them and absorption
+scores are reported per-phrasing plus an aggregate (mean, min, max). This tests
+whether injection methods produce knowledge that's robust to question phrasing.
+"""
 
 import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, PreTrainedModel
+
+
+def _cloze_from_phrasing(phrasing: str, obj: str) -> str | None:
+    """Build a cloze prompt from a phrasing by masking the object span.
+    Returns None if the object doesn't appear in the phrasing.
+    """
+    obj_norm = obj.strip()
+    if not obj_norm:
+        return None
+    idx = phrasing.lower().find(obj_norm.lower())
+    if idx < 0:
+        return None
+    prefix = phrasing[:idx].rstrip()
+    if not prefix:
+        return None
+    return f"Complete this statement: {prefix}"
+
+
+def _build_prompts_for_qa(qa: dict) -> list[str]:
+    """Return all probe prompts for a fact_qa: the primary question plus any
+    additional cloze prompts derived from alternate phrasings.
+    """
+    prompts = [qa["question"]]
+    obj = qa.get("answer", "")
+    primary = qa["question"]
+    for phrasing in qa.get("phrasings", []) or []:
+        cloze = _cloze_from_phrasing(phrasing, obj)
+        if cloze and cloze != primary and cloze not in prompts:
+            prompts.append(cloze)
+    return prompts
 
 
 def evaluate_knowledge_absorption(
@@ -14,21 +50,27 @@ def evaluate_knowledge_absorption(
 ) -> dict:
     """Evaluate whether the model learned the injected facts.
 
-    For each fact-probe question, generates a response and checks against
-    the gold answer using exact match and token F1.
+    For each fact, generates responses to all available phrasings and scores
+    each against the gold answer using contains, exact match, and token F1.
 
-    Returns:
-        Dict with exact_match accuracy, mean_f1, and per-question results.
+    Returns aggregate stats plus per-phrasing breakdown for paraphrase robustness.
     """
     model.eval()
 
-    # Build all prompts upfront
-    prompts = []
-    for qa in fact_qa_pairs:
-        chat = [{"role": "user", "content": qa["question"]}]
-        prompts.append(
-            tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
-        )
+    # Flatten: one prompt per (fact, phrasing) pair
+    flat_prompts: list[str] = []
+    flat_meta: list[dict] = []  # (fact_idx, phrasing_idx, gold)
+    for fact_idx, qa in enumerate(fact_qa_pairs):
+        probe_questions = _build_prompts_for_qa(qa)
+        for phrasing_idx, q in enumerate(probe_questions):
+            chat = [{"role": "user", "content": q}]
+            flat_prompts.append(
+                tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+            )
+            flat_meta.append(
+                {"fact_idx": fact_idx, "phrasing_idx": phrasing_idx, "question": q, "gold": qa.get("answer", "")}
+            )
+    prompts = flat_prompts
 
     # Generate in batches (tokenizer already uses left-padding, correct for generation)
     all_responses = []
@@ -60,27 +102,59 @@ def evaluate_knowledge_absorption(
             ).strip()
             all_responses.append(response)
 
-    results = []
-    for qa, response in zip(fact_qa_pairs, all_responses):
-        gold = qa["answer"]
+    # Score each probe
+    per_probe: list[dict] = []
+    for meta, response in zip(flat_meta, all_responses):
+        gold = meta["gold"]
         exact = response.strip().lower() == gold.strip().lower()
+        contains = bool(gold.strip()) and gold.strip().lower() in response.strip().lower()
         f1 = _token_f1(response, gold)
-        results.append(
+        per_probe.append(
             {
-                "question": qa["question"],
+                "fact_idx": meta["fact_idx"],
+                "phrasing_idx": meta["phrasing_idx"],
+                "question": meta["question"],
                 "gold": gold,
                 "prediction": response,
                 "exact_match": exact,
+                "contains": contains,
                 "token_f1": f1,
             }
         )
 
-    n = len(results)
+    # Aggregate per-fact (mean / min / max across phrasings)
+    from collections import defaultdict
+    by_fact: dict[int, list[dict]] = defaultdict(list)
+    for p in per_probe:
+        by_fact[p["fact_idx"]].append(p)
+
+    fact_f1_mean = []
+    fact_f1_min = []
+    fact_contains_any = []
+    fact_contains_all = []
+    for fact_idx, probes in by_fact.items():
+        f1s = [p["token_f1"] for p in probes]
+        contains = [p["contains"] for p in probes]
+        fact_f1_mean.append(sum(f1s) / max(len(f1s), 1))
+        fact_f1_min.append(min(f1s) if f1s else 0.0)
+        fact_contains_any.append(any(contains))
+        fact_contains_all.append(all(contains) if contains else False)
+
+    n_facts = len(by_fact)
+    n_probes = len(per_probe)
     return {
-        "exact_match": sum(r["exact_match"] for r in results) / max(n, 1),
-        "mean_f1": sum(r["token_f1"] for r in results) / max(n, 1),
-        "n_questions": n,
-        "per_question": results,
+        # Aggregate across all probes (probe-level)
+        "exact_match": sum(p["exact_match"] for p in per_probe) / max(n_probes, 1),
+        "mean_f1": sum(p["token_f1"] for p in per_probe) / max(n_probes, 1),
+        "contains": sum(p["contains"] for p in per_probe) / max(n_probes, 1),
+        # Paraphrase robustness (fact-level aggregates across phrasings)
+        "fact_mean_f1": sum(fact_f1_mean) / max(n_facts, 1),
+        "fact_worst_f1": sum(fact_f1_min) / max(n_facts, 1),
+        "contains_any_phrasing": sum(fact_contains_any) / max(n_facts, 1),
+        "contains_all_phrasings": sum(fact_contains_all) / max(n_facts, 1),
+        "n_facts": n_facts,
+        "n_probes": n_probes,
+        "per_probe": per_probe,
     }
 
 

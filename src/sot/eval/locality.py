@@ -73,26 +73,58 @@ def evaluate_locality(
     by_stratum: dict[str, list[dict]] = defaultdict(list)
     for fact, response in zip(untouched_facts, all_responses):
         stratum = fact.get("stratum", "unknown")
-        correct = response.strip().lower() == fact["answer"].strip().lower()
-        by_stratum[stratum].append({"correct": correct, "question": fact["question"]})
+        gold = fact["answer"]
+        exact = response.strip().lower() == gold.strip().lower()
+        contains = bool(gold.strip()) and gold.strip().lower() in response.strip().lower()
+        f1 = _token_f1(response, gold)
+        by_stratum[stratum].append(
+            {"exact": exact, "contains": contains, "f1": f1, "question": fact["question"]}
+        )
 
     results = {}
-    total_correct = 0
+    totals = {"exact": 0.0, "contains": 0.0, "f1": 0.0}
     total_n = 0
 
     for stratum, items in by_stratum.items():
         n = len(items)
-        acc = sum(i["correct"] for i in items) / max(n, 1)
-        results[stratum] = {"accuracy": acc, "n": n}
-        total_correct += sum(i["correct"] for i in items)
+        results[stratum] = {
+            "exact_match": sum(i["exact"] for i in items) / max(n, 1),
+            "contains": sum(i["contains"] for i in items) / max(n, 1),
+            "f1": sum(i["f1"] for i in items) / max(n, 1),
+            "n": n,
+            # Back-compat alias — "accuracy" == F1 under the new metric family
+            "accuracy": sum(i["f1"] for i in items) / max(n, 1),
+        }
+        totals["exact"] += sum(i["exact"] for i in items)
+        totals["contains"] += sum(i["contains"] for i in items)
+        totals["f1"] += sum(i["f1"] for i in items)
         total_n += n
 
     results["overall"] = {
-        "accuracy": total_correct / max(total_n, 1),
+        "exact_match": totals["exact"] / max(total_n, 1),
+        "contains": totals["contains"] / max(total_n, 1),
+        "f1": totals["f1"] / max(total_n, 1),
         "n": total_n,
+        "accuracy": totals["f1"] / max(total_n, 1),
     }
 
     return results
+
+
+def _token_f1(prediction: str, gold: str) -> float:
+    from collections import Counter
+
+    pred_tokens = prediction.lower().split()
+    gold_tokens = gold.lower().split()
+    if not pred_tokens or not gold_tokens:
+        return 0.0
+    common = Counter(pred_tokens) & Counter(gold_tokens)
+    num_common = sum(common.values())
+    if num_common == 0:
+        return 0.0
+    precision = num_common / len(pred_tokens)
+    recall = num_common / len(gold_tokens)
+    return 2 * precision * recall / (precision + recall)
 
 
 def prepare_locality_facts(
