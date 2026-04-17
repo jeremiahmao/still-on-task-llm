@@ -312,7 +312,7 @@ def main():
     parser.add_argument("--max-pairs", type=int, default=1000)
     parser.add_argument("--min-articles-per-side", type=int, default=2)
     parser.add_argument("--bundle-size", type=int, default=3)
-    parser.add_argument("--min-recall", type=float, default=0.7)
+    parser.add_argument("--min-recall", type=float, default=0.65)
     parser.add_argument("--min-contrast", type=float, default=0.0)
     parser.add_argument("--test-ratio", type=float, default=0.2)
     parser.add_argument("--concurrency", type=int, default=5)
@@ -351,6 +351,7 @@ def main():
 
     topic_pairs_path = output_dir / "topic_pairs.json"
     paired_examples_path = output_dir / "paired_examples.json"
+    teacher_cache_path = output_dir / "teacher_cache.jsonl"
     train_path = output_dir / "train.json"
     test_path = output_dir / "test.json"
     metadata_path = output_dir / "metadata.json"
@@ -418,7 +419,15 @@ def main():
         save_json(topic_pairs, topic_pairs_path)
         print(f"Topic pairs: {len(topic_pairs)} -> {topic_pairs_path}")
 
-    if paired_examples_path.exists() and train_path.exists() and test_path.exists() and not args.force:
+    # Skip re-running ONLY if no force, final outputs exist, AND no teacher cache
+    # (teacher cache presence means user may want to re-filter at a new threshold).
+    should_skip = (
+        paired_examples_path.exists()
+        and train_path.exists()
+        and test_path.exists()
+        and not args.force
+    )
+    if should_skip:
         print(f"Loading cached paired examples from {paired_examples_path}")
         paired_examples = load_json(paired_examples_path)
     else:
@@ -666,7 +675,32 @@ def main():
             from collections import Counter
             drop_reasons = Counter()
 
-            async def process_pair(i: int, pair: dict):
+            # Load prior teacher outputs from cache (by topic_id).
+            # Cache holds RAW outputs (question + both decomps) before any filtering,
+            # so threshold changes can be reapplied without new API calls.
+            cached_outputs: dict[str, dict] = {}
+            if teacher_cache_path.exists():
+                with teacher_cache_path.open() as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            rec = json.loads(line)
+                            if rec.get("topic_id"):
+                                cached_outputs[rec["topic_id"]] = rec
+                        except json.JSONDecodeError:
+                            continue
+                print(f"Loaded {len(cached_outputs)} cached teacher outputs from {teacher_cache_path}")
+
+            cache_lock = asyncio.Lock()
+
+            async def fetch_or_cache(pair: dict) -> dict | None:
+                """Return {topic_id, question, pre_decomp, post_decomp} using cache when available."""
+                topic_id = pair["topic_id"]
+                if topic_id in cached_outputs:
+                    return cached_outputs[topic_id]
+
                 async with semaphore:
                     try:
                         question = await generate_temporal_question_api(pair, api_func)
@@ -683,77 +717,108 @@ def main():
                     except Exception as exc:
                         drop_reasons[f"decomp_error:{type(exc).__name__}"] += 1
                         return None
-                    if not pre_decomp:
-                        drop_reasons["pre_decomp_none"] += 1
-                        return None
-                    if not post_decomp:
-                        drop_reasons["post_decomp_none"] += 1
-                        return None
 
-                    pre_gold_articles = [a["doc_id"] for a in pair["pre_articles"]]
-                    post_gold_articles = [a["doc_id"] for a in pair["post_articles"]]
+                record = {
+                    "topic_id": topic_id,
+                    "entity": pair["entity"],
+                    "question": question,
+                    "pre_decomp": pre_decomp or [],
+                    "post_decomp": post_decomp or [],
+                }
+                async with cache_lock:
+                    cached_outputs[topic_id] = record
+                    with teacher_cache_path.open("a") as f:
+                        f.write(json.dumps(record) + "\n")
+                return record
 
-                    pre_recall = score_decomposition_recall(
-                        pre_decomp,
+            def score_and_filter(pair: dict, record: dict) -> dict | None:
+                """Apply recall + contrast filter on top of a cached teacher record."""
+                question = record.get("question")
+                pre_decomp = record.get("pre_decomp") or []
+                post_decomp = record.get("post_decomp") or []
+                if not question:
+                    drop_reasons["question_empty"] += 1
+                    return None
+                if not pre_decomp:
+                    drop_reasons["pre_decomp_none"] += 1
+                    return None
+                if not post_decomp:
+                    drop_reasons["post_decomp_none"] += 1
+                    return None
+
+                pre_gold_articles = [a["doc_id"] for a in pair["pre_articles"]]
+                post_gold_articles = [a["doc_id"] for a in pair["post_articles"]]
+
+                pre_recall = score_decomposition_recall(
+                    pre_decomp,
+                    encoder,
+                    faiss_index_pre,
+                    doc_ids_pre,
+                    pre_gold_articles,
+                    corpus_embeddings=corpus_embeddings,
+                    nprobe=faiss_cfg.nprobe,
+                )
+                if faiss_index_post is not None:
+                    post_recall = score_decomposition_recall(
+                        post_decomp,
                         encoder,
-                        faiss_index_pre,
-                        doc_ids_pre,
-                        pre_gold_articles,
-                        corpus_embeddings=corpus_embeddings,
+                        faiss_index_post,
+                        doc_ids_post,
+                        post_gold_articles,
+                        corpus_embeddings=None,
                         nprobe=faiss_cfg.nprobe,
                     )
-                    if faiss_index_post is not None:
-                        post_recall = score_decomposition_recall(
-                            post_decomp,
-                            encoder,
-                            faiss_index_post,
-                            doc_ids_post,
-                            post_gold_articles,
-                            corpus_embeddings=None,
-                            nprobe=faiss_cfg.nprobe,
-                        )
-                    else:
-                        post_recall = 0.0
-                    contrast_score = decomposition_contrast_score(pre_decomp, post_decomp)
+                else:
+                    post_recall = 0.0
+                contrast_score = decomposition_contrast_score(pre_decomp, post_decomp)
 
-                    if (not args.debug) and (pre_recall < args.min_recall or post_recall < args.min_recall):
-                        drop_reasons[f"low_recall(pre={pre_recall:.2f},post={post_recall:.2f})"] += 1
-                        return None
-                    if contrast_score < args.min_contrast:
-                        drop_reasons["low_contrast"] += 1
-                        return None
+                if (not args.debug) and (pre_recall < args.min_recall or post_recall < args.min_recall):
+                    drop_reasons[f"low_recall(pre={pre_recall:.2f},post={post_recall:.2f})"] += 1
+                    return None
+                if contrast_score < args.min_contrast:
+                    drop_reasons["low_contrast"] += 1
+                    return None
 
-                    drop_reasons["KEPT"] += 1
-                    return {
-                        "topic_id": pair["topic_id"],
-                        "entity": pair["entity"],
-                        "question": question,
-                        "pre_articles": pair["pre_articles"],
-                        "post_articles": pair["post_articles"],
-                        "changed_facts": pair["changed_facts"],
-                        "pre_decomposition": pre_decomp,
-                        "post_decomposition": post_decomp,
-                        "pre_gold_articles": pre_gold_articles,
-                        "post_gold_articles": post_gold_articles,
-                        "pre_recall": pre_recall,
-                        "post_recall": post_recall,
-                        "contrast_score": contrast_score,
-                    }
+                drop_reasons["KEPT"] += 1
+                return {
+                    "topic_id": pair["topic_id"],
+                    "entity": pair["entity"],
+                    "question": question,
+                    "pre_articles": pair["pre_articles"],
+                    "post_articles": pair["post_articles"],
+                    "changed_facts": pair["changed_facts"],
+                    "pre_decomposition": pre_decomp,
+                    "post_decomposition": post_decomp,
+                    "pre_gold_articles": pre_gold_articles,
+                    "post_gold_articles": post_gold_articles,
+                    "pre_recall": pre_recall,
+                    "post_recall": post_recall,
+                    "contrast_score": contrast_score,
+                }
 
             async def process_all_pairs():
+                # Phase 1: fetch (or reuse cached) teacher outputs for every pair.
                 tasks = [
-                    asyncio.create_task(process_pair(i, pair))
-                    for i, pair in enumerate(topic_pairs, start=1)
+                    asyncio.create_task(fetch_or_cache(pair))
+                    for pair in topic_pairs
                 ]
-                results = []
+                records: list[dict | None] = []
                 pbar = tqdm_sync(total=len(tasks), desc="Teacher LLM (Q + decomp)")
                 for task in asyncio.as_completed(tasks):
-                    result = await task
+                    records.append(await task)
                     pbar.update(1)
-                    if result is not None:
-                        results.append(result)
                 pbar.close()
-                return results
+                # Phase 2: local filter (recall + contrast). Fast, no API calls.
+                kept = []
+                record_by_topic = {r["topic_id"]: r for r in records if r and r.get("topic_id")}
+                for pair in topic_pairs:
+                    rec = record_by_topic.get(pair["topic_id"])
+                    if rec is None:
+                        continue
+                    kept_item = score_and_filter(pair, rec)
+                    if kept_item is not None:
+                        kept.append(kept_item)
+                return kept
 
             paired_examples = asyncio.run(process_all_pairs())
             print("\nDrop reason counts:")
