@@ -1,8 +1,7 @@
 """COPR + gold injection: our novel contribution for knowledge injection.
 
 Extends the paper-faithful `COPRUpdate` with a single change: the gold answer
-is always included in the candidate set before ranking. Everything else — MSE
-fit loss, SFT anchor, replay — is unchanged from the paper.
+is always included in the candidate set before ranking.
 
 **Why this matters for knowledge injection.** COPR was designed for preference
 alignment, where candidate responses are ranked according to human preferences.
@@ -18,6 +17,14 @@ the model to prefer plausible-sounding-but-wrong outputs over others.
 Gold injection guarantees at least one correct response in the candidate set
 for every fact, anchoring the ranking. The COPR paper does not need this
 because the preference setting does not have this failure mode.
+
+**Configuration note — ablation cleanliness.** The companion
+`configs/update/copr_gold_injection.yaml` disables the SFT anchor
+(`gold_nll_alpha: 0.0`) to isolate the effect of gold injection alone. With
+gold already in the ranked set at the top, the MSE fit loss pushes toward it
+directly; keeping the anchor on would double-count. The paper-faithful base
+(`configs/update/copr.yaml`) keeps the anchor at the paper's `alpha = 0.25`.
+Both variants use the same K to keep the candidate-set size controlled.
 """
 
 import torch

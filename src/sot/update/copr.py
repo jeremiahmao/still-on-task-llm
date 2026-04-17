@@ -124,9 +124,14 @@ class COPRUpdate(UpdateMethod):
                 # Fire when self-samples are all weak, unless config overrides.
                 apply_anchor = always_apply_gold_nll
                 if not apply_anchor:
-                    # Look at sample quality (excluding the gold itself if present)
+                    # Look at sample quality excluding the gold itself. Compare
+                    # using the same normalization as `_rank_responses`
+                    # (case+whitespace insensitive) to avoid mis-classifying a
+                    # case-variant of gold as a self-sample.
+                    gold_key = item["gold_answer"].strip().lower()
                     non_gold = [
-                        r for r in item["ranked_responses"] if r != item["gold_answer"]
+                        r for r in item["ranked_responses"]
+                        if r.strip().lower() != gold_key
                     ]
                     max_f1 = (
                         max(_token_f1(r, item["gold_answer"]) for r in non_gold)
