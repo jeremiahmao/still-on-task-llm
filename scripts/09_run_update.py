@@ -73,13 +73,19 @@ def main():
         )
     print(f"Loaded {len(fact_qa_pairs)} fact QA pairs at scale {args.scale}")
 
-    # Load task data for replay (if needed)
+    # Load task data for replay (if needed). Script 05 writes to qd_temporal_data_root;
+    # fall back to the legacy qd_data_root path for older runs.
     task_data = None
     if args.task == "qd":
-        qd_train_path = Path(base_cfg.paths.qd_data_root) / "train.json"
+        qd_train_path = Path(base_cfg.paths.qd_temporal_data_root) / "train.json"
+        if not qd_train_path.exists():
+            qd_train_path = Path(base_cfg.paths.qd_data_root) / "train.json"
         if qd_train_path.exists():
             with open(qd_train_path) as f:
                 task_data = json.load(f)
+            print(f"Loaded task replay data from {qd_train_path} ({len(task_data)} examples)")
+        else:
+            print(f"WARNING: No task replay data found. Replay-dependent methods will run without it.")
 
     # Load the task-tuned model (merged LoRA)
     # device_map="auto" shards across all available GPUs automatically
