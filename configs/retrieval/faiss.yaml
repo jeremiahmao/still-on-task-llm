@@ -1,7 +1,7 @@
 encoder: "BAAI/bge-m3"
 dim: 1024
 index_type: "IVF1024,PQ64"
-nprobe: 64
+nprobe: 256
 batch_size: 64
 chunk_size: 300
 chunk_overlap: 50
