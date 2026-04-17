@@ -20,20 +20,11 @@ for every fact, anchoring the ranking. The COPR paper does not need this
 because the preference setting does not have this failure mode.
 """
 
-import copy
-import random
-from pathlib import Path
-
 import torch
-from omegaconf import DictConfig
 from tqdm import tqdm
 from transformers import AutoTokenizer, PreTrainedModel
 
-from sot.update.copr import (
-    COPRUpdate,
-    load_copr_cache,
-    save_copr_cache,
-)
+from sot.update.copr import COPRUpdate
 
 
 class COPRGoldInjectionUpdate(COPRUpdate):

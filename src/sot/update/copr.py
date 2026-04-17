@@ -34,7 +34,7 @@ from sot.update.base import UpdateMethod
 class COPRUpdate(UpdateMethod):
     @property
     def name(self) -> str:
-        return "copr_adapted"
+        return "copr"
 
     def apply(
         self,
