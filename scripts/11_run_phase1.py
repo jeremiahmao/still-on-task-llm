@@ -20,6 +20,7 @@ METHODS = ["naive_sft", "kl_reg_sft", "copr"]
 SCALE = 1000
 DEBUG_SCALE = 50
 TASK = "qd"
+LOCALITY_SUBSAMPLE = 2000  # Stratified subsample size for locality eval (full set is 96K)
 
 CONFIG_MAP = {
     "naive_sft": "configs/update/naive_sft.yaml",
@@ -73,6 +74,8 @@ def run_no_update_baseline(debug: bool = False):
         TASK,
         "--metrics",
         "preservation,locality",
+        "--locality-subsample",
+        str(LOCALITY_SUBSAMPLE),
     ]
     if debug:
         eval_cmd.append("--debug")
@@ -133,6 +136,8 @@ def main():
             TASK,
             "--metrics",
             "preservation,absorption,locality",
+            "--locality-subsample",
+            str(LOCALITY_SUBSAMPLE),
             *debug_flag,
         ]
         subprocess.run(eval_cmd)
