@@ -1,6 +1,13 @@
-"""KL-regularized SFT: SFT + lambda * KL(pi_task || pi_theta)."""
+"""KL-regularized SFT: SFT on fact QA + lambda * KL(pi_ref || pi_theta) on task replay.
+
+Previous implementation computed KL on the fact batches themselves, which anchors
+the model to its pre-update distribution ON THE FACTS — the opposite of what we
+want. Fixed to compute KL on task_data (replay) batches, mirroring COPR's
+regularization term. Now parallel to COPR: SFT fits facts, KL protects task.
+"""
 
 import copy
+import random
 
 import torch
 import torch.nn.functional as F
@@ -25,34 +32,50 @@ class KLRegSFTUpdate(UpdateMethod):
         task_data: list[dict] | None = None,
         cfg: DictConfig | None = None,
     ) -> PreTrainedModel:
-        """SFT on fact QA pairs with KL divergence regularization against the task-tuned model.
+        """SFT on facts + KL(pi_ref || pi_theta) on task replay.
 
-        The frozen reference model provides the target distribution. The training loss is:
-            L = L_sft + lambda * KL(ref_logits || current_logits)
+        Training loss per step = L_sft(fact_batch) + lambda * KL_task(replay_batch)
+        KL is computed on task-replay inputs (where pi_ref is the task-tuned
+        distribution we want to preserve), not on the fact batches.
         """
         kl_lambda = cfg.get("kl_lambda", 0.1) if cfg else 0.1
+        replay_pct = cfg.get("replay_pct", 0.05) if cfg else 0.05
         lr = cfg.get("training", {}).get("lr", 2e-5) if cfg else 2e-5
         epochs = cfg.get("training", {}).get("epochs", 3) if cfg else 3
         batch_size = cfg.get("training", {}).get("batch_size", 8) if cfg else 8
         max_seq_length = cfg.get("training", {}).get("max_seq_length", 512) if cfg else 512
 
-        # Create frozen reference (clone of the task-tuned model).
-        # LoRA is zero-initialised so ref_model == task-tuned base at this point.
+        # Frozen reference (clone of the task-tuned model)
         ref_model = copy.deepcopy(model)
         ref_model.eval()
         for p in ref_model.parameters():
             p.requires_grad = False
 
-        # Prepare chat-formatted texts
-        texts = []
+        # Fact-SFT texts
+        fact_texts = []
         for qa in fact_qa_pairs:
             chat = [
                 {"role": "user", "content": qa["question"]},
                 {"role": "assistant", "content": qa["answer"]},
             ]
-            texts.append(
+            fact_texts.append(
                 tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=False)
             )
+
+        # Task-replay texts (for KL regularization)
+        replay_texts: list[str] = []
+        if task_data:
+            n_replay = max(1, int(len(task_data) * replay_pct))
+            replay_sample = random.sample(task_data, min(n_replay, len(task_data)))
+            for item in replay_sample:
+                msgs = item.get("messages", [])
+                if msgs:
+                    replay_texts.append(
+                        tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=False)
+                    )
+            print(f"  Task-replay KL anchor: {len(replay_texts)} examples")
+        else:
+            print("  WARNING: no task_data provided; KL regularization disabled.")
 
         def collate_fn(batch_texts):
             orig_padding_side = tokenizer.padding_side
@@ -67,7 +90,15 @@ class KLRegSFTUpdate(UpdateMethod):
             tokenizer.padding_side = orig_padding_side
             return result
 
-        dataloader = DataLoader(texts, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+        fact_loader = DataLoader(
+            fact_texts, batch_size=batch_size, shuffle=True, collate_fn=collate_fn
+        )
+        # Replay loader cycles through the replay set in lockstep with fact batches
+        replay_loader = (
+            DataLoader(replay_texts, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+            if replay_texts
+            else None
+        )
 
         model.train()
         # LoRA params are the only ones with requires_grad=True after apply_lora in 09_run_update.py
@@ -76,43 +107,60 @@ class KLRegSFTUpdate(UpdateMethod):
         )
 
         for epoch in range(epochs):
-            total_loss = 0.0
+            total_sft = 0.0
+            total_kl = 0.0
+            n_steps = 0
+            n_kl = 0
             optimizer.zero_grad()
 
-            for batch in tqdm(dataloader, desc=f"KL-reg SFT epoch {epoch + 1}/{epochs}"):
-                # With device_map="auto", input tensors go to the first device
+            # Cycle through replay batches in parallel with fact batches
+            replay_iter = iter(replay_loader) if replay_loader else None
+
+            for fact_batch in tqdm(fact_loader, desc=f"KL-reg SFT epoch {epoch + 1}/{epochs}"):
                 first_device = next(model.parameters()).device
-                batch = {k: v.to(first_device) for k, v in batch.items()}
-                labels = batch["input_ids"].clone()
-                # Mask padding using attention_mask (avoids masking real EOS tokens
-                # when pad_token_id == eos_token_id, as with Qwen)
-                labels[batch["attention_mask"] == 0] = -100
+                fact_batch = {k: v.to(first_device) for k, v in fact_batch.items()}
+                labels = fact_batch["input_ids"].clone()
+                labels[fact_batch["attention_mask"] == 0] = -100
 
-                outputs = model(**batch, labels=labels)
+                # SFT loss on fact batch
+                outputs = model(**fact_batch, labels=labels)
                 sft_loss = outputs.loss
+                total_sft += sft_loss.item()
+                n_steps += 1
+                sft_loss.backward()
 
-                with torch.no_grad():
-                    ref_outputs = ref_model(**batch)
+                # KL regularization on a task-replay batch (protects task distribution)
+                if replay_iter is not None and kl_lambda > 0:
+                    try:
+                        replay_batch = next(replay_iter)
+                    except StopIteration:
+                        replay_iter = iter(replay_loader)
+                        replay_batch = next(replay_iter)
+                    replay_batch = {k: v.to(first_device) for k, v in replay_batch.items()}
 
-                current_logprobs = F.log_softmax(outputs.logits, dim=-1)
-                ref_logprobs = F.log_softmax(ref_outputs.logits, dim=-1)
-                # Per-token KL, averaged over real (non-padding) tokens only.
-                # F.kl_div with batchmean divides only by batch size, leaving the
-                # loss ~seq_len × per_token_KL — orders of magnitude larger than
-                # sft_loss. Compute per-position and average over real tokens.
-                kl_per_pos = (ref_logprobs.exp() * (ref_logprobs - current_logprobs)).sum(dim=-1)
-                n_real = batch["attention_mask"].sum().clamp(min=1)
-                kl_loss = (kl_per_pos * batch["attention_mask"]).sum() / n_real
+                    cur_out = model(**replay_batch)
+                    with torch.no_grad():
+                        ref_out = ref_model(**replay_batch)
 
-                loss = sft_loss + kl_lambda * kl_loss
-                loss.backward()
+                    cur_lp = F.log_softmax(cur_out.logits, dim=-1)
+                    ref_lp = F.log_softmax(ref_out.logits, dim=-1)
+                    kl_per_pos = (ref_lp.exp() * (ref_lp - cur_lp)).sum(dim=-1)
+                    n_real = replay_batch["attention_mask"].sum().clamp(min=1)
+                    kl_loss = (kl_per_pos * replay_batch["attention_mask"]).sum() / n_real
+
+                    total_kl += kl_loss.item()
+                    n_kl += 1
+                    (kl_lambda * kl_loss).backward()
+
                 optimizer.step()
                 optimizer.zero_grad()
 
-                total_loss += loss.item()
-
-            avg_loss = total_loss / max(len(dataloader), 1)
-            print(f"  Epoch {epoch + 1} avg loss: {avg_loss:.4f}")
+            avg_sft = total_sft / max(n_steps, 1)
+            avg_kl = total_kl / max(n_kl, 1) if n_kl else 0.0
+            print(
+                f"  Epoch {epoch + 1}: sft_loss={avg_sft:.4f}, "
+                f"task_kl={avg_kl:.4f} (fired on {n_kl}/{n_steps})"
+            )
 
         del ref_model
         torch.cuda.empty_cache()

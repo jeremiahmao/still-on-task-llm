@@ -27,12 +27,22 @@ METHODS = {
     "kl_reg_sft": KLRegSFTUpdate,
     "copr": COPRUpdate,
     "copr_gold_injection": COPRGoldInjectionUpdate,
+    "copr_gold_injection_anchored": COPRGoldInjectionUpdate,  # same class, different config
 }
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", required=True, choices=list(METHODS.keys()))
+    parser.add_argument(
+        "--method",
+        required=True,
+        choices=list(METHODS.keys()),
+    )
+    parser.add_argument(
+        "--run-name",
+        default=None,
+        help="Override the run_id used for output directory (defaults to --method).",
+    )
     parser.add_argument("--scale", type=int, required=True, choices=[50, 200, 1000, 3000])
     parser.add_argument("--task", default="qd", choices=["qd", "finqa"])
     parser.add_argument("--config", default=None, help="Method-specific config YAML")
@@ -117,9 +127,9 @@ def main():
     method = METHODS[args.method]()
     print(f"\nApplying {method.name} at scale {args.scale}...")
 
-    # For COPR, set a cache path so sampling survives OOM crashes
-    if args.method == "copr":
-        run_id = f"{args.method}_{args.task}_scale{args.scale}"
+    # For COPR-family methods, set a cache path so sampling survives OOM crashes
+    if args.method in ("copr", "copr_gold_injection", "copr_gold_injection_anchored"):
+        run_id = f"{args.run_name or args.method}_{args.task}_scale{args.scale}"
         cache_dir = output_root / run_id
         cache_dir.mkdir(parents=True, exist_ok=True)
         method_cfg = OmegaConf.merge(

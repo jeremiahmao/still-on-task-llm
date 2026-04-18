@@ -1,0 +1,25 @@
+method: copr_gold_injection_anchored
+# Third ablation point: gold injection WITH the SFT anchor kept on.
+# Used to disentangle gold-injection from anchor effects:
+#   copr.yaml                       anchor=ON,  injection=OFF   (paper)
+#   copr_gold_injection.yaml        anchor=OFF, injection=ON
+#   copr_gold_injection_anchored    anchor=ON,  injection=ON    (this config)
+# With all three, the factorial lets us isolate each factor's contribution.
+K: 8
+beta: 0.1
+replay_pct: 0.05
+partial_match_threshold: 0.5
+max_new_tokens: 128
+
+# Keep the paper's SFT anchor active (matches copr.yaml)
+gold_nll_alpha: 0.25
+gold_nll_gate_threshold: 0.5
+always_apply_gold_nll: false
+
+training:
+  lr: 1.0e-5
+  epochs: 3
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  max_seq_length: 512
+  bf16: true
