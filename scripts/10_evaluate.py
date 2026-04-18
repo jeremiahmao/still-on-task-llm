@@ -14,10 +14,12 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from sot.data.triple_extract import FactTriple
 from sot.data.triple_render import render_triple
+from sot.eval.compositional import evaluate_compositional
 from sot.eval.generic_forgetting import evaluate_generic_forgetting
 from sot.eval.knowledge_absorption import evaluate_knowledge_absorption
 from sot.eval.locality import evaluate_locality
 from sot.eval.task_preservation import evaluate_task_preservation
+from sot.eval.temporal_contrast import evaluate_temporal_contrast
 from sot.retrieval.encoder import Encoder
 from sot.retrieval.index import load_index
 from sot.utils.config import load_config
@@ -31,7 +33,20 @@ def main():
     parser.add_argument(
         "--metrics",
         default="all",
-        help="Comma-separated: preservation,absorption,forgetting,locality",
+        help="Comma-separated: preservation,absorption,forgetting,locality,"
+        "compositional,temporal_contrast",
+    )
+    parser.add_argument(
+        "--compositional-probes-path",
+        default=None,
+        help="Path to compositional probes JSON. Defaults to "
+        "data/fnspid/compositional/probes.json.",
+    )
+    parser.add_argument(
+        "--paired-examples-path",
+        default=None,
+        help="Path to qd_temporal paired_examples.json for temporal-contrast eval. "
+        "Defaults to <qd_temporal_data_root>/paired_examples.json.",
     )
     parser.add_argument("--debug", action="store_true", help="Use debug data paths")
     parser.add_argument(
@@ -63,7 +78,15 @@ def main():
     metrics_to_run = (
         args.metrics.split(",")
         if args.metrics != "all"
-        else ["preservation", "post_preservation", "absorption", "forgetting", "locality"]
+        else [
+            "preservation",
+            "post_preservation",
+            "absorption",
+            "forgetting",
+            "locality",
+            "compositional",
+            "temporal_contrast",
+        ]
     )
 
     results = {}
@@ -128,10 +151,17 @@ def main():
             with open(metadata_path) as f:
                 meta = json.load(f)
             scale = meta.get("scale", 200)
-            triples_dir = data_root / "fnspid" / "triples"
-            triples_path = triples_dir / f"triples_{scale}.json"
-            if not triples_path.exists():
-                triples_path = triples_dir / "debug" / f"triples_{scale}.json"
+            # Prefer the explicit triples_path recorded during the update run
+            # (needed for sequential editing, where round_k.json is the right set).
+            triples_path = None
+            meta_triples = meta.get("triples_path")
+            if meta_triples and Path(meta_triples).exists():
+                triples_path = Path(meta_triples)
+            if triples_path is None:
+                triples_dir = data_root / "fnspid" / "triples"
+                triples_path = triples_dir / f"triples_{scale}.json"
+                if not triples_path.exists():
+                    triples_path = triples_dir / "debug" / f"triples_{scale}.json"
             if triples_path.exists():
                 with open(triples_path) as f:
                     raw_triples = json.load(f)
@@ -207,6 +237,52 @@ def main():
                     print(
                         f"  {stratum}: {stats.get('accuracy', 'N/A'):.4f} (n={stats.get('n', 0)})"
                     )
+
+    # Compositional (multi-hop) eval
+    if "compositional" in metrics_to_run:
+        print("\n--- Compositional (multi-hop) ---")
+        probes_path = (
+            Path(args.compositional_probes_path)
+            if args.compositional_probes_path
+            else data_root / "fnspid" / "compositional" / "probes.json"
+        )
+        if probes_path.exists():
+            with open(probes_path) as f:
+                probes = json.load(f)
+            comp = evaluate_compositional(model, tokenizer, probes)
+            results["compositional"] = {
+                k: v for k, v in comp.items() if k != "per_probe"
+            }
+            print(
+                f"  EM={comp['exact_match']:.4f}  "
+                f"contains_final={comp['contains_final_answer']:.4f}  "
+                f"bridging={comp['contains_bridging_entity']:.4f}  "
+                f"F1={comp['token_f1']:.4f}  n={comp['n_probes']}"
+            )
+        else:
+            print(f"  No probes at {probes_path}. Run scripts/17_build_compositional_probes.py.")
+
+    # Temporal contrast eval (pre vs post answer alignment)
+    if "temporal_contrast" in metrics_to_run:
+        print("\n--- Temporal contrast ---")
+        paired_path = (
+            Path(args.paired_examples_path)
+            if args.paired_examples_path
+            else Path(cfg.paths.qd_temporal_data_root) / "paired_examples.json"
+        )
+        if paired_path.exists():
+            with open(paired_path) as f:
+                paired = json.load(f)
+            tc = evaluate_temporal_contrast(model, tokenizer, paired)
+            results["temporal_contrast"] = {
+                k: v for k, v in tc.items() if k != "per_probe"
+            }
+            print(
+                f"  pre_F1={tc['pre_alignment_f1']:.4f}  post_F1={tc['post_alignment_f1']:.4f}  "
+                f"shift={tc['shift_score']:+.4f}  n={tc['n_probes']}"
+            )
+        else:
+            print(f"  No paired examples at {paired_path}. Skipping temporal contrast.")
 
     # Save results
     results_path = model_path / "eval_results.json"

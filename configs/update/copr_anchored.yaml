@@ -1,0 +1,33 @@
+method: copr_anchored
+# Anchored COPR: replaces pi_ref with a convex mix of the pre-update model and
+# a task-replay-normalized reference. See src/sot/update/copr_anchored.py.
+#
+# Relationship to the other COPR variants in the factorial:
+#   copr.yaml                       paper-faithful (anchor=ON via gold NLL)
+#   copr_gold_injection.yaml        gold-injection variant, anchor=OFF
+#   copr_gold_injection_anchored    gold-injection + gold NLL anchor
+#   copr_anchored                   NEW: anchors pi_ref itself (not just gold NLL)
+
+K: 8
+beta: 0.1
+replay_pct: 0.05
+partial_match_threshold: 0.5
+max_new_tokens: 128
+
+# SFT floor stays on to match paper-faithful COPR.
+gold_nll_alpha: 0.25
+gold_nll_gate_threshold: 0.5
+always_apply_gold_nll: false
+
+# Anchored-reference mixing weight: 0.0 reduces to vanilla COPR; larger values
+# pull the P* target more aggressively toward the task-replay regime.
+task_anchor_alpha: 0.3
+task_anchor_n_samples: 16
+
+training:
+  lr: 1.0e-5
+  epochs: 3
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  max_seq_length: 512
+  bf16: true

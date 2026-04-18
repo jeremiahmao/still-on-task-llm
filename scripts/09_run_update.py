@@ -14,6 +14,7 @@ from sot.data.triple_render import render_triple
 from sot.models.base import load_model
 from sot.models.lora import apply_lora, get_lora_config, load_lora, merge_lora
 from sot.update.copr import COPRUpdate
+from sot.update.copr_anchored import COPRAnchoredUpdate
 from sot.update.copr_gold_injection import COPRGoldInjectionUpdate
 from sot.update.kl_reg_sft import KLRegSFTUpdate
 from sot.update.naive_sft import NaiveSFTUpdate
@@ -28,6 +29,7 @@ METHODS = {
     "copr": COPRUpdate,
     "copr_gold_injection": COPRGoldInjectionUpdate,
     "copr_gold_injection_anchored": COPRGoldInjectionUpdate,  # same class, different config
+    "copr_anchored": COPRAnchoredUpdate,
 }
 
 
@@ -48,6 +50,25 @@ def main():
     parser.add_argument("--config", default=None, help="Method-specific config YAML")
     parser.add_argument("--overrides", nargs="*", default=[], help="OmegaConf dot-list overrides")
     parser.add_argument("--debug", action="store_true", help="Use debug triples subdirectory")
+    # Sequential-editing extensions: override triples source and starting checkpoint
+    parser.add_argument(
+        "--triples-path",
+        default=None,
+        help="Explicit triples JSON path (overrides the default scale-based lookup). "
+        "Used by sequential editing to inject disjoint batches per round.",
+    )
+    parser.add_argument(
+        "--starting-checkpoint",
+        default=None,
+        help="LoRA adapter directory to load as the starting point (overrides the default "
+        "task-tuned checkpoint). Use this to chain updates across rounds.",
+    )
+    parser.add_argument(
+        "--base-model",
+        default=None,
+        help="Path or HF id of a full-weight model to use as the base (overrides "
+        "base_cfg.model.name). Use after merging a previous round's LoRA into weights.",
+    )
     args = parser.parse_args()
 
     base_cfg = load_config()
@@ -60,13 +81,18 @@ def main():
     data_root = Path(base_cfg.paths.data_root)
     output_root = Path(base_cfg.paths.output_root)
 
-    # Load fact triples at the specified scale and render to QA pairs
-    triples_dir = data_root / "fnspid" / "triples"
-    if args.debug:
-        triples_dir = triples_dir / "debug"
-    triples_path = triples_dir / f"triples_{args.scale}.json"
+    # Load fact triples: either from explicit path (sequential editing) or
+    # the default scale-based lookup.
+    if args.triples_path is not None:
+        triples_path = Path(args.triples_path)
+    else:
+        triples_dir = data_root / "fnspid" / "triples"
+        if args.debug:
+            triples_dir = triples_dir / "debug"
+        triples_path = triples_dir / f"triples_{args.scale}.json"
     with open(triples_path) as f:
         raw_triples = json.load(f)
+    print(f"Loaded triples from {triples_path}")
 
     fact_qa_pairs = []
     for t in raw_triples:
@@ -100,21 +126,34 @@ def main():
         else:
             print(f"WARNING: No task replay data found. Replay-dependent methods will run without it.")
 
-    # Load the task-tuned model (merged LoRA)
-    # device_map="auto" shards across all available GPUs automatically
-    print("Loading task-tuned model...")
-    model, tokenizer = load_model(base_cfg.model.name, base_cfg.model.dtype, device_map="auto")
-    checkpoint_path = Path(base_cfg.paths.checkpoint_root) / f"{args.task}_sft" / "final"
-    if not checkpoint_path.exists() and args.debug:
-        checkpoint_path = Path(base_cfg.paths.checkpoint_root) / f"{args.task}_sft_debug" / "final"
-    if checkpoint_path.exists():
-        model = load_lora(model, checkpoint_path)
-        model = merge_lora(model)
-        print(f"Loaded and merged LoRA from {checkpoint_path}")
+    # Load the starting model. Two chaining modes for sequential editing:
+    #   --base-model      : load a full merged model (output of a prior round),
+    #                       then apply a fresh LoRA on top. No adapter merge step.
+    #   --starting-checkpoint : load the base model + an existing LoRA adapter,
+    #                           merge it, then re-apply LoRA for the new update.
+    # Default: base + qd_sft/final adapter.
+    print("Loading starting model...")
+    base_name = args.base_model if args.base_model else base_cfg.model.name
+    model, tokenizer = load_model(base_name, base_cfg.model.dtype, device_map="auto")
+
+    if args.base_model:
+        print(f"Loaded full-weight base from {base_name} (sequential round chain)")
+        # No LoRA merge: the passed-in model is already the merged result of the prior round.
     else:
-        print(f"WARNING: No task-tuned checkpoint at {checkpoint_path}")
-        print("  Running update on the raw base model — results will be misleading!")
-        print("  Run task tuning first (07_task_tune_qd.py or 08_task_tune_finqa.py).")
+        if args.starting_checkpoint:
+            checkpoint_path = Path(args.starting_checkpoint)
+        else:
+            checkpoint_path = Path(base_cfg.paths.checkpoint_root) / f"{args.task}_sft" / "final"
+            if not checkpoint_path.exists() and args.debug:
+                checkpoint_path = Path(base_cfg.paths.checkpoint_root) / f"{args.task}_sft_debug" / "final"
+        if checkpoint_path.exists():
+            model = load_lora(model, checkpoint_path)
+            model = merge_lora(model)
+            print(f"Loaded and merged LoRA from {checkpoint_path}")
+        else:
+            print(f"WARNING: No checkpoint at {checkpoint_path}")
+            print("  Running update on the raw base model — results will be misleading!")
+            print("  Run task tuning first (07_task_tune_qd.py or 08_task_tune_finqa.py).")
 
     # Re-apply LoRA so update methods train efficiently.
     # LoRA (r=16) reduces trainable params to ~50 M — Adam states fit easily.
@@ -128,7 +167,12 @@ def main():
     print(f"\nApplying {method.name} at scale {args.scale}...")
 
     # For COPR-family methods, set a cache path so sampling survives OOM crashes
-    if args.method in ("copr", "copr_gold_injection", "copr_gold_injection_anchored"):
+    if args.method in (
+        "copr",
+        "copr_gold_injection",
+        "copr_gold_injection_anchored",
+        "copr_anchored",
+    ):
         run_id = f"{args.run_name or args.method}_{args.task}_scale{args.scale}"
         cache_dir = output_root / run_id
         cache_dir.mkdir(parents=True, exist_ok=True)
@@ -139,14 +183,20 @@ def main():
     with track_compute() as stats:
         updated_model = method.apply(model, tokenizer, fact_qa_pairs, task_data, method_cfg)
 
+    # Save the update LoRA adapter (pre-merge) for Phase 6 mechanistic probe.
+    # merge_and_unload discards A/B matrices, so we snapshot them first.
+    run_id = f"{args.run_name or args.method}_{args.task}_scale{args.scale}"
+    run_dir = output_root / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    if hasattr(updated_model, "save_pretrained") and hasattr(updated_model, "peft_config"):
+        adapter_dir = run_dir / "update_adapter"
+        adapter_dir.mkdir(parents=True, exist_ok=True)
+        updated_model.save_pretrained(str(adapter_dir))
+        print(f"Saved update LoRA adapter to {adapter_dir}")
+
     # Merge update LoRA before saving so evaluate.py sees a plain model directory
     if hasattr(updated_model, "merge_and_unload"):
         updated_model = updated_model.merge_and_unload()
-
-    # Save
-    run_id = f"{args.method}_{args.task}_scale{args.scale}"
-    run_dir = output_root / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
 
     updated_model.save_pretrained(str(run_dir / "model"))
     tokenizer.save_pretrained(str(run_dir / "model"))
@@ -154,8 +204,12 @@ def main():
     save_metadata(
         {
             "method": args.method,
+            "run_name": args.run_name,
             "task": args.task,
             "scale": args.scale,
+            "triples_path": str(triples_path),
+            "base_model": args.base_model,
+            "starting_checkpoint": args.starting_checkpoint,
             "gpu_hours": stats.gpu_hours,
             "peak_memory_gb": stats.peak_memory_gb,
             "elapsed_seconds": stats.elapsed_seconds,

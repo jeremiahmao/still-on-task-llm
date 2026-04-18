@@ -21,6 +21,7 @@ METHODS = [
     "copr",
     "copr_gold_injection",
     "copr_gold_injection_anchored",
+    "copr_anchored",
 ]
 SCALE = 3000
 DEBUG_SCALE = 50
@@ -32,6 +33,7 @@ CONFIG_MAP = {
     "copr": "configs/update/copr.yaml",
     "copr_gold_injection": "configs/update/copr_gold_injection.yaml",
     "copr_gold_injection_anchored": "configs/update/copr_gold_injection_anchored.yaml",
+    "copr_anchored": "configs/update/copr_anchored.yaml",
 }
 
 
