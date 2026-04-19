@@ -21,6 +21,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 METHODS = [
@@ -172,6 +173,12 @@ def main():
         "--methods", default=None,
         help="Comma-separated subset of methods (defaults to all).",
     )
+    parser.add_argument(
+        "--gpus", default=None,
+        help="Comma-separated GPU ids (e.g. '0,1,2,3'). When set, methods are "
+        "run in parallel across GPUs: each method's full chain binds to one "
+        "GPU via CUDA_VISIBLE_DEVICES. Default: sequential on default device.",
+    )
     args = parser.parse_args()
 
     n_rounds = args.n_rounds or (3 if args.debug else N_ROUNDS)
@@ -187,20 +194,90 @@ def main():
         "methods": {},
     }
 
+    if args.gpus:
+        gpus = [g.strip() for g in args.gpus.split(",") if g.strip()]
+        _run_methods_parallel(
+            methods, gpus, n_rounds, per_round, args.debug, output_root
+        )
+    else:
+        for method in methods:
+            print(f"\n{'=' * 60}\n{method}: {n_rounds} rounds x {per_round} edits\n{'=' * 60}")
+            trajectory = run_method(method, n_rounds, per_round, args.debug, output_root, data_root)
+            out_dir = output_root / "sequential" / method
+            out_dir.mkdir(parents=True, exist_ok=True)
+            with open(out_dir / "trajectory.json", "w") as f:
+                json.dump(trajectory, f, indent=2)
+            summary["methods"][method] = trajectory
+
+    # Collect each method's trajectory.json (written either by this process or
+    # by child processes in the --gpus path) into a final summary.
     for method in methods:
-        print(f"\n{'=' * 60}\n{method}: {n_rounds} rounds x {per_round} edits\n{'=' * 60}")
-        trajectory = run_method(method, n_rounds, per_round, args.debug, output_root, data_root)
-        out_dir = output_root / "sequential" / method
-        out_dir.mkdir(parents=True, exist_ok=True)
-        with open(out_dir / "trajectory.json", "w") as f:
-            json.dump(trajectory, f, indent=2)
-        summary["methods"][method] = trajectory
+        traj_path = output_root / "sequential" / method / "trajectory.json"
+        if traj_path.exists():
+            with open(traj_path) as f:
+                summary["methods"][method] = json.load(f)
 
     summary_dir = output_root / "sequential"
     summary_dir.mkdir(parents=True, exist_ok=True)
     with open(summary_dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2)
     print(f"\nSummary saved to {summary_dir / 'summary.json'}")
+
+
+def _run_methods_parallel(
+    methods: list[str],
+    gpus: list[str],
+    n_rounds: int,
+    per_round: int,
+    debug: bool,
+    output_root: Path,
+) -> None:
+    """Schedule methods across GPUs. Each method runs as a child process of
+    this same script (--methods <one> without --gpus), bound to one GPU via
+    CUDA_VISIBLE_DEVICES. Child processes write their own trajectory.json;
+    the parent aggregates them afterward.
+    """
+    log_dir = output_root / "sequential" / "_logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    queue = list(methods)
+    active: dict[str, tuple[subprocess.Popen, str, object]] = {}  # gpu -> (proc, method, log_fh)
+
+    def _launch(gpu: str, method: str) -> None:
+        cmd = [
+            sys.executable,
+            __file__,
+            "--methods", method,
+            "--n-rounds", str(n_rounds),
+            "--per-round", str(per_round),
+        ]
+        if debug:
+            cmd.append("--debug")
+        env = os.environ.copy()
+        env["CUDA_VISIBLE_DEVICES"] = gpu
+        log_path = log_dir / f"{method}_gpu{gpu}.log"
+        fh = open(log_path, "w")
+        print(f"[gpu {gpu}] launching {method} -> {log_path}")
+        proc = subprocess.Popen(cmd, env=env, stdout=fh, stderr=subprocess.STDOUT)
+        active[gpu] = (proc, method, fh)
+
+    # Fill idle GPUs and drain.
+    while queue or active:
+        for gpu in gpus:
+            if gpu not in active and queue:
+                _launch(gpu, queue.pop(0))
+
+        time.sleep(5)
+        finished: list[str] = []
+        for gpu, (proc, method, fh) in active.items():
+            rc = proc.poll()
+            if rc is not None:
+                tag = "OK" if rc == 0 else f"FAIL rc={rc}"
+                print(f"[gpu {gpu}] {method} {tag}")
+                fh.close()
+                finished.append(gpu)
+        for gpu in finished:
+            del active[gpu]
 
 
 if __name__ == "__main__":
