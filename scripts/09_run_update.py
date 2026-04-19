@@ -2,8 +2,14 @@
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
+
+# Expandable CUDA allocator cuts fragmentation OOMs when model + ref_model +
+# activations barely fit on a single GPU (A10 24GB for Qwen3-4B). Set before
+# CUDA is initialized by torch.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -155,9 +161,18 @@ def main():
             print("  Running update on the raw base model — results will be misleading!")
             print("  Run task tuning first (07_task_tune_qd.py or 08_task_tune_finqa.py).")
 
+    # Gradient checkpointing trades ~20-30% train speed for a ~1.5-2 GB drop in
+    # activation memory — required when a COPR variant deepcopies the student
+    # model for ref_model on a single 24 GB A10 (student + ref + activations
+    # otherwise overrun the card). Must be enabled on the base model before
+    # LoRA wrapping; pair with enable_input_require_grads so gradients flow
+    # through frozen embeddings.
+    model.gradient_checkpointing_enable()
+    if hasattr(model, "enable_input_require_grads"):
+        model.enable_input_require_grads()
+
     # Re-apply LoRA so update methods train efficiently.
     # LoRA (r=16) reduces trainable params to ~50 M — Adam states fit easily.
-    # Model is already distributed across GPUs via device_map="auto".
     update_lora_cfg = get_lora_config(r=16, alpha=32)
     model = apply_lora(model, update_lora_cfg)
     model.print_trainable_parameters()
