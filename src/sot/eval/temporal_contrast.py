@@ -1,22 +1,22 @@
 """Temporal-contrast eval: does the updated model prefer post-cutoff facts?
 
-Uses paired examples from `data/qd_temporal/paired_examples.json`. Each paired
-example carries:
+Each paired example must carry:
   {
-    "question": "...",          # shared question whose true answer differs pre vs post
-    "pre_answer": "...",        # answer before the cutoff
-    "post_answer": "...",       # answer after the cutoff (what an edit should inject)
-    "changed_facts": [...],
+    "question": "...",        # shared question whose true answer differs pre vs post
+    "pre_answer": "...",      # answer that was correct before the cutoff
+    "post_answer": "...",     # answer that is correct after the cutoff (what an edit should inject)
     ...
   }
 
-We probe the model on each shared question and compute:
-  - pre_alignment_f1: F1 against the pre-cutoff answer
-  - post_alignment_f1: F1 against the post-cutoff answer
-  - shift_score: post_alignment_f1 - pre_alignment_f1  (> 0 => moved toward post)
+We probe the model with `question` and score:
+  - pre_alignment_f1   : F1 against `pre_answer`
+  - post_alignment_f1  : F1 against `post_answer`
+  - shift_score        : post_alignment_f1 - pre_alignment_f1  (> 0 => moved toward post)
 
-Methods that successfully integrate the edit without overriding task behavior
-should produce a positive shift on these pairs.
+This schema is not produced by the current scripts/05_generate_qd_data_foundational_model.py
+output (which stores retrieval subqueries, not answers). Run a separate
+generation pass (or hand-curate) before this eval can be used; examples missing
+either `pre_answer` or `post_answer` are skipped and counted in `n_skipped`.
 """
 
 from collections import Counter
@@ -40,16 +40,8 @@ def _token_f1(prediction: str, gold: str) -> float:
     return 2 * precision * recall / (precision + recall)
 
 
-def _first_field(example: dict, keys: tuple[str, ...]) -> str | None:
-    for k in keys:
-        v = example.get(k)
-        if isinstance(v, str) and v.strip():
-            return v
-        if isinstance(v, list) and v:
-            joined = " ; ".join(str(x) for x in v if x)
-            if joined.strip():
-                return joined
-    return None
+def _valid_string(v) -> bool:
+    return isinstance(v, str) and bool(v.strip())
 
 
 def evaluate_temporal_contrast(
@@ -61,29 +53,38 @@ def evaluate_temporal_contrast(
 ) -> dict:
     """Score pre vs post alignment on shared questions with time-shifted answers.
 
-    The paired_examples schema varies across prior generations; we tolerate
-    several field names and skip examples without both a pre and post answer.
+    Skips examples that do not carry explicit `pre_answer` and `post_answer`
+    strings. Returns an all-zero result with `n_probes=0` and `n_skipped=N` if
+    none are usable — this is intentional, the metric fails closed rather than
+    silently scoring the wrong target.
     """
-    model.eval()
-
     usable: list[dict] = []
+    skipped = 0
     for ex in paired_examples:
-        question = _first_field(ex, ("question", "prompt", "shared_question"))
-        pre_ans = _first_field(ex, ("pre_answer", "pre_cutoff_answer", "pre_decomposition"))
-        post_ans = _first_field(ex, ("post_answer", "post_cutoff_answer", "post_decomposition"))
-        if not (question and pre_ans and post_ans):
+        question = ex.get("question")
+        pre_ans = ex.get("pre_answer")
+        post_ans = ex.get("post_answer")
+        if not (_valid_string(question) and _valid_string(pre_ans) and _valid_string(post_ans)):
+            skipped += 1
             continue
-        usable.append({"question": question, "pre": pre_ans, "post": post_ans, "raw": ex})
+        usable.append({"question": question, "pre": pre_ans, "post": post_ans})
 
     if not usable:
         return {
             "n_probes": 0,
+            "n_skipped": skipped,
             "pre_alignment_f1": 0.0,
             "post_alignment_f1": 0.0,
             "shift_score": 0.0,
             "per_probe": [],
+            "note": (
+                "No paired examples carried both pre_answer and post_answer strings. "
+                "Regenerate paired_examples.json with explicit gold answers before "
+                "running temporal_contrast."
+            ),
         }
 
+    model.eval()
     prompts = []
     for item in usable:
         chat = [{"role": "user", "content": item["question"]}]
@@ -139,6 +140,7 @@ def evaluate_temporal_contrast(
     post_mean = post_f1_total / n
     return {
         "n_probes": n,
+        "n_skipped": skipped,
         "pre_alignment_f1": pre_mean,
         "post_alignment_f1": post_mean,
         "shift_score": post_mean - pre_mean,

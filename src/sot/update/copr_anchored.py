@@ -1,28 +1,33 @@
-"""Anchored COPR: replace the pre-update reference with a task-replay-aware one.
+"""Anchored COPR: mix a per-candidate task-replay likelihood into log pi_ref.
 
-Standard COPR uses the pre-update model pi_ref as the behavioral prior in
+Standard COPR uses the pre-update model pi_ref as the behavioral prior:
 
-    log P*(y|x) propto log pi_ref(y|x) + A(x, y) / beta
+    log P*(y|x_fact) propto log pi_ref(y|x_fact) + A(x, y) / beta
 
-That prior only encodes "what the model used to say about the *fact query*", so
-task-relevant behavior is anchored only weakly through the separate KL replay
-term. In continual / sequential editing the fact prior is precisely the thing
-that drifts across rounds; the task behavior is what we actually want to
-preserve.
+That prior only encodes "what the model used to say about the *fact query*",
+so task-relevant behavior is anchored only weakly (via the separate KL replay
+term). In continual / sequential editing the fact prior drifts across rounds
+and we actually want to preserve task behavior.
 
-Anchored COPR replaces pi_ref with a convex mix
+Anchored COPR builds a per-candidate task likelihood
 
-    log pi_hat(y|x) = (1 - alpha) * log pi_ref(y|x) + alpha * log pi_task(y|x)
+    s_task(y_j) = logmeanexp_i log pi_ref(y_j | x_task_i)
 
-where pi_task is the reference model's sequence-level log-prob computed on the
-same (x, y) pairs but normalized against the *task-replay* distribution: we
-evaluate the reference on a fixed mini-batch of task-replay examples, average
-their per-token log-probs into a scalar task shift, and add it to each
-candidate's log-prob. This keeps the advantage-plus-reference structure intact
-while pulling the target distribution toward the task manifold.
+over a small set of sampled task-replay prompts x_task_i, and mixes it into
+the reference log-prob:
 
-Only `_compute_p_star` changes; sampling, ranking, fit loss (MSE), SFT anchor
-on gold, and KL regularization on replay are all inherited unchanged.
+    log P*(y_j|x) propto (1 - alpha) * log pi_ref(y_j|x_fact)
+                       + alpha * s_task(y_j)
+                       + A_j / beta
+
+The per-candidate form is what makes this meaningful under logsumexp
+normalization — a per-question scalar would cancel. Candidates whose
+surface form is well-supported by the reference under typical task
+contexts get up-weighted; candidates that only fit the fact prompt get
+down-weighted.
+
+Only `_compute_p_star` changes; sampling, ranking, MSE fit, SFT anchor on
+gold, and KL regularization on replay are all inherited unchanged.
 """
 
 import random
@@ -51,9 +56,11 @@ class COPRAnchoredUpdate(COPRUpdate):
         # Stash anchor parameters on self so the overridden _compute_p_star
         # (called by the parent's apply) can read them without a signature change.
         self._task_anchor_alpha = cfg.get("task_anchor_alpha", 0.3) if cfg else 0.3
-        self._task_anchor_n_samples = cfg.get("task_anchor_n_samples", 16) if cfg else 16
+        self._task_anchor_n_samples = (
+            cfg.get("task_anchor_n_samples", 4) if cfg else 4
+        )
         self._task_data_for_anchor = task_data
-        self._task_anchor_shift = None  # computed lazily in _compute_p_star
+        self._task_anchor_prompts: list[str] | None = None  # lazily built
         return super().apply(model, tokenizer, fact_qa_pairs, task_data, cfg)
 
     def _compute_p_star(
@@ -65,19 +72,18 @@ class COPRAnchoredUpdate(COPRUpdate):
     ) -> list[dict]:
         """P* target built against a task-replay-anchored reference."""
         alpha = getattr(self, "_task_anchor_alpha", 0.3)
+        task_prompts = self._get_task_prompts()
 
-        task_shift = self._compute_task_anchor_shift(ref_model, tokenizer)
-        if task_shift is None:
+        if not task_prompts:
             print(
                 "  [copr_anchored] No task data available -> falling back to vanilla P* "
-                "(alpha=0). Run with task_data to realize the anchoring effect."
+                "(alpha=0)."
             )
             alpha_eff = 0.0
-            task_shift = torch.tensor(0.0)
         else:
             alpha_eff = alpha
             print(
-                f"  [copr_anchored] task anchor shift={task_shift.item():.3f}, alpha={alpha_eff}"
+                f"  [copr_anchored] alpha={alpha_eff}, task_prompts={len(task_prompts)}"
             )
 
         for item in tqdm(fit_data, desc="Computing P* (anchored)"):
@@ -85,18 +91,22 @@ class COPRAnchoredUpdate(COPRUpdate):
             ranked = item["ranked_responses"]
             advantages = item["advantages"]
 
+            # Fact-conditional log-probs (vanilla COPR reference).
             log_probs = _compute_seq_log_probs_batched(ref_model, tokenizer, question, ranked)
             log_probs = torch.stack(log_probs)
             advs = torch.tensor(advantages, device=log_probs.device, dtype=torch.float32)
 
-            # Anchored log-reference: mix fact-prior log-probs with task-prior scalar.
-            # The task term is a per-question scalar (does not depend on candidate y)
-            # so it disappears after the log-sum-exp normalization below. To make
-            # anchoring *bias* the distribution, we scale candidate log-probs toward
-            # the task scalar: values closer to task_shift (typical task regime)
-            # keep more mass relative to extreme (low-prob) candidates.
-            task_shift_dev = task_shift.to(log_probs.device).to(log_probs.dtype)
-            anchored_log_ref = (1.0 - alpha_eff) * log_probs + alpha_eff * task_shift_dev
+            if alpha_eff > 0.0:
+                # Per-candidate task-anchor score: for each y_j, average (in
+                # log-space) its log-prob under the reference when conditioned
+                # on each sampled task prompt.
+                s_task = self._compute_task_anchor_scores(
+                    ref_model, tokenizer, ranked, task_prompts
+                )
+                s_task = s_task.to(log_probs.device).to(log_probs.dtype)
+                anchored_log_ref = (1.0 - alpha_eff) * log_probs + alpha_eff * s_task
+            else:
+                anchored_log_ref = log_probs
 
             log_p_star = anchored_log_ref + advs / beta
             log_p_star = log_p_star - torch.logsumexp(log_p_star, dim=0)
@@ -105,62 +115,50 @@ class COPRAnchoredUpdate(COPRUpdate):
 
         return fit_data
 
-    def _compute_task_anchor_shift(
-        self,
-        ref_model: PreTrainedModel,
-        tokenizer: AutoTokenizer,
-    ) -> torch.Tensor | None:
-        """Average per-token log-prob of the reference on a fixed task-replay batch.
-
-        Returns None when no task data is available so the caller can fall back.
-        """
-        if getattr(self, "_task_anchor_shift", None) is not None:
-            return self._task_anchor_shift
+    def _get_task_prompts(self) -> list[str]:
+        """Extract user-turn prompts from a fixed sample of task replay data."""
+        if self._task_anchor_prompts is not None:
+            return self._task_anchor_prompts
 
         task_data = getattr(self, "_task_data_for_anchor", None)
         if not task_data:
-            return None
+            self._task_anchor_prompts = []
+            return self._task_anchor_prompts
 
         n = min(self._task_anchor_n_samples, len(task_data))
-        rng = random.Random(1234)  # stable across calls
-        sample = rng.sample(task_data, n)
+        rng = random.Random(1234)  # stable across calls in one run
+        sampled = rng.sample(task_data, n)
 
-        total_log_prob = 0.0
-        total_tokens = 0
-        device = next(ref_model.parameters()).device
+        prompts: list[str] = []
+        for ex in sampled:
+            msgs = ex.get("messages", [])
+            # Take the first user turn as the anchoring context.
+            for m in msgs:
+                if m.get("role") == "user" and m.get("content"):
+                    prompts.append(m["content"])
+                    break
 
-        with torch.no_grad():
-            for example in sample:
-                messages = example.get("messages", [])
-                if not messages:
-                    continue
-                text = tokenizer.apply_chat_template(
-                    messages, tokenize=False, add_generation_prompt=False
-                )
-                inputs = tokenizer(
-                    text, return_tensors="pt", truncation=True, max_length=512
-                )
-                inputs = {k: v.to(device) for k, v in inputs.items()}
-                outputs = ref_model(**inputs)
-                logits = outputs.logits[:, :-1, :]
-                labels = inputs["input_ids"][:, 1:]
-                log_probs = torch.log_softmax(logits, dim=-1)
-                token_lp = log_probs.gather(2, labels.unsqueeze(-1)).squeeze(-1)
-                attn = inputs["attention_mask"][:, 1:]
-                total_log_prob += (token_lp * attn).sum().item()
-                total_tokens += attn.sum().item()
+        self._task_anchor_prompts = prompts
+        return prompts
 
-        if total_tokens == 0:
-            return None
+    def _compute_task_anchor_scores(
+        self,
+        ref_model: PreTrainedModel,
+        tokenizer: AutoTokenizer,
+        responses: list[str],
+        task_prompts: list[str],
+    ) -> torch.Tensor:
+        """Compute s_task,j = logmeanexp_i log pi_ref(y_j | x_task_i) for j in 0..K-1.
 
-        avg_token_lp = total_log_prob / total_tokens
-        # The fact-side log-probs in _compute_p_star are sequence totals (sum of
-        # per-token log-probs over the response). Rescale the task scalar to the
-        # same order of magnitude using the average response length in fit_data.
-        # To stay self-contained, use a fixed heuristic target length (32 tokens)
-        # — the exact value only shifts the log-partition, which renormalizes away
-        # up to the relative weighting controlled by alpha.
-        heuristic_len = 32
-        shift = torch.tensor(avg_token_lp * heuristic_len, dtype=torch.float32)
-        self._task_anchor_shift = shift
-        return shift
+        Shape: (K,). Gradients not needed — ref_model is frozen and torch.no_grad()
+        is applied inside _compute_seq_log_probs_batched when model.training is False.
+        """
+        per_prompt: list[torch.Tensor] = []
+        for x_task in task_prompts:
+            lps = _compute_seq_log_probs_batched(ref_model, tokenizer, x_task, responses)
+            per_prompt.append(torch.stack(lps).detach().float().cpu())
+
+        stacked = torch.stack(per_prompt, dim=0)  # (n_prompts, K)
+        n = torch.tensor(float(stacked.shape[0]))
+        s_task = torch.logsumexp(stacked, dim=0) - torch.log(n)  # (K,)
+        return s_task

@@ -4,7 +4,10 @@ For each adapter directory we:
   1. Load adapter A/B matrices from its state dict.
   2. For every (layer, target_module), reconstruct Delta W = (alpha / r) * B @ A.
   3. Report per-layer Frobenius norm and effective rank (stable-rank proxy).
-  4. Cross-method: pairwise principal angles between Delta W row-subspaces.
+  4. Cross-method: pairwise principal angles between the *input-side* row
+     subspaces of Delta W (top-k right singular vectors). Input subspaces
+     describe which directions in activation space the update attends to;
+     column-space (output) comparisons are a different question.
 
 Usage:
   uv run python scripts/19_analyze_lora_deltas.py \
@@ -154,11 +157,13 @@ def analyze_adapter(adapter_dir: Path, subspace_k: int = 8):
             }
         )
         per_module_norms[module].append(fro)
-        # Save the top-k left singular vectors for subspace comparison.
+        # Save the top-k right singular vectors (rows of Vh) so we compare
+        # the input/row subspace of Delta W — i.e. the directions in activation
+        # space that the update acts on.
         if subspace_k > 0:
             try:
-                U, _, _ = np.linalg.svd(delta, full_matrices=False)
-                subspaces[(layer, module)] = U[:, :subspace_k].copy()
+                _, _, Vh = np.linalg.svd(delta, full_matrices=False)
+                subspaces[(layer, module)] = Vh[:subspace_k].T.copy()
             except np.linalg.LinAlgError:
                 pass
 
@@ -183,7 +188,7 @@ def pairwise_subspace_overlap(
     subspaces_by_method: dict[str, dict[tuple[int, str], np.ndarray]],
     k: int = 8,
 ):
-    """Mean cos(angle) across shared (layer, module) sites between each method pair."""
+    """Mean cos(angle) between input/row subspaces across shared (layer, module) sites."""
     methods = list(subspaces_by_method.keys())
     result = {}
     for i in range(len(methods)):

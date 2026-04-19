@@ -92,8 +92,10 @@ def run_method(
     config = CONFIG_MAP[method]
     trajectory: list[dict] = []
 
-    triples_subdir = "sequential_debug" if debug else "sequential"
-    round_dir = data_root / "fnspid" / "triples" / triples_subdir
+    # Always read from the "sequential" subdir; in debug mode the user is
+    # expected to have re-run scripts/15_prepare_sequential_triples.py with
+    # the smaller --per-round / --n-rounds values before invoking this script.
+    round_dir = data_root / "fnspid" / "triples" / "sequential"
 
     starting_checkpoint = (
         "checkpoints/qd_sft_debug/final" if debug else "checkpoints/qd_sft/final"

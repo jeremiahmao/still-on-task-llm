@@ -21,8 +21,11 @@ always_apply_gold_nll: false
 
 # Anchored-reference mixing weight: 0.0 reduces to vanilla COPR; larger values
 # pull the P* target more aggressively toward the task-replay regime.
+# task_anchor_n_samples controls how many task-replay prompts we score each
+# candidate against; cost scales linearly. 4 is a reasonable default on
+# ~200-fact rounds; bump higher if noise dominates.
 task_anchor_alpha: 0.3
-task_anchor_n_samples: 16
+task_anchor_n_samples: 4
 
 training:
   lr: 1.0e-5
