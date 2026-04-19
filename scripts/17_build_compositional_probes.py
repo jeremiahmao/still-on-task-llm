@@ -178,7 +178,7 @@ def main():
     parser.add_argument("--n-probes", type=int, default=500)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--teacher-provider", default="gemini", choices=["gemini", "cerebras", "openai"])
-    parser.add_argument("--teacher-model", default="gemini-2.0-flash-exp")
+    parser.add_argument("--teacher-model", default="gemini-3.1-flash-lite-preview")
     parser.add_argument(
         "--oversample-factor", type=float, default=3.0,
         help="Collect this many candidate pairs per target probe to absorb filter losses.",
