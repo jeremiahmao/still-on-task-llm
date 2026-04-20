@@ -19,6 +19,7 @@ Outputs per method:
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -171,6 +172,16 @@ def run_method(
         row = {"round": k, "run_id": run_id}
         row.update(_extract_round_metrics(run_dir / "eval_results.json"))
         trajectory.append(row)
+
+        # Auto-prune the previous round's merged model weights now that round k
+        # has completed successfully — the chain only needs the latest model,
+        # and holding every round on disk at 7-8 GB each fills a 105 GB root
+        # quickly when running 4 methods in parallel. Keep eval_results.json
+        # and any adapter dir in place; only model/ is removed.
+        if prev_model_dir is not None and prev_model_dir.exists():
+            print(f"[prune] removing superseded {prev_model_dir}")
+            shutil.rmtree(prev_model_dir, ignore_errors=True)
+
         prev_model_dir = run_dir / "model"
 
     return trajectory
