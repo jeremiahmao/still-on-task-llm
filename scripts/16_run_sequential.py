@@ -118,18 +118,22 @@ def run_method(
         run_id = f"{run_name}_{TASK}_scale{per_round}"
         run_dir = output_root / run_id
 
-        # Resume support: if this round already produced a model + eval_results,
-        # skip update and eval, record the existing metrics, and chain the next
-        # round off the already-saved model. Crucial for crash recovery so we
-        # don't re-run rounds that completed before the SIGPIPE killed the tree.
+        # Resume support: if this round already produced eval_results.json,
+        # record the existing metrics and skip re-running. Model/ may have been
+        # deleted for intermediate rounds to save disk; we only need it on disk
+        # for the LAST completed round (to seed the next round's --base-model).
         model_dir = run_dir / "model"
         eval_path = run_dir / "eval_results.json"
-        if model_dir.exists() and eval_path.exists():
+        if eval_path.exists():
             print(f"[resume] {method} round {k}: reusing {run_dir}")
             row = {"round": k, "run_id": run_id, "resumed": True}
             row.update(_extract_round_metrics(eval_path))
             trajectory.append(row)
-            prev_model_dir = model_dir
+            if model_dir.exists():
+                prev_model_dir = model_dir
+            # If this round's model was pruned for disk, keep prev_model_dir
+            # pointing at the most recent model that DOES exist (set in a prior
+            # iteration).
             continue
 
         update_cmd = [
