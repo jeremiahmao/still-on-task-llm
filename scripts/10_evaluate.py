@@ -284,11 +284,21 @@ def main():
         else:
             print(f"  No paired examples at {paired_path}. Skipping temporal contrast.")
 
-    # Save results
+    # Save results. Merge into any existing eval_results.json so running this
+    # script with a subset of metrics doesn't wipe out previously-computed
+    # metrics for the same checkpoint.
     results_path = model_path / "eval_results.json"
+    existing = {}
+    if results_path.exists():
+        try:
+            with open(results_path) as f:
+                existing = json.load(f)
+        except json.JSONDecodeError:
+            existing = {}
+    merged = {**existing, **results}  # latest run wins per-metric
     with open(results_path, "w") as f:
-        json.dump(results, f, indent=2)
-    print(f"\nResults saved to {results_path}")
+        json.dump(merged, f, indent=2)
+    print(f"\nResults saved to {results_path} (merged with {len(existing)} pre-existing metrics)")
 
 
 if __name__ == "__main__":
