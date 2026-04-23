@@ -1,0 +1,13 @@
+{
+  "method": "copr_gold_injection",
+  "run_name": "seq_copr_gold_injection_round_13",
+  "task": "qd",
+  "scale": 200,
+  "triples_path": "data/fnspid/triples/sequential/round_13.json",
+  "base_model": "outputs/seq_copr_gold_injection_round_12_qd_scale200/model",
+  "starting_checkpoint": null,
+  "gpu_hours": 0.6024683770469468,
+  "peak_memory_gb": 16.33218240737915,
+  "elapsed_seconds": 2168.8861573690083,
+  "seed": 42
+}

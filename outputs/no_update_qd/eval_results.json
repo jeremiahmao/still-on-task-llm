@@ -1,0 +1,9 @@
+{
+  "compositional": {
+    "exact_match": 0.0,
+    "contains_final_answer": 0.014,
+    "contains_bridging_entity": 0.102,
+    "token_f1": 0.05169617102269099,
+    "n_probes": 500
+  }
+}

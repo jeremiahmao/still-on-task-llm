@@ -1,0 +1,13 @@
+{
+  "method": "kl_reg_sft",
+  "run_name": "seq_kl_reg_sft_round_12",
+  "task": "qd",
+  "scale": 200,
+  "triples_path": "data/fnspid/triples/sequential/round_12.json",
+  "base_model": "outputs/seq_kl_reg_sft_round_11_qd_scale200/model",
+  "starting_checkpoint": null,
+  "gpu_hours": 0.051148564079444944,
+  "peak_memory_gb": 20.04877281188965,
+  "elapsed_seconds": 184.1348306860018,
+  "seed": 42
+}

@@ -1,0 +1,30 @@
+model:
+  name: Qwen/Qwen3-4B-Instruct-2507
+  dtype: bfloat16
+seed: 42
+paths:
+  data_root: ./data
+  qd_data_root: ./data/qd
+  qd_temporal_data_root: ./data/qd_temporal
+  output_root: ./outputs
+  checkpoint_root: ./checkpoints
+wandb:
+  project: still-on-task
+  enabled: true
+method: copr
+K: 8
+beta: 0.1
+replay_pct: 0.05
+partial_match_threshold: 0.5
+max_new_tokens: 128
+gold_nll_alpha: 0.25
+gold_nll_gate_threshold: 0.5
+always_apply_gold_nll: false
+training:
+  lr: 1.0e-05
+  epochs: 3
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  max_seq_length: 512
+  bf16: true
+cache_path: outputs/seq_copr_round_12_qd_scale200/copr_cache.json

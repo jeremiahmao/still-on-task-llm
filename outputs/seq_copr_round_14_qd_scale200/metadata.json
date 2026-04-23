@@ -1,0 +1,13 @@
+{
+  "method": "copr",
+  "run_name": "seq_copr_round_14",
+  "task": "qd",
+  "scale": 200,
+  "triples_path": "data/fnspid/triples/sequential/round_14.json",
+  "base_model": "outputs/seq_copr_round_13_qd_scale200/model",
+  "starting_checkpoint": null,
+  "gpu_hours": 0.49951407825472416,
+  "peak_memory_gb": 16.16290044784546,
+  "elapsed_seconds": 1798.250681717007,
+  "seed": 42
+}

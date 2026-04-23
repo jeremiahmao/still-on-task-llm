@@ -1,0 +1,21 @@
+
+============================================================
+kl_reg_sft: 15 rounds x 200 edits
+============================================================
+[resume] kl_reg_sft round 1: reusing outputs/seq_kl_reg_sft_round_1_qd_scale200
+[resume] kl_reg_sft round 2: reusing outputs/seq_kl_reg_sft_round_2_qd_scale200
+[resume] kl_reg_sft round 3: reusing outputs/seq_kl_reg_sft_round_3_qd_scale200
+[resume] kl_reg_sft round 4: reusing outputs/seq_kl_reg_sft_round_4_qd_scale200
+[resume] kl_reg_sft round 5: reusing outputs/seq_kl_reg_sft_round_5_qd_scale200
+[resume] kl_reg_sft round 6: reusing outputs/seq_kl_reg_sft_round_6_qd_scale200
+[resume] kl_reg_sft round 7: reusing outputs/seq_kl_reg_sft_round_7_qd_scale200
+[resume] kl_reg_sft round 8: reusing outputs/seq_kl_reg_sft_round_8_qd_scale200
+[resume] kl_reg_sft round 9: reusing outputs/seq_kl_reg_sft_round_9_qd_scale200
+[resume] kl_reg_sft round 10: reusing outputs/seq_kl_reg_sft_round_10_qd_scale200
+[resume] kl_reg_sft round 11: reusing outputs/seq_kl_reg_sft_round_11_qd_scale200
+[resume] kl_reg_sft round 12: reusing outputs/seq_kl_reg_sft_round_12_qd_scale200
+[resume] kl_reg_sft round 13: reusing outputs/seq_kl_reg_sft_round_13_qd_scale200
+[resume] kl_reg_sft round 14: reusing outputs/seq_kl_reg_sft_round_14_qd_scale200
+[resume] kl_reg_sft round 15: reusing outputs/seq_kl_reg_sft_round_15_qd_scale200
+
+Summary saved to outputs/sequential/summary.json
