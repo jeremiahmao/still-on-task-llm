@@ -94,12 +94,16 @@ def main():
     # Shared encoder for both preservation metrics
     encoder = None
 
+    # Resolve qd_root once so both `preservation` and `post_preservation`
+    # blocks can use it (the post_preservation block crashed with
+    # UnboundLocalError when only post_preservation was requested).
+    qd_root = Path(cfg.paths.qd_temporal_data_root) if args.task == "qd" else None
+    if qd_root is not None and suffix:
+        qd_root = qd_root / suffix.lstrip("_")
+
     # Task preservation — Recall@10 on pre-cutoff QD test set
     if "preservation" in metrics_to_run and args.task == "qd":
         print("\n--- Task Preservation (pre-cutoff) ---")
-        qd_root = Path(cfg.paths.qd_temporal_data_root)
-        if suffix:
-            qd_root = qd_root / suffix.lstrip("_")
         test_path = qd_root / "test.json"
         index_path = data_root / "fnspid" / "index" / f"corpus{suffix}.faiss"
         doc_ids_path = data_root / "fnspid" / "index" / f"doc_ids{suffix}.npy"
