@@ -1,0 +1,7 @@
+{
+  "per_round": 200,
+  "n_rounds": 10,
+  "seed": 42,
+  "source": "data/fnspid/triples/filtered_triples.json",
+  "total_triples_available": 96897
+}
