@@ -107,7 +107,19 @@ def run_method(
         print("  Run scripts/07_task_tune_qd.py first.")
         sys.exit(1)
 
-    prev_model_dir: Path | None = None  # set after round 1
+    # Resume strategy: find the latest round that has BOTH eval_results.json
+    # AND a model/ directory on disk. That's our true "last completed" round.
+    # Earlier rounds that had their model pruned for disk are collected for
+    # trajectory metadata only. Rounds with neither file are gaps we skip
+    # forward across (the chain can't be continued from them). This makes
+    # resume robust to the faiss-crash / auto-prune combo that left earlier
+    # rounds evalless with pruned models.
+    last_complete_round = 0
+    for k in range(n_rounds, 0, -1):
+        run_dir = output_root / f"seq_{method}_round_{k}_qd_scale{per_round}"
+        if (run_dir / "eval_results.json").exists() and (run_dir / "model").exists():
+            last_complete_round = k
+            break
 
     for k in range(1, n_rounds + 1):
         round_triples = round_dir / f"round_{k}.json"
@@ -118,24 +130,32 @@ def run_method(
         run_name = f"seq_{method}_round_{k}"
         run_id = f"{run_name}_{TASK}_scale{per_round}"
         run_dir = output_root / run_id
-
-        # Resume support: if this round already produced eval_results.json,
-        # record the existing metrics and skip re-running. Model/ may have been
-        # deleted for intermediate rounds to save disk; we only need it on disk
-        # for the LAST completed round (to seed the next round's --base-model).
-        model_dir = run_dir / "model"
         eval_path = run_dir / "eval_results.json"
-        if eval_path.exists():
-            print(f"[resume] {method} round {k}: reusing {run_dir}")
-            row = {"round": k, "run_id": run_id, "resumed": True}
-            row.update(_extract_round_metrics(eval_path))
-            trajectory.append(row)
-            if model_dir.exists():
-                prev_model_dir = model_dir
-            # If this round's model was pruned for disk, keep prev_model_dir
-            # pointing at the most recent model that DOES exist (set in a prior
-            # iteration).
+
+        # For any round at or before the last fully-complete round, harvest its
+        # eval row (if any) and skip. Never try to (re)run a historic round:
+        # doing so would either clobber the chain or crash on a missing base.
+        if k <= last_complete_round:
+            if eval_path.exists():
+                print(f"[resume] {method} round {k}: reusing {run_dir}")
+                row = {"round": k, "run_id": run_id, "resumed": True}
+                row.update(_extract_round_metrics(eval_path))
+                trajectory.append(row)
+            else:
+                print(f"[resume] {method} round {k}: gap (no eval, skipping)")
+                trajectory.append({"round": k, "status": "gap_skipped"})
             continue
+
+        # New work: chain from last_complete_round's model. If there is no
+        # such model at all, start fresh from the task-tuned checkpoint.
+        if last_complete_round > 0:
+            base_model_dir = (
+                output_root
+                / f"seq_{method}_round_{last_complete_round}_qd_scale{per_round}"
+                / "model"
+            )
+        else:
+            base_model_dir = None
 
         update_cmd = [
             sys.executable,
@@ -147,11 +167,10 @@ def run_method(
             "--config", config,
             "--triples-path", str(round_triples),
         ]
-        if k == 1:
+        if base_model_dir is None:
             update_cmd += ["--starting-checkpoint", starting_checkpoint]
         else:
-            assert prev_model_dir is not None
-            update_cmd += ["--base-model", str(prev_model_dir)]
+            update_cmd += ["--base-model", str(base_model_dir)]
 
         rc = _run(update_cmd)
         if rc != 0:
@@ -178,11 +197,12 @@ def run_method(
         # and holding every round on disk at 7-8 GB each fills a 105 GB root
         # quickly when running 4 methods in parallel. Keep eval_results.json
         # and any adapter dir in place; only model/ is removed.
-        if prev_model_dir is not None and prev_model_dir.exists():
-            print(f"[prune] removing superseded {prev_model_dir}")
-            shutil.rmtree(prev_model_dir, ignore_errors=True)
+        if base_model_dir is not None and base_model_dir.exists():
+            print(f"[prune] removing superseded {base_model_dir}")
+            shutil.rmtree(base_model_dir, ignore_errors=True)
 
-        prev_model_dir = run_dir / "model"
+        # Advance the resume pointer: the chain now continues from round k.
+        last_complete_round = k
 
     return trajectory
 
