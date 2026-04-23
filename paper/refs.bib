@@ -1,0 +1,285 @@
+% refs.bib — related work for knowledge-injection-via-COPR paper
+% Entries marked % VERIFY should be confirmed against authoritative sources before camera-ready.
+
+% ===== 1. Parametric knowledge editing =====
+
+@inproceedings{meng2022rome,
+  title     = {Locating and Editing Factual Associations in {GPT}},
+  author    = {Meng, Kevin and Bau, David and Andonian, Alex and Belinkov, Yonatan},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2022},
+  eprint    = {2202.05262},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{meng2023memit,
+  title     = {Mass-Editing Memory in a Transformer},
+  author    = {Meng, Kevin and Sharma, Arnab Sen and Andonian, Alex and Belinkov, Yonatan and Bau, David},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023},
+  eprint    = {2210.07229},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{mitchell2022mend,
+  title     = {Fast Model Editing at Scale},
+  author    = {Mitchell, Eric and Lin, Charles and Bosselut, Antoine and Finn, Chelsea and Manning, Christopher D.},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2022},
+  eprint    = {2110.11309},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{mitchell2022serac,
+  title     = {Memory-Based Model Editing at Scale},
+  author    = {Mitchell, Eric and Lin, Charles and Bosselut, Antoine and Manning, Christopher D. and Finn, Chelsea},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2022},
+  eprint    = {2206.06520},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{dai2022knowledge,
+  title     = {Knowledge Neurons in Pretrained Transformers},
+  author    = {Dai, Damai and Dong, Li and Hao, Yaru and Sui, Zhifang and Chang, Baobao and Wei, Furu},
+  booktitle = {Proceedings of ACL},
+  year      = {2022},
+  eprint    = {2104.08696},
+  archivePrefix = {arXiv}
+}
+
+@article{yao2023editing, % VERIFY exact title / venue
+  title   = {Editing Large Language Models: Problems, Methods, and Opportunities},
+  author  = {Yao, Yunzhi and Wang, Peng and Tian, Bozhong and Cheng, Siyuan and Li, Zhoubo and Deng, Shumin and Chen, Huajun and Zhang, Ningyu},
+  journal = {arXiv preprint arXiv:2305.13172},
+  year    = {2023}
+}
+
+% ===== 2. DPO / preference-based editing =====
+
+@inproceedings{rozner2024kdpo, % VERIFY author list and exact EMNLP 2024 title
+  title     = {Knowledge Editing in Language Models via Adapted Direct Preference Optimization ({KDPO})},
+  author    = {Rozner, Amit and Battash, Barak and Wolf, Lior and Lindenbaum, Ofir},
+  booktitle = {Findings of EMNLP},
+  year      = {2024},
+  eprint    = {2406.09920},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{rafailov2023dpo,
+  title     = {Direct Preference Optimization: Your Language Model is Secretly a Reward Model},
+  author    = {Rafailov, Rafael and Sharma, Archit and Mitchell, Eric and Ermon, Stefano and Manning, Christopher D. and Finn, Chelsea},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2023},
+  eprint    = {2305.18290},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{azar2024ipo,
+  title     = {A General Theoretical Paradigm to Understand Learning from Human Preferences},
+  author    = {Azar, Mohammad Gheshlaghi and Rowland, Mark and Piot, Bilal and Guo, Daniel and Calandriello, Daniele and Valko, Michal and Munos, R{\'e}mi},
+  booktitle = {AISTATS},
+  year      = {2024},
+  eprint    = {2310.12036},
+  archivePrefix = {arXiv}
+}
+
+% ===== 3. COPR / continual preference alignment =====
+
+@inproceedings{zhang2025copr, % VERIFY exact ACL Findings 2025 citation
+  title     = {{COPR}: Continual Optimal Policy Regularization for Continual Preference Alignment},
+  author    = {Zhang, Han and others},
+  booktitle = {Findings of the Association for Computational Linguistics: ACL},
+  year      = {2025}
+}
+
+@article{zhang2024cppo, % VERIFY
+  title   = {{CPPO}: Continual Learning for Reinforcement Learning with Human Feedback},
+  author  = {Zhang, Han and others},
+  journal = {arXiv preprint},
+  year    = {2024}
+}
+
+@article{bai2022training,
+  title   = {Training a Helpful and Harmless Assistant with Reinforcement Learning from Human Feedback},
+  author  = {Bai, Yuntao and Jones, Andy and Ndousse, Kamal and Askell, Amanda and Chen, Anna and DasSarma, Nova and Drain, Dawn and Fort, Stanislav and Ganguli, Deep and Henighan, Tom and others},
+  journal = {arXiv preprint arXiv:2204.05862},
+  year    = {2022}
+}
+
+% ===== 4. LoRA / PEFT for knowledge editing =====
+
+@inproceedings{hu2022lora,
+  title     = {{LoRA}: Low-Rank Adaptation of Large Language Models},
+  author    = {Hu, Edward J. and Shen, Yelong and Wallis, Phillip and Allen-Zhu, Zeyuan and Li, Yuanzhi and Wang, Shean and Wang, Lu and Chen, Weizhu},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2022},
+  eprint    = {2106.09685},
+  archivePrefix = {arXiv}
+}
+
+@article{huang2023lorahub,
+  title   = {{LoRAHub}: Efficient Cross-Task Generalization via Dynamic {LoRA} Composition},
+  author  = {Huang, Chengsong and Liu, Qian and Lin, Bill Yuchen and Pang, Tianyu and Du, Chao and Lin, Min},
+  journal = {arXiv preprint arXiv:2307.13269},
+  year    = {2023}
+}
+
+@inproceedings{yu2024melo, % VERIFY: "MELO: Enhancing Model Editing with Neuron-Indexed Dynamic LoRA" (Yu et al. AAAI 2024)
+  title     = {{MELO}: Enhancing Model Editing with Neuron-Indexed Dynamic {LoRA}},
+  author    = {Yu, Lang and Chen, Qin and Zhou, Jie and He, Liang},
+  booktitle = {AAAI},
+  year      = {2024},
+  eprint    = {2312.11795},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{aghajanyan2021intrinsic,
+  title     = {Intrinsic Dimensionality Explains the Effectiveness of Language Model Fine-Tuning},
+  author    = {Aghajanyan, Armen and Gupta, Sonal and Zettlemoyer, Luke},
+  booktitle = {ACL},
+  year      = {2021},
+  eprint    = {2012.13255},
+  archivePrefix = {arXiv}
+}
+
+% ===== 5. Continual learning for LLMs =====
+
+@inproceedings{wang2024inscl, % VERIFY exact author order / venue
+  title     = {{InsCL}: A Data-efficient Continual Learning Paradigm for Fine-tuning Large Language Models with Instructions},
+  author    = {Wang, Yifan and others},
+  booktitle = {NAACL},
+  year      = {2024},
+  eprint    = {2403.11435},
+  archivePrefix = {arXiv}
+}
+
+@article{kirkpatrick2017ewc,
+  title   = {Overcoming Catastrophic Forgetting in Neural Networks},
+  author  = {Kirkpatrick, James and Pascanu, Razvan and Rabinowitz, Neil and Veness, Joel and Desjardins, Guillaume and Rusu, Andrei A. and Milan, Kieran and Quan, John and Ramalho, Tiago and Grabska-Barwinska, Agnieszka and others},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {114},
+  number  = {13},
+  pages   = {3521--3526},
+  year    = {2017}
+}
+
+@article{luo2023forgetting,
+  title   = {An Empirical Study of Catastrophic Forgetting in Large Language Models During Continual Fine-tuning},
+  author  = {Luo, Yun and Yang, Zhicheng and Meng, Fandong and Li, Yafu and Zhou, Jie and Zhang, Yue},
+  journal = {arXiv preprint arXiv:2308.08747},
+  year    = {2023}
+}
+
+@article{wu2024continual, % VERIFY — several CL-for-LLM surveys exist
+  title   = {Continual Learning for Large Language Models: A Survey},
+  author  = {Wu, Tongtong and Luo, Linhao and Li, Yuan-Fang and Pan, Shirui and Vu, Thuy-Trang and Haffari, Gholamreza},
+  journal = {arXiv preprint arXiv:2402.01364},
+  year    = {2024}
+}
+
+% ===== 6. Compositional / multi-hop eval =====
+
+@article{cohen2024ripple,
+  title   = {Evaluating the Ripple Effects of Knowledge Editing in Language Models},
+  author  = {Cohen, Roi and Biran, Eden and Yoran, Ori and Globerson, Amir and Geva, Mor},
+  journal = {Transactions of the Association for Computational Linguistics (TACL)},
+  year    = {2024},
+  eprint  = {2307.12976},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{yang2018hotpotqa,
+  title     = {{HotpotQA}: A Dataset for Diverse, Explainable Multi-hop Question Answering},
+  author    = {Yang, Zhilin and Qi, Peng and Zhang, Saizheng and Bengio, Yoshua and Cohen, William W. and Salakhutdinov, Ruslan and Manning, Christopher D.},
+  booktitle = {EMNLP},
+  year      = {2018},
+  eprint    = {1809.09600},
+  archivePrefix = {arXiv}
+}
+
+@article{trivedi2022musique,
+  title   = {{MuSiQue}: Multihop Questions via Single-hop Question Composition},
+  author  = {Trivedi, Harsh and Balasubramanian, Niranjan and Khot, Tushar and Sabharwal, Ashish},
+  journal = {Transactions of the Association for Computational Linguistics (TACL)},
+  year    = {2022},
+  eprint  = {2108.00573},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{ho2020constructing,
+  title     = {Constructing a Multi-hop {QA} Dataset for Comprehensive Evaluation of Reasoning Steps},
+  author    = {Ho, Xanh and Duong Nguyen, Anh-Khoa and Sugawara, Saku and Aizawa, Akiko},
+  booktitle = {COLING},
+  year      = {2020},
+  eprint    = {2011.01060},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{zhong2023mquake,
+  title     = {{MQuAKE}: Assessing Knowledge Editing in Language Models via Multi-Hop Questions},
+  author    = {Zhong, Zexuan and Wu, Zhengxuan and Manning, Christopher D. and Potts, Christopher and Chen, Danqi},
+  booktitle = {EMNLP},
+  year      = {2023},
+  eprint    = {2305.14795},
+  archivePrefix = {arXiv}
+}
+
+% ===== 7. Mechanistic analysis of LoRA =====
+
+@article{zhu2024asymmetry, % VERIFY: LoRA subspace / B-vs-A asymmetry analysis
+  title   = {The Asymmetry of Low-Rank Adapters in Foundation Models},
+  author  = {Zhu, Jiacheng and Greenewald, Kristjan and Nadjahi, Kimia and S{\'a}ez de Oc{\'a}riz Borde, Haitz and Gabrielsson, Rickard Br{\"u}el and Choshen, Leshem and Ghassemi, Marzyeh and Yurochkin, Mikhail and Solomon, Justin},
+  journal = {arXiv preprint arXiv:2402.16842},
+  year    = {2024}
+}
+
+% ===== 8. Extras cited by draft.md (added by drafting agent) =====
+
+@inproceedings{wang2023olora,
+  title     = {Orthogonal Subspace Learning for Language Model Continual Learning},
+  author    = {Wang, Xiao and Chen, Tianze and Ge, Qiming and Xia, Han and Bao, Rong and Zheng, Rui and Zhang, Qi and Gui, Tao and Huang, Xuanjing},
+  booktitle = {Findings of EMNLP},
+  year      = {2023},
+  eprint    = {2310.14152},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{decao2021editing,
+  title     = {Editing Factual Knowledge in Language Models},
+  author    = {De Cao, Nicola and Aziz, Wilker and Titov, Ivan},
+  booktitle = {EMNLP},
+  year      = {2021},
+  eprint    = {2104.08164},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{levy2017zsre,
+  title     = {Zero-Shot Relation Extraction via Reading Comprehension},
+  author    = {Levy, Omer and Seo, Minjoon and Choi, Eunsol and Zettlemoyer, Luke},
+  booktitle = {CoNLL},
+  year      = {2017},
+  eprint    = {1706.04115},
+  archivePrefix = {arXiv}
+}
+
+@article{shah2023fnspid, % VERIFY exact arXiv ID
+  title   = {{FNSPID}: A Comprehensive Financial News Dataset in Time Series},
+  author  = {Shah, Suyash and others},
+  journal = {arXiv preprint},
+  year    = {2023}
+}
+
+@misc{qwen3_4b_instruct_2507,
+  title        = {Qwen3-4B-Instruct-2507},
+  author       = {{Qwen Team}},
+  year         = {2025},
+  howpublished = {\url{https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507}}
+}
+
+@misc{gemini_flash_lite_2025,
+  title        = {Gemini 3.1 Flash Lite},
+  author       = {{Google DeepMind}},
+  year         = {2025},
+  howpublished = {Google AI Studio; gemini-3.1-flash-lite-preview}
+}
