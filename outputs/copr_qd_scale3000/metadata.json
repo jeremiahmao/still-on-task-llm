@@ -1,0 +1,9 @@
+{
+  "method": "copr",
+  "task": "qd",
+  "scale": 3000,
+  "gpu_hours": 9.054185710477775,
+  "peak_memory_gb": 6.457637786865234,
+  "elapsed_seconds": 32595.06855771999,
+  "seed": 42
+}

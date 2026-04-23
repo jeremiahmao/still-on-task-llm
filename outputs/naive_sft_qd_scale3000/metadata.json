@@ -1,0 +1,9 @@
+{
+  "method": "naive_sft",
+  "task": "qd",
+  "scale": 3000,
+  "gpu_hours": 0.18424839881499389,
+  "peak_memory_gb": 2.879429817199707,
+  "elapsed_seconds": 663.294235733978,
+  "seed": 42
+}

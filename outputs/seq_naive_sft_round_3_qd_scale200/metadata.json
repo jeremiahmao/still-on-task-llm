@@ -1,0 +1,13 @@
+{
+  "method": "naive_sft",
+  "run_name": "seq_naive_sft_round_3",
+  "task": "qd",
+  "scale": 200,
+  "triples_path": "data/fnspid/triples/sequential/round_3.json",
+  "base_model": "outputs/seq_naive_sft_round_2_qd_scale200/model",
+  "starting_checkpoint": null,
+  "gpu_hours": 0.013076075971386873,
+  "peak_memory_gb": 8.71168041229248,
+  "elapsed_seconds": 47.073873496992746,
+  "seed": 42
+}

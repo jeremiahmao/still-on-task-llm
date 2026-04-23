@@ -8,7 +8,6 @@ build/
 
 # Data & outputs (large files)
 /data/
-outputs/
 checkpoints/
 wandb/
 
@@ -58,3 +57,8 @@ run_*.log
 run_retry.log
 backups/
 /tmp/
+
+# Keep small eval/metadata/config artifacts under outputs/, exclude model weights
+outputs/**/model/
+outputs/**/update_adapter/
+outputs/**/copr_cache.json

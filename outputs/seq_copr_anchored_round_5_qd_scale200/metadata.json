@@ -1,0 +1,13 @@
+{
+  "method": "copr_anchored",
+  "run_name": "seq_copr_anchored_round_5",
+  "task": "qd",
+  "scale": 200,
+  "triples_path": "data/fnspid/triples/sequential/round_5.json",
+  "base_model": "outputs/seq_copr_anchored_round_4_qd_scale200/model",
+  "starting_checkpoint": null,
+  "gpu_hours": 0.5963288014600079,
+  "peak_memory_gb": 16.179577827453613,
+  "elapsed_seconds": 2146.7836852560285,
+  "seed": 42
+}

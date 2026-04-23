@@ -1,0 +1,9 @@
+{
+  "method": "kl_reg_sft",
+  "task": "qd",
+  "scale": 1000,
+  "gpu_hours": 0.1899663528483264,
+  "peak_memory_gb": 10.562057971954346,
+  "elapsed_seconds": 683.878870253975,
+  "seed": 42
+}

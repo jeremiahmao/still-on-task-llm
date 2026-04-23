@@ -1,0 +1,22 @@
+model:
+  name: Qwen/Qwen3-4B-Instruct-2507
+  dtype: bfloat16
+seed: 42
+paths:
+  data_root: ./data
+  qd_data_root: ./data/qd
+  qd_temporal_data_root: ./data/qd_temporal
+  output_root: ./outputs
+  checkpoint_root: ./checkpoints
+wandb:
+  project: still-on-task
+  enabled: true
+method: kl_reg_sft
+kl_lambda: 0.1
+training:
+  lr: 2.0e-05
+  epochs: 3
+  batch_size: 8
+  gradient_accumulation_steps: 2
+  max_seq_length: 512
+  bf16: true

@@ -1,0 +1,13 @@
+{
+  "method": "copr_anchored",
+  "run_name": null,
+  "task": "qd",
+  "scale": 1000,
+  "triples_path": "data/fnspid/triples/triples_1000.json",
+  "base_model": null,
+  "starting_checkpoint": null,
+  "gpu_hours": 4.040470632879442,
+  "peak_memory_gb": 16.282386302947998,
+  "elapsed_seconds": 14545.69427836599,
+  "seed": 42
+}

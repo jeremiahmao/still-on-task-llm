@@ -1,0 +1,9 @@
+{
+  "method": "copr_gold_injection",
+  "task": "qd",
+  "scale": 1000,
+  "gpu_hours": 3.006750518740834,
+  "peak_memory_gb": 6.360950469970703,
+  "elapsed_seconds": 10824.301867467002,
+  "seed": 42
+}
