@@ -1,0 +1,8 @@
+method,round,run_id,comp_exact_match,comp_contains_final_answer,comp_contains_bridging_entity,comp_token_f1,comp_n_probes
+naive_sft,10,seq_naive_sft_round_10_qd_scale200,0.002,0.018,0.058,0.06933968791557307,500
+kl_reg_sft,10,seq_kl_reg_sft_round_10_qd_scale200,0.014,0.016,0.024,0.0833976510422363,500
+copr,10,seq_copr_round_10_qd_scale200,0.0,0.014,0.072,0.06647484645317865,500
+copr_gold_injection,10,seq_copr_gold_injection_round_10_qd_scale200,0.012,0.018,0.042,0.08839573014414018,500
+copr_gold_injection_anchored,10,seq_copr_gold_injection_anchored_round_10_qd_scale200,0.01,0.016,0.052,0.08842615713804877,500
+copr_anchored,10,seq_copr_anchored_round_10_qd_scale200,0.004,0.01,0.014,0.024597410006285576,500
+no_update_baseline,,no_update_qd,0.0,0.014,0.102,0.05169617102269099,500

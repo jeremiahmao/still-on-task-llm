@@ -41,3 +41,20 @@ logs/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Large artifacts
+outputs/**/model/
+outputs/**/update_adapter/
+outputs/**/copr_cache.json
+checkpoints/
+data/fnspid/triples/triples_*.json
+data/fnspid/triples/filtered_triples.json
+data/fnspid/triples/sequential/round_*.json
+data/fnspid/index/
+data/qd_temporal/
+wandb/
+nohup.out
+run_*.log
+run_retry.log
+backups/
+/tmp/

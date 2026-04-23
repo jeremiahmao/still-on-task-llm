@@ -1,0 +1,8 @@
+method,description,config_file,cfg.method,cfg.training.lr,cfg.training.epochs,cfg.training.batch_size,cfg.training.gradient_accumulation_steps,cfg.training.max_seq_length,cfg.training.bf16,cfg.kl_lambda,cfg.K,cfg.beta,cfg.replay_pct,cfg.partial_match_threshold,cfg.max_new_tokens,cfg.gold_nll_alpha,cfg.gold_nll_gate_threshold,cfg.always_apply_gold_nll,cfg.task_anchor_alpha,cfg.task_anchor_n_samples
+naive_sft,"SFT on fact QA pairs; no task anchor, no replay.",configs/update/naive_sft.yaml,naive_sft,2e-05,3,8,2,512,True,,,,,,,,,,,
+kl_reg_sft,SFT + KL divergence vs pre-update model on task-replay batches.,configs/update/kl_reg_sft.yaml,kl_reg_sft,2e-05,3,8,2,512,True,0.1,,,,,,,,,,
+copr,Paper-faithful COPR: MSE fit on K=8 ranked candidates + gold-NLL SFT anchor + KL replay.,configs/update/copr.yaml,copr,1e-05,3,4,4,512,True,,8,0.1,0.05,0.5,128,0.25,0.5,False,,
+copr_gold_injection,Our variant: COPR with gold answer injected into the candidate set; anchor OFF.,configs/update/copr_gold_injection.yaml,copr_gold_injection,1e-05,3,4,4,512,True,,8,0.1,0.05,0.5,128,0.0,0.0,False,,
+copr_gold_injection_anchored,Our variant: COPR with gold injection AND SFT anchor ON.,configs/update/copr_gold_injection_anchored.yaml,copr_gold_injection_anchored,1e-05,3,4,4,512,True,,8,0.1,0.05,0.5,128,0.25,0.5,False,,
+copr_anchored,Our variant: COPR with task-replay-normalized reference mixed into log pi_ref (per-candidate).,configs/update/copr_anchored.yaml,copr_anchored,1e-05,3,4,4,512,True,,8,0.1,0.05,0.5,128,0.25,0.5,False,0.3,4
+no_update_baseline,"Task-tuned model (qd_sft/final), LoRA merged, no knowledge updates applied.",,,,,,,,,,,,,,,,,,,

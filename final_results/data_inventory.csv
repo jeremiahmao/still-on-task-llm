@@ -1,0 +1,27 @@
+kind,path,exists,size_bytes,count,notes
+triples_filtered,data/fnspid/triples/filtered_triples.json,True,41332745,96897,all filtered fact triples
+triples_scale50,data/fnspid/triples/triples_50.json,False,,,batch-scale 50 sample
+triples_scale200,data/fnspid/triples/triples_200.json,True,90282,200,batch-scale 200 sample
+triples_scale1000,data/fnspid/triples/triples_1000.json,True,449381,1000,batch-scale 1000 sample
+triples_scale3000,data/fnspid/triples/triples_3000.json,True,1341497,3000,batch-scale 3000 sample
+triples_sequential_round_1,data/fnspid/triples/sequential/round_1.json,True,84623,200,disjoint per-round batch
+triples_sequential_round_10,data/fnspid/triples/sequential/round_10.json,True,84794,200,disjoint per-round batch
+triples_sequential_round_2,data/fnspid/triples/sequential/round_2.json,True,85333,200,disjoint per-round batch
+triples_sequential_round_3,data/fnspid/triples/sequential/round_3.json,True,85614,200,disjoint per-round batch
+triples_sequential_round_4,data/fnspid/triples/sequential/round_4.json,True,87006,200,disjoint per-round batch
+triples_sequential_round_5,data/fnspid/triples/sequential/round_5.json,True,85556,200,disjoint per-round batch
+triples_sequential_round_6,data/fnspid/triples/sequential/round_6.json,True,84656,200,disjoint per-round batch
+triples_sequential_round_7,data/fnspid/triples/sequential/round_7.json,True,85324,200,disjoint per-round batch
+triples_sequential_round_8,data/fnspid/triples/sequential/round_8.json,True,84101,200,disjoint per-round batch
+triples_sequential_round_9,data/fnspid/triples/sequential/round_9.json,True,85041,200,disjoint per-round batch
+sequential_metadata,data/fnspid/triples/sequential/metadata.json,True,147,,per_round=200 n_rounds=10 seed=42 total_available=96897
+qd_temporal_train.json,data/qd_temporal/train.json,True,55913498,414,
+qd_temporal_test.json,data/qd_temporal/test.json,True,14569717,104,
+qd_temporal_post_test.json,data/qd_temporal/post_test.json,True,69612478,518,
+qd_temporal_paired_examples.json,data/qd_temporal/paired_examples.json,True,71908581,518,
+compositional_probes,data/fnspid/compositional/probes.json,True,577402,500,2-hop probes for Phase 4
+locality_facts,data/fnspid/locality_facts.json,True,14406976,96697,unrelated facts for locality eval
+faiss_corpus.faiss,data/fnspid/index/corpus.faiss,True,10578100,,
+faiss_corpus_post.faiss,data/fnspid/index/corpus_post.faiss,True,8763700,,
+faiss_doc_ids.npy,data/fnspid/index/doc_ids.npy,True,400128,,
+faiss_chunk_to_article.npy,data/fnspid/index/chunk_to_article.npy,True,592000,,
