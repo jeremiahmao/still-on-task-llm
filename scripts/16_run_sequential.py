@@ -33,6 +33,7 @@ METHODS = [
     "copr_gold_injection_anchored",
     "copr_anchored",
     "fi_sft",
+    "kl_reg_sft_mixedfmt",
 ]
 
 CONFIG_MAP = {
@@ -43,6 +44,7 @@ CONFIG_MAP = {
     "copr_gold_injection_anchored": "configs/update/copr_gold_injection_anchored.yaml",
     "copr_anchored": "configs/update/copr_anchored.yaml",
     "fi_sft": "configs/update/fi_sft.yaml",
+    "kl_reg_sft_mixedfmt": "configs/update/kl_reg_sft_mixedfmt.yaml",
 }
 
 # Methods that require the mixed-format triples subdir (output of
