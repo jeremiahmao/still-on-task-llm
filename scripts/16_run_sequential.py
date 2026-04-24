@@ -32,6 +32,7 @@ METHODS = [
     "copr_gold_injection",
     "copr_gold_injection_anchored",
     "copr_anchored",
+    "fi_sft",
 ]
 
 CONFIG_MAP = {
@@ -41,7 +42,13 @@ CONFIG_MAP = {
     "copr_gold_injection": "configs/update/copr_gold_injection.yaml",
     "copr_gold_injection_anchored": "configs/update/copr_gold_injection_anchored.yaml",
     "copr_anchored": "configs/update/copr_anchored.yaml",
+    "fi_sft": "configs/update/fi_sft.yaml",
 }
+
+# Methods that require the mixed-format triples subdir (output of
+# scripts/24_prepare_mixed_format_triples.py run per-round). All others read
+# from the standard "sequential" subdir.
+MIXED_FORMAT_METHODS = {"fi_sft", "kl_reg_sft_mixedfmt"}
 
 N_ROUNDS = 10
 PER_ROUND = 200
@@ -94,10 +101,11 @@ def run_method(
     config = CONFIG_MAP[method]
     trajectory: list[dict] = []
 
-    # Always read from the "sequential" subdir; in debug mode the user is
-    # expected to have re-run scripts/15_prepare_sequential_triples.py with
-    # the smaller --per-round / --n-rounds values before invoking this script.
-    round_dir = data_root / "fnspid" / "triples" / "sequential"
+    # Methods that need mixed-format training data read from a different
+    # subdir, populated by running scripts/24_prepare_mixed_format_triples.py
+    # once per round (use the helper scripts/26_prep_all_mixed_format_rounds.sh).
+    subdir = "mixed_format_sequential" if method in MIXED_FORMAT_METHODS else "sequential"
+    round_dir = data_root / "fnspid" / "triples" / subdir
 
     starting_checkpoint = (
         "checkpoints/qd_sft_debug/final" if debug else "checkpoints/qd_sft/final"
