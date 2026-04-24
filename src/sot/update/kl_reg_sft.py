@@ -51,13 +51,18 @@ class KLRegSFTUpdate(UpdateMethod):
         for p in ref_model.parameters():
             p.requires_grad = False
 
-        # Fact-SFT texts
+        # Fact-SFT texts. Mixed-format entries (train_format="qd" with a
+        # pre-built qd_messages list) use the provided chat; standard entries
+        # build the usual {user: question, assistant: answer} chat.
         fact_texts = []
         for qa in fact_qa_pairs:
-            chat = [
-                {"role": "user", "content": qa["question"]},
-                {"role": "assistant", "content": qa["answer"]},
-            ]
+            if qa.get("train_format") == "qd" and qa.get("qd_messages"):
+                chat = qa["qd_messages"]
+            else:
+                chat = [
+                    {"role": "user", "content": qa["question"]},
+                    {"role": "assistant", "content": qa["answer"]},
+                ]
             fact_texts.append(
                 tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=False)
             )

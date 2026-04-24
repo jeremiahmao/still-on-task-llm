@@ -22,6 +22,7 @@ from sot.models.lora import apply_lora, get_lora_config, load_lora, merge_lora
 from sot.update.copr import COPRUpdate
 from sot.update.copr_anchored import COPRAnchoredUpdate
 from sot.update.copr_gold_injection import COPRGoldInjectionUpdate
+from sot.update.fi_sft import FISFTUpdate
 from sot.update.kl_reg_sft import KLRegSFTUpdate
 from sot.update.naive_sft import NaiveSFTUpdate
 from sot.utils.config import load_config, save_config
@@ -32,10 +33,12 @@ from sot.utils.seed import seed_everything
 METHODS = {
     "naive_sft": NaiveSFTUpdate,
     "kl_reg_sft": KLRegSFTUpdate,
+    "kl_reg_sft_mixedfmt": KLRegSFTUpdate,  # same class; data prep differs
     "copr": COPRUpdate,
     "copr_gold_injection": COPRGoldInjectionUpdate,
     "copr_gold_injection_anchored": COPRGoldInjectionUpdate,  # same class, different config
     "copr_anchored": COPRAnchoredUpdate,
+    "fi_sft": FISFTUpdate,
 }
 
 
@@ -102,20 +105,26 @@ def main():
 
     fact_qa_pairs = []
     for t in raw_triples:
+        # Strip mixed-format-only fields before FactTriple(**t) so the dataclass
+        # doesn't choke. Keep them separately to pass through to the update method.
+        mixed_fmt_fields = {
+            k: t.pop(k) for k in ("train_format", "qd_messages") if k in t
+        }
         triple = FactTriple(**t)
         qa = render_triple(triple)
-        fact_qa_pairs.append(
-            {
-                "question": qa.question,
-                "answer": qa.answer,
-                "phrasings": qa.phrasings,
-                "triple": {
-                    "subject": triple.subject,
-                    "relation": triple.relation,
-                    "object": triple.object,
-                },
-            }
-        )
+        entry = {
+            "question": qa.question,
+            "answer": qa.answer,
+            "phrasings": qa.phrasings,
+            "triple": {
+                "subject": triple.subject,
+                "relation": triple.relation,
+                "object": triple.object,
+            },
+        }
+        # Pass mixed-format metadata through so kl_reg_sft / fi_sft can branch.
+        entry.update(mixed_fmt_fields)
+        fact_qa_pairs.append(entry)
     print(f"Loaded {len(fact_qa_pairs)} fact QA pairs at scale {args.scale}")
 
     # Load task data for replay (if needed). Script 05 writes to qd_temporal_data_root;
