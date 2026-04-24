@@ -169,8 +169,17 @@ def main():
             if triples_path.exists():
                 with open(triples_path) as f:
                     raw_triples = json.load(f)
+                # Absorption is evaluated on the ORIGINAL QA probe regardless
+                # of training format. For mixed-format triples (produced by
+                # scripts/24_prepare_mixed_format_triples.py), each fact appears
+                # twice (train_format in {"qa","qd"}); we dedupe to the "qa"
+                # entries so absorption isn't computed twice per fact, and we
+                # strip mixed-format-only fields before FactTriple(**t).
+                if any("train_format" in t for t in raw_triples):
+                    raw_triples = [t for t in raw_triples if t.get("train_format", "qa") == "qa"]
                 fact_qa = []
                 for t in raw_triples:
+                    t = {k: v for k, v in t.items() if k not in ("train_format", "qd_messages")}
                     triple = FactTriple(**t)
                     qa = render_triple(triple)
                     fact_qa.append(
