@@ -1,0 +1,5 @@
+method,n_facts,qa_contains,qd_contains,qa_f1,qd_f1,format_gap_f1,format_gap_contains
+kl_reg_sft_r15_anchor,50,0.04,0.02,0.1434,0.0715,0.0719,0.02
+kl_reg_sft_1round_fair,50,0.04,0.02,0.1151,0.0331,0.082,0.02
+kl_reg_sft_mixedfmt,50,0.04,0.0,0.1322,0.0263,0.1059,0.04
+fi_sft,50,0.06,0.02,0.1213,0.0481,0.0732,0.04
