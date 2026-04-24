@@ -207,6 +207,30 @@ All four variants share an essentially identical first-principal-direction input
 
 **Figure 3 (placeholder).** Per-layer Frobenius norm (y-axis, summed over all modules at that layer) for each of the four COPR variants, layers 0-31. Caption: "`copr_gi` is the only variant with non-trivial mass in layers 0-3; the other three concentrate in layers 10-20." Data source: `final_results/phase6_lora_deltas.csv` aggregated by layer.
 
+### 5.5 Hidden-state geometry (Phase 7)
+
+Phase 6 characterizes *what the LoRA deltas look like*. Phase 7 asks a different question: *do the updates move the model's internal representations in a way that couples the injected fact to the downstream task format?* For each of 50 injected facts, we construct three prompts:
+
+- **Q_direct**: the QA-style prompt used during the update (e.g., `Who is X's CEO?`).
+- **Q_task_related**: a QD-style prompt whose input references the same subject X (the task format the preservation metric targets).
+- **Q_task_unrelated**: a QD-style prompt with an unrelated post-cutoff subject (control).
+
+We extract the final-layer hidden state at the last prompt token (Qwen3-4B, `output_hidden_states=True`) and report three quantities per method: mean cosine similarity `cos(h_direct, h_related)`, `cos(h_direct, h_unrelated)`, and the shift ratio `||h_direct(updated) - h_direct(baseline)|| / ||h_related(updated) - h_related(baseline)||`. Baseline is the no-update checkpoint. A ratio near 1 with rising cosine indicates *subject-level integration*; a ratio substantially above 1 with flat or dropping cosine indicates *format-coupling* --- the update moves the QA direction but leaves the QD direction approximately fixed. Full numbers are in `final_results/phase7_manifold_analysis.csv` with per-fact pairs in `phase7_manifold_pairs.json` (n=50 facts).
+
+| Method | cos(h_direct, h_related) | Δcos vs no_update | shift_direct | shift_related | shift ratio (direct / related) |
+|---|---|---|---|---|---|
+| no_update | 0.774 | --- | --- | --- | --- |
+| naive_sft | 0.827 | +0.052 | 98.0 | 46.8 | 2.10 |
+| kl_reg_sft | 0.793 | +0.018 | 107.9 | 50.8 | 2.13 |
+| copr | 0.631 | -0.144 | 137.8 | 43.3 | 3.18 |
+| copr_gold_injection | 0.813 | +0.039 | 99.6 | 62.1 | 1.60 |
+| **copr_gold_injection_anchored** | **0.853** | **+0.079** | 85.2 | 59.3 | **1.44** |
+| copr_anchored | 0.673 | -0.102 | 135.1 | 42.9 | 3.15 |
+
+Three findings follow. First, **every updated method shifts the Q_direct representation substantially more than the Q_task_related representation** --- the smallest ratio (1.44 for `copr_gold_injection_anchored`) is still well above the integration target of 1.0. The update signal reshapes the QA direction far more than the QD direction for the same subject. Second, **plain `copr` and `copr_anchored` actively anti-align**: `cos(h_direct, h_related)` drops by -0.14 and -0.10 relative to baseline respectively, meaning the updates move the QA representation into a region of hidden-state space that is *farther* from the QD representation than before the edit. This matches their poor downstream absorption and compositional results (Section 5.2, 5.3) and is consistent with the K-sample-all-wrong pathology described in Section 3.3 --- the ranking, unanchored by a gold completion, reinforces whichever wrong answer is most plausible and displaces the QA representation into an unrelated region. Third, **gold injection is the only mechanism that shrinks the shift ratio toward 1** (`copr_gold_injection` 1.60, `copr_gold_injection_anchored` 1.44, versus 2.10-3.18 for all other methods) and is the only mechanism that simultaneously raises `cos(h_direct, h_related)` --- consistent with partial but incomplete subject-level integration rather than pure format-coupling.
+
+The effect sizes should not be oversold. The best cosine rise over baseline is +0.079 (`copr_gold_injection_anchored`), which is small relative to the total QA-direction shift of 85-138 units across methods. The manifold signal says "gold injection nudges the QA and QD representations together, but only slightly; most of the update energy still goes into the QA direction alone."
+
 ## 6. Discussion
 
 ### 6.1 Regime mismatch as the driver
@@ -231,7 +255,17 @@ Anchoring the reference policy with a task-replay normalizer (`copr_anchored`) f
 
 The recovery via `copr_gold_injection_anchored` is instructive: once gold is in the ranking, the anchor no longer harms and in fact slightly improves locality. This suggests the anchor is not inherently broken --- it needs a non-degenerate learning signal (gold injection) to work with, not against.
 
-### 6.5 Compositional degradation
+### 6.5 Format-coupling is a property of gradient-based editing, not of LoRA
+
+The Phase 7 hidden-state geometry indicates that all six update methods move the QA direction more than the QD direction for the same subject, and that even the best-integrated method (`copr_gold_injection_anchored`, ratio 1.44) does not reach subject-level integration. It would be tempting to read this as a LoRA artifact --- the rank-16 subspace is narrow and by construction cannot rotate both formats together. We do not endorse that reading.
+
+The proximate cause of format-coupling is the *training signal*, not the parameter subset. The edit prompts are QA-formatted, the loss is cross-entropy on QA-formatted gold completions, and the reference regularizers (KL replay, COPR MSE) constrain the policy but do not inject QD-formatted signal into the gradient. Under this loss, *any* parameter subset that can fit the QA gradient will concentrate its update energy along the QA direction, leaving the QD direction unperturbed except insofar as the two directions share subspace in the base model --- which, at baseline `cos = 0.774`, they partially but imperfectly do. The same phenomenon has been reported in fundamentally different editing families. Ripple-effect benchmarks (Cohen et al. 2024) show that ROME and MEMIT --- which edit targeted MLP rows rather than LoRA adapters --- fail to propagate single-fact edits to logical neighbors of the edited fact. MQuAKE (Zhong et al. 2023) shows the same brittleness under multi-hop composition for both locate-then-edit and hypernetwork families. The shared failure mode across ROME, MEMIT, MEND, full fine-tuning, and LoRA is not that LoRA is uniquely low-rank --- it is that the editing loss is defined on one format and the probe is in another.
+
+The stronger version of the Phase 7 claim is therefore: **sequential gradient-based editing, regardless of parameter subset, creates format-specific knowledge islands; gold injection is the first mechanism we measure that partially bridges those islands to the task manifold, and it does so at approximately +0.08 cosine over baseline --- a small but non-zero improvement that is the mechanistic signature of the absorption and locality gains in Section 5.2.** The evidence base for the "regardless of parameter subset" part of this claim is the editing-ripple literature (Cohen et al. 2024; Zhong et al. 2023; Yao et al. 2023), not our own experiments. A single full-fine-tuning or MEMIT run under the same probe set would strengthen the claim materially and is flagged as near-term future work. We do not claim to have measured format-coupling outside the LoRA setting ourselves.
+
+The operational implication compounds the regime-matters message. If the goal is task-format generalization of an injected fact, no update method studied here or in the cited literature delivers it from QA-only training signal. Either the loss must include the target task format explicitly (a design the next iteration of this paper will test via QD-formatted rehearsal during update), or inference must route around the missing integration via retrieval.
+
+### 6.6 Compositional degradation
 
 All updated methods except the gold-injection variants' token-F1 track more-or-less unchanged bridging-entity recall, but every method including the best degrades it below the no-update baseline of 0.102. The updates absorb the new first-hop fact but interfere with the second-hop retrieval of the bridging entity. This is a shared limitation and a call-to-action for the next iteration: either explicit multi-hop anchoring during training (candidates that require the bridging entity) or a retrieval-based bridge at inference.
 
