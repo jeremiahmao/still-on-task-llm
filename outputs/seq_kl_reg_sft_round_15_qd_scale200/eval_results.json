@@ -675,5 +675,12 @@
       0.0
     ],
     "n_queries": 518
+  },
+  "compositional": {
+    "exact_match": 0.014,
+    "contains_final_answer": 0.016,
+    "contains_bridging_entity": 0.026,
+    "token_f1": 0.08379686257617928,
+    "n_probes": 500
   }
 }

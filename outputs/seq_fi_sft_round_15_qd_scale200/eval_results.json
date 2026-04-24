@@ -150,5 +150,12 @@
       "n": 2000,
       "accuracy": 0.06017583785975412
     }
+  },
+  "compositional": {
+    "exact_match": 0.008,
+    "contains_final_answer": 0.016,
+    "contains_bridging_entity": 0.024,
+    "token_f1": 0.07855369099972677,
+    "n_probes": 500
   }
 }
