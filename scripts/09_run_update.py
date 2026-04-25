@@ -26,6 +26,7 @@ from sot.update.dsae_lite import DSAELiteUpdate
 from sot.update.fi_sft import FISFTUpdate
 from sot.update.kl_reg_sft import KLRegSFTUpdate
 from sot.update.naive_sft import NaiveSFTUpdate
+from sot.update.ssl_inject import SSLUpdate
 from sot.utils.config import load_config, save_config
 from sot.utils.gpu import track_compute
 from sot.utils.logging import save_metadata
@@ -45,6 +46,8 @@ METHODS = {
     "aug_sft_k5": NaiveSFTUpdate,  # K=5 injection, no preservation
     "aug_kl_k1": KLRegSFTUpdate,   # K=5 injection, K=1 preservation
     "dsae_lite": DSAELiteUpdate,    # K=5 injection, K=5 preservation (novel)
+    # SSL — teacher-free architectural variant (paper/ml_intern_arch_method.md):
+    "ssl_inject": SSLUpdate,       # K=5 injection, spectral init + per-layer LR (no teacher)
 }
 
 

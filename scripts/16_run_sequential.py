@@ -38,6 +38,7 @@ METHODS = [
     "aug_sft_k5",
     "aug_kl_k1",
     "dsae_lite",
+    "ssl_inject",
 ]
 
 CONFIG_MAP = {
@@ -53,6 +54,7 @@ CONFIG_MAP = {
     "aug_sft_k5": "configs/update/aug_sft_k5.yaml",
     "aug_kl_k1": "configs/update/aug_kl_k1.yaml",
     "dsae_lite": "configs/update/dsae_lite.yaml",
+    "ssl_inject": "configs/update/ssl_inject.yaml",
 }
 
 # Methods that require the leaky mixed-format triples subdir (Phase 8).
@@ -62,7 +64,7 @@ MIXED_FORMAT_METHODS = {"fi_sft", "kl_reg_sft_mixedfmt"}
 # embeds the gold answer in the assistant target).
 LEAKFREE_MIXED_FORMAT_METHODS = {"fi_sft_leakfree"}
 # Methods that require the K=5 augmented triples subdir (DSAE Lite ablation).
-K5_MIXED_FORMAT_METHODS = {"aug_sft_k5", "aug_kl_k1", "dsae_lite"}
+K5_MIXED_FORMAT_METHODS = {"aug_sft_k5", "aug_kl_k1", "dsae_lite", "ssl_inject"}
 
 N_ROUNDS = 10
 PER_ROUND = 200

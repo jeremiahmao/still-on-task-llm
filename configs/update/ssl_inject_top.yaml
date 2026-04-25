@@ -1,0 +1,12 @@
+method: ssl_inject  # FM2 micro-ablation: PiSSA-style top-spectrum init, uniform LR
+calibration_samples: 256
+ssl_alpha: 1.0
+spectral_mode: top
+log_per_layer: true
+training:
+  lr: 2.0e-5
+  epochs: 3
+  batch_size: 8
+  gradient_accumulation_steps: 2
+  max_seq_length: 512
+  bf16: true
