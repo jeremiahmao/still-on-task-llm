@@ -165,6 +165,47 @@ def _emit_k5(triples: list[dict], leak_free: bool) -> list[dict]:
     return out
 
 
+def _audit_leak_free(out: list[dict]) -> list[str]:
+    """Verify the gold answer string never appears in any non-assistant message.
+
+    Returns a list of human-readable warning strings (one per offending entry).
+    The check is case-insensitive and tolerates the natural case where the
+    subject string contains the object as a substring (e.g.,
+    subject='Tim Cook Foundation', object='Tim Cook') — in that case the answer
+    appears in the user prompt only as part of the prompted entity, not as a
+    leaked answer-token signal.
+    """
+    warnings: list[str] = []
+    for e in out:
+        fmt = e.get("train_format")
+        if fmt == "qa":
+            # The qa entry's user/assistant turns are built downstream from the
+            # FactTriple's question/answer fields by render_triple(); leak-free
+            # by construction (the question never contains the answer).
+            continue
+        obj = e.get("object")
+        subj = e.get("subject")
+        if not obj or not subj:
+            continue
+        # Walk both the new uniform field and the legacy K=2 field. Either may
+        # be set on a given entry; both are checked for safety.
+        for msg in (e.get("chat_messages") or []) + (e.get("qd_messages") or []):
+            if msg.get("role") == "assistant":
+                continue  # supervised target; answer SHOULD be here
+            content = (msg.get("content") or "").lower()
+            if obj.lower() not in content:
+                continue
+            # Tolerate the case where the answer occurs only as a substring of
+            # the subject (which legitimately appears in the user prompt).
+            stripped = content.replace(subj.lower(), "")
+            if obj.lower() in stripped:
+                warnings.append(
+                    f"LEAK: format={fmt} role={msg['role']} subject={subj!r} "
+                    f"object={obj!r} content={msg.get('content')!r}"
+                )
+    return warnings
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="Input triples JSON path")
@@ -207,6 +248,21 @@ def main():
         out = _emit_k2(triples, args.leak_free)
     else:
         out = _emit_k5(triples, args.leak_free)
+
+    # Runtime leak-free guard. Refuses to write if any non-assistant message in
+    # any rendered format contains the gold answer string. This makes it
+    # structurally impossible to ship K=5 data with the QD-template-style leak
+    # the Phase 9 retrain caught.
+    if args.leak_free:
+        leaks = _audit_leak_free(out)
+        if leaks:
+            print(f"\n[FATAL] {len(leaks)} leaks detected; refusing to write {out_path}.")
+            for w in leaks[:10]:
+                print(f"  {w}")
+            if len(leaks) > 10:
+                print(f"  ... and {len(leaks) - 10} more")
+            raise SystemExit(2)
+        print(f"[audit] leak-free check passed ({len(out)} entries).")
 
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
