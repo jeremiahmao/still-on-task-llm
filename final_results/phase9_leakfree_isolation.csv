@@ -1,0 +1,4 @@
+method,n_facts,qa_contains,qd_contains,qa_f1,qd_f1,format_gap_f1,format_gap_contains
+kl_reg_sft,50,0.04,0.02,0.1434,0.0715,0.0719,0.02
+fi_sft_leaky,50,0.04,0.02,0.1292,0.0921,0.0371,0.02
+fi_sft_leakfree,50,0.06,0.02,0.1534,0.0857,0.0677,0.04
