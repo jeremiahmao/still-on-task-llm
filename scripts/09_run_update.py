@@ -84,6 +84,13 @@ def main():
         help="Path or HF id of a full-weight model to use as the base (overrides "
         "base_cfg.model.name). Use after merging a previous round's LoRA into weights.",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Override base_cfg.seed. Used by sequential editing to run multiple "
+        "seeds for the same method/round.",
+    )
     args = parser.parse_args()
 
     base_cfg = load_config()
@@ -91,7 +98,8 @@ def main():
     if args.overrides:
         method_cfg = OmegaConf.merge(method_cfg, OmegaConf.from_dotlist(args.overrides))
 
-    seed_everything(base_cfg.seed)
+    effective_seed = args.seed if args.seed is not None else base_cfg.seed
+    seed_everything(effective_seed)
 
     data_root = Path(base_cfg.paths.data_root)
     output_root = Path(base_cfg.paths.output_root)
@@ -243,7 +251,7 @@ def main():
             "gpu_hours": stats.gpu_hours,
             "peak_memory_gb": stats.peak_memory_gb,
             "elapsed_seconds": stats.elapsed_seconds,
-            "seed": base_cfg.seed,
+            "seed": effective_seed,
         },
         run_dir / "metadata.json",
     )

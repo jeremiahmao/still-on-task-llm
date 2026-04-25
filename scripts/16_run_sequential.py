@@ -110,6 +110,7 @@ def run_method(
     debug: bool,
     output_root: Path,
     data_root: Path,
+    seed: int | None = None,
 ) -> list[dict]:
     """Run all N rounds for one method, returning a list of trajectory rows."""
     config = CONFIG_MAP[method]
@@ -143,9 +144,10 @@ def run_method(
     # forward across (the chain can't be continued from them). This makes
     # resume robust to the faiss-crash / auto-prune combo that left earlier
     # rounds evalless with pruned models.
+    seed_tag = f"_seed{seed}" if seed is not None else ""
     last_complete_round = 0
     for k in range(n_rounds, 0, -1):
-        run_dir = output_root / f"seq_{method}_round_{k}_qd_scale{per_round}"
+        run_dir = output_root / f"seq_{method}_round_{k}{seed_tag}_qd_scale{per_round}"
         if (run_dir / "eval_results.json").exists() and (run_dir / "model").exists():
             last_complete_round = k
             break
@@ -156,7 +158,7 @@ def run_method(
             print(f"ERROR: missing {round_triples}. Run scripts/15_prepare_sequential_triples.py.")
             sys.exit(1)
 
-        run_name = f"seq_{method}_round_{k}"
+        run_name = f"seq_{method}_round_{k}{seed_tag}"
         run_id = f"{run_name}_{TASK}_scale{per_round}"
         run_dir = output_root / run_id
         eval_path = run_dir / "eval_results.json"
@@ -180,7 +182,7 @@ def run_method(
         if last_complete_round > 0:
             base_model_dir = (
                 output_root
-                / f"seq_{method}_round_{last_complete_round}_qd_scale{per_round}"
+                / f"seq_{method}_round_{last_complete_round}{seed_tag}_qd_scale{per_round}"
                 / "model"
             )
         else:
@@ -196,6 +198,8 @@ def run_method(
             "--config", config,
             "--triples-path", str(round_triples),
         ]
+        if seed is not None:
+            update_cmd += ["--seed", str(seed)]
         if base_model_dir is None:
             update_cmd += ["--starting-checkpoint", starting_checkpoint]
         else:
@@ -257,6 +261,11 @@ def main():
         "run in parallel across GPUs: each method's full chain binds to one "
         "GPU via CUDA_VISIBLE_DEVICES. Default: sequential on default device.",
     )
+    parser.add_argument(
+        "--seed", type=int, default=None,
+        help="Override base_cfg.seed. Different seeds produce different LoRA "
+        "init / minibatch order; required for multi-seed runs.",
+    )
     args = parser.parse_args()
 
     n_rounds = args.n_rounds or (3 if args.debug else N_ROUNDS)
@@ -279,21 +288,27 @@ def main():
         )
     else:
         for method in methods:
-            print(f"\n{'=' * 60}\n{method}: {n_rounds} rounds x {per_round} edits\n{'=' * 60}")
-            trajectory = run_method(method, n_rounds, per_round, args.debug, output_root, data_root)
-            out_dir = output_root / "sequential" / method
+            print(f"\n{'=' * 60}\n{method}: {n_rounds} rounds x {per_round} edits"
+                  f"{' seed=' + str(args.seed) if args.seed is not None else ''}\n{'=' * 60}")
+            trajectory = run_method(
+                method, n_rounds, per_round, args.debug, output_root, data_root,
+                seed=args.seed,
+            )
+            traj_subdir = method if args.seed is None else f"{method}_seed{args.seed}"
+            out_dir = output_root / "sequential" / traj_subdir
             out_dir.mkdir(parents=True, exist_ok=True)
             with open(out_dir / "trajectory.json", "w") as f:
                 json.dump(trajectory, f, indent=2)
-            summary["methods"][method] = trajectory
+            summary["methods"][traj_subdir] = trajectory
 
     # Collect each method's trajectory.json (written either by this process or
     # by child processes in the --gpus path) into a final summary.
     for method in methods:
-        traj_path = output_root / "sequential" / method / "trajectory.json"
+        traj_subdir = method if args.seed is None else f"{method}_seed{args.seed}"
+        traj_path = output_root / "sequential" / traj_subdir / "trajectory.json"
         if traj_path.exists():
             with open(traj_path) as f:
-                summary["methods"][method] = json.load(f)
+                summary["methods"][traj_subdir] = json.load(f)
 
     summary_dir = output_root / "sequential"
     summary_dir.mkdir(parents=True, exist_ok=True)
