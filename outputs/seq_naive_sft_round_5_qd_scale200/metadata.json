@@ -6,8 +6,8 @@
   "triples_path": "data/fnspid/triples/sequential/round_5.json",
   "base_model": "outputs/seq_naive_sft_round_4_qd_scale200/model",
   "starting_checkpoint": null,
-  "gpu_hours": 0.013255559247780992,
-  "peak_memory_gb": 8.737222671508789,
-  "elapsed_seconds": 47.72001329201157,
+  "gpu_hours": 0.014127450830839937,
+  "peak_memory_gb": 2.62912654876709,
+  "elapsed_seconds": 50.85882299102377,
   "seed": 42
 }
