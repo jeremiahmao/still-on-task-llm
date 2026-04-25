@@ -39,6 +39,7 @@ METHODS = {
     "copr_gold_injection_anchored": COPRGoldInjectionUpdate,  # same class, different config
     "copr_anchored": COPRAnchoredUpdate,
     "fi_sft": FISFTUpdate,
+    "fi_sft_leakfree": FISFTUpdate,  # same class; data prep differs (leak-free QD template)
 }
 
 

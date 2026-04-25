@@ -42,13 +42,14 @@ def _qd_user_prompt(subject: str) -> str:
     return f"What should I know about {subject}'s recent activity?"
 
 
-def _qd_assistant_target(subject: str, answer: str, relation: str) -> str:
-    """A synthetic QD-style decomposition that embeds the gold answer naturally.
+def _qd_assistant_target_leaky(subject: str, answer: str, relation: str) -> str:
+    """ORIGINAL leaky template: embeds the gold answer in Sub-query 1.
 
-    We keep this deliberately plain --- no chain-of-thought, no flourishes ---
-    so the ablation is a minimal-viable test of whether adding QD-format
-    gradient signal narrows the format gap. A more elaborate QD renderer can be
-    swapped in later if this one works.
+    Kept for backward compatibility with the Phase 8 fi_sft results in
+    `outputs/seq_fi_sft_round_*_qd_scale200/`. ml-intern v3 review flagged
+    this as a confound: the model can learn to emit the answer in QD outputs
+    by direct memorization rather than by genuine cross-format integration.
+    Use --leak-free to switch to the leak-free template below.
     """
     rel_human = relation.replace("_", " ").strip()
     return (
@@ -58,15 +59,47 @@ def _qd_assistant_target(subject: str, answer: str, relation: str) -> str:
     )
 
 
+def _qd_assistant_target_leakfree(subject: str, answer: str, relation: str) -> str:
+    """LEAK-FREE template: same QD shape, but the gold answer string never
+    appears in the assistant target. The model must still produce the answer
+    at evaluation time, but it cannot do so by parroting a memorized
+    training-time emission. This is the right way to test whether the V-REx
+    variance penalty buys genuine format-invariant absorption.
+
+    The `answer` argument is intentionally ignored by this function; we keep
+    the signature stable so the leaky and leak-free renderers are
+    interchangeable behind the --leak-free flag.
+    """
+    del answer  # not used; retained in signature for interchangeability
+    rel_human = relation.replace("_", " ").strip()
+    return (
+        f"Sub-query 1: What is the {rel_human} of {subject}?\n"
+        f"Sub-query 2: Recent updates from {subject}.\n"
+        f"Sub-query 3: Latest announcements by {subject}."
+    )
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="Input triples JSON path")
     parser.add_argument("--output", required=True, help="Output mixed-format triples JSON path")
+    parser.add_argument(
+        "--leak-free",
+        action="store_true",
+        help="Use the leak-free QD assistant template (does NOT embed the gold answer). "
+        "Required for the Phase 9 confound-isolation experiment; the original "
+        "template was leaky.",
+    )
     args = parser.parse_args()
 
     in_path = Path(args.input)
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    render_qd_assistant = (
+        _qd_assistant_target_leakfree if args.leak_free else _qd_assistant_target_leaky
+    )
+    print(f"QD assistant template: {'leak-free' if args.leak_free else 'leaky (original)'}")
 
     with open(in_path) as f:
         triples = json.load(f)
@@ -87,7 +120,7 @@ def main():
             {"role": "user", "content": _qd_user_prompt(t["subject"])},
             {
                 "role": "assistant",
-                "content": _qd_assistant_target(
+                "content": render_qd_assistant(
                     t["subject"], t["object"], t["relation"]
                 ),
             },

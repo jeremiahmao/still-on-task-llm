@@ -34,6 +34,7 @@ METHODS = [
     "copr_anchored",
     "fi_sft",
     "kl_reg_sft_mixedfmt",
+    "fi_sft_leakfree",
 ]
 
 CONFIG_MAP = {
@@ -45,12 +46,15 @@ CONFIG_MAP = {
     "copr_anchored": "configs/update/copr_anchored.yaml",
     "fi_sft": "configs/update/fi_sft.yaml",
     "kl_reg_sft_mixedfmt": "configs/update/kl_reg_sft_mixedfmt.yaml",
+    "fi_sft_leakfree": "configs/update/fi_sft.yaml",  # same loss, different data
 }
 
-# Methods that require the mixed-format triples subdir (output of
-# scripts/24_prepare_mixed_format_triples.py run per-round). All others read
-# from the standard "sequential" subdir.
+# Methods that require the leaky mixed-format triples subdir (Phase 8).
 MIXED_FORMAT_METHODS = {"fi_sft", "kl_reg_sft_mixedfmt"}
+# Methods that require the leak-free mixed-format triples subdir (Phase 9 —
+# confound-isolation: same V-REx loss as fi_sft, but the QD template no longer
+# embeds the gold answer in the assistant target).
+LEAKFREE_MIXED_FORMAT_METHODS = {"fi_sft_leakfree"}
 
 N_ROUNDS = 10
 PER_ROUND = 200
@@ -106,7 +110,12 @@ def run_method(
     # Methods that need mixed-format training data read from a different
     # subdir, populated by running scripts/24_prepare_mixed_format_triples.py
     # once per round (use the helper scripts/26_prep_all_mixed_format_rounds.sh).
-    subdir = "mixed_format_sequential" if method in MIXED_FORMAT_METHODS else "sequential"
+    if method in LEAKFREE_MIXED_FORMAT_METHODS:
+        subdir = "mixed_format_sequential_leakfree"
+    elif method in MIXED_FORMAT_METHODS:
+        subdir = "mixed_format_sequential"
+    else:
+        subdir = "sequential"
     round_dir = data_root / "fnspid" / "triples" / subdir
 
     starting_checkpoint = (
