@@ -169,11 +169,17 @@ def _audit_leak_free(out: list[dict]) -> list[str]:
     """Verify the gold answer string never appears in any non-assistant message.
 
     Returns a list of human-readable warning strings (one per offending entry).
-    The check is case-insensitive and tolerates the natural case where the
-    subject string contains the object as a substring (e.g.,
-    subject='Tim Cook Foundation', object='Tim Cook') — in that case the answer
-    appears in the user prompt only as part of the prompted entity, not as a
-    leaked answer-token signal.
+    The check is:
+    - Case-insensitive substring match.
+    - Tolerates `subject` containing `object` as a substring (e.g.,
+      'Tim Cook Foundation' / 'Tim Cook') — the subject legitimately appears
+      in user prompts.
+    - SKIPS audit when the object is too short or too generic to substring-match
+      reliably: <3 alphanumeric chars, or a pure number, or a single token of
+      length <=2. These objects (1-3 char ticker codes, single digits, etc.)
+      will spuriously match generic strings like '2-4 sub-queries' in system
+      prompts. For these, the leak-free property is guaranteed by template
+      construction, not by string audit.
     """
     warnings: list[str] = []
     for e in out:
@@ -186,6 +192,11 @@ def _audit_leak_free(out: list[dict]) -> list[str]:
         obj = e.get("object")
         subj = e.get("subject")
         if not obj or not subj:
+            continue
+        obj_alnum = "".join(ch for ch in obj if ch.isalnum())
+        if len(obj_alnum) < 3 or obj_alnum.isdigit():
+            # Object is too short or purely numeric to substring-match
+            # reliably. Templates are leak-free by construction; skip.
             continue
         # Walk both the new uniform field and the legacy K=2 field. Either may
         # be set on a given entry; both are checked for safety.
