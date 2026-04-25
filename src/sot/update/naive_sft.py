@@ -20,18 +20,24 @@ class NaiveSFTUpdate(UpdateMethod):
         task_data: list[dict] | None = None,
         cfg: DictConfig | None = None,
     ) -> PreTrainedModel:
-        """SFT on rendered fact QA pairs. No regularization, no replay."""
-        # Format as chat messages
+        """SFT on rendered fact QA pairs. No regularization, no replay.
+
+        Pre-rendered chats (chat_messages for K=5 DSAE Lite augmentation,
+        qd_messages for legacy K=2 fi_sft) are used as-is; standard entries
+        build the usual {user: question, assistant: answer} chat.
+        """
         train_data = []
         for qa in fact_qa_pairs:
-            train_data.append(
-                {
-                    "messages": [
-                        {"role": "user", "content": qa["question"]},
-                        {"role": "assistant", "content": qa["answer"]},
-                    ],
-                }
-            )
+            if qa.get("chat_messages"):
+                messages = qa["chat_messages"]
+            elif qa.get("train_format") == "qd" and qa.get("qd_messages"):
+                messages = qa["qd_messages"]
+            else:
+                messages = [
+                    {"role": "user", "content": qa["question"]},
+                    {"role": "assistant", "content": qa["answer"]},
+                ]
+            train_data.append({"messages": messages})
 
         model.train()
         trainer = run_sft(

@@ -51,12 +51,14 @@ class KLRegSFTUpdate(UpdateMethod):
         for p in ref_model.parameters():
             p.requires_grad = False
 
-        # Fact-SFT texts. Mixed-format entries (train_format="qd" with a
-        # pre-built qd_messages list) use the provided chat; standard entries
+        # Fact-SFT texts. Pre-rendered chats (chat_messages for K=5 DSAE Lite,
+        # qd_messages for legacy K=2 fi_sft) are used as-is; standard entries
         # build the usual {user: question, assistant: answer} chat.
         fact_texts = []
         for qa in fact_qa_pairs:
-            if qa.get("train_format") == "qd" and qa.get("qd_messages"):
+            if qa.get("chat_messages"):
+                chat = qa["chat_messages"]
+            elif qa.get("train_format") == "qd" and qa.get("qd_messages"):
                 chat = qa["qd_messages"]
             else:
                 chat = [

@@ -35,6 +35,9 @@ METHODS = [
     "fi_sft",
     "kl_reg_sft_mixedfmt",
     "fi_sft_leakfree",
+    "aug_sft_k5",
+    "aug_kl_k1",
+    "dsae_lite",
 ]
 
 CONFIG_MAP = {
@@ -47,6 +50,9 @@ CONFIG_MAP = {
     "fi_sft": "configs/update/fi_sft.yaml",
     "kl_reg_sft_mixedfmt": "configs/update/kl_reg_sft_mixedfmt.yaml",
     "fi_sft_leakfree": "configs/update/fi_sft.yaml",  # same loss, different data
+    "aug_sft_k5": "configs/update/aug_sft_k5.yaml",
+    "aug_kl_k1": "configs/update/aug_kl_k1.yaml",
+    "dsae_lite": "configs/update/dsae_lite.yaml",
 }
 
 # Methods that require the leaky mixed-format triples subdir (Phase 8).
@@ -55,6 +61,8 @@ MIXED_FORMAT_METHODS = {"fi_sft", "kl_reg_sft_mixedfmt"}
 # confound-isolation: same V-REx loss as fi_sft, but the QD template no longer
 # embeds the gold answer in the assistant target).
 LEAKFREE_MIXED_FORMAT_METHODS = {"fi_sft_leakfree"}
+# Methods that require the K=5 augmented triples subdir (DSAE Lite ablation).
+K5_MIXED_FORMAT_METHODS = {"aug_sft_k5", "aug_kl_k1", "dsae_lite"}
 
 N_ROUNDS = 10
 PER_ROUND = 200
@@ -110,7 +118,9 @@ def run_method(
     # Methods that need mixed-format training data read from a different
     # subdir, populated by running scripts/24_prepare_mixed_format_triples.py
     # once per round (use the helper scripts/26_prep_all_mixed_format_rounds.sh).
-    if method in LEAKFREE_MIXED_FORMAT_METHODS:
+    if method in K5_MIXED_FORMAT_METHODS:
+        subdir = "sequential_k5"
+    elif method in LEAKFREE_MIXED_FORMAT_METHODS:
         subdir = "mixed_format_sequential_leakfree"
     elif method in MIXED_FORMAT_METHODS:
         subdir = "mixed_format_sequential"

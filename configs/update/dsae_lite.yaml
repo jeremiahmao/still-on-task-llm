@@ -1,0 +1,12 @@
+method: dsae_lite
+kl_lambda: 0.1
+replay_pct: 0.05
+num_kl_formats: 5  # K for preservation-side rendering (matches K=5 injection)
+log_per_format_kl: true
+training:
+  lr: 2.0e-5
+  epochs: 3
+  batch_size: 8
+  gradient_accumulation_steps: 2
+  max_seq_length: 512
+  bf16: true

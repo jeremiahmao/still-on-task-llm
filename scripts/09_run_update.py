@@ -22,6 +22,7 @@ from sot.models.lora import apply_lora, get_lora_config, load_lora, merge_lora
 from sot.update.copr import COPRUpdate
 from sot.update.copr_anchored import COPRAnchoredUpdate
 from sot.update.copr_gold_injection import COPRGoldInjectionUpdate
+from sot.update.dsae_lite import DSAELiteUpdate
 from sot.update.fi_sft import FISFTUpdate
 from sot.update.kl_reg_sft import KLRegSFTUpdate
 from sot.update.naive_sft import NaiveSFTUpdate
@@ -40,6 +41,10 @@ METHODS = {
     "copr_anchored": COPRAnchoredUpdate,
     "fi_sft": FISFTUpdate,
     "fi_sft_leakfree": FISFTUpdate,  # same class; data prep differs (leak-free QD template)
+    # DSAE Lite 5-way ablation (paper/ml_intern_iteration3_verdict.md §4):
+    "aug_sft_k5": NaiveSFTUpdate,  # K=5 injection, no preservation
+    "aug_kl_k1": KLRegSFTUpdate,   # K=5 injection, K=1 preservation
+    "dsae_lite": DSAELiteUpdate,    # K=5 injection, K=5 preservation (novel)
 }
 
 
@@ -109,7 +114,7 @@ def main():
         # Strip mixed-format-only fields before FactTriple(**t) so the dataclass
         # doesn't choke. Keep them separately to pass through to the update method.
         mixed_fmt_fields = {
-            k: t.pop(k) for k in ("train_format", "qd_messages") if k in t
+            k: t.pop(k) for k in ("train_format", "qd_messages", "chat_messages") if k in t
         }
         triple = FactTriple(**t)
         qa = render_triple(triple)

@@ -1,0 +1,10 @@
+method: kl_reg_sft  # K=5 injection (data-side), single-format KL preservation
+kl_lambda: 0.1
+replay_pct: 0.05
+training:
+  lr: 2.0e-5
+  epochs: 3
+  batch_size: 8
+  gradient_accumulation_steps: 2
+  max_seq_length: 512
+  bf16: true
