@@ -1,0 +1,4 @@
+method,n_facts,qa_contains,qd_contains,qa_f1,qd_f1,format_gap_f1,format_gap_contains
+kl_reg_sft,50,0.04,0.02,0.1434,0.0715,0.0719,0.02
+mixedfmt,50,0.1,0.04,0.1672,0.0668,0.1004,0.06
+fi_sft,50,0.04,0.02,0.1292,0.0921,0.0371,0.02
