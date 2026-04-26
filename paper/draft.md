@@ -32,7 +32,7 @@ The paper's contribution is fivefold: (1) a quantitative diagnosis of the absorp
 
 **Continual learning for LLMs.** InsCL (Wang et al. 2024) shows replay-buffer methods beat EWC-style regularization on instruction tuning. Wu et al. (2024) survey places our method in the replay-plus-regularization quadrant. The current industrial standard for continual pre-training (Ibrahim et al. 2024, arXiv 2403.08763) is LR re-warming + 5% replay, validated at 405M-10B scale.
 
-**Format-invariant injection.** Allen-Zhu & Li (2309.14316) show that K=5 paraphrastic renderings of a fact during pre-training lift OOD QA from 0% to 70-87% by forcing entity-anchored encoding. The closest comparable result for our setting is Masked FT (arXiv:2510.09885), which tests paraphrase augmentation during LoRA fine-tuning on Qwen3-4B specifically and reports +18-29pp from permute-order paraphrases (forward 0.509→0.693, backward 0.353→0.639). PAFT (Wei et al. 2025, arXiv 2502.12859) achieves prompt-robustness gains via diverse prompt sampling but no explicit regularizer. PIT (Jiang et al. 2024, arXiv 2402.12847) achieves +17.8% EM via a curriculum (QA-first, then docs); their finding that naive format mixing degrades EM by ~6pp parallels our §5.5. Critically, LoRA Knowledge Packing (arXiv:2502.14502) shows that *unregulated* heavy augmentation degrades at multi-round scale — at 3000 facts with 10 paraphrases, reliability collapses to 0.48. This is the failure mode that motivates DSAE Lite's preservation-side regularizer.
+**Format-invariant injection.** Allen-Zhu & Li (2309.14316) show that K=5 paraphrastic renderings of a fact during pre-training lift OOD QA from 0% to 70-87% by forcing entity-anchored encoding. The closest comparable result for our setting is Masked FT (arXiv:2510.09885), which tests paraphrase augmentation during LoRA fine-tuning on Qwen3-4B specifically and reports +18-29pp from permute-order paraphrases (forward 0.509→0.693, backward 0.353→0.639). PAFT (Wei et al. 2025, arXiv 2502.12859) achieves prompt-robustness gains via diverse prompt sampling but no explicit regularizer. PIT (Jiang et al. 2024, arXiv 2402.12847) achieves +17.8% EM via a curriculum (QA-first, then docs); their finding that naive format mixing degrades EM by ~6pp parallels our §5.3. Critically, LoRA Knowledge Packing (arXiv:2502.14502) shows that *unregulated* heavy augmentation degrades at multi-round scale — at 3000 facts with 10 paraphrases, reliability collapses to 0.48. This is the failure mode that motivates DSAE Lite's preservation-side regularizer.
 
 **OOD regularization.** V-REx (Krueger et al. 2021), Group DRO (Sagawa et al. 2020), and IRM (Arjovsky et al. 2019). Rosenfeld et al. (2021, arXiv:2010.02922) and Ahuja et al. (2021) prove these need K≥3 (often K≥10) environments for non-degenerate solutions; at K=2 the penalty is provably insufficient. DomainBed (Gulrajani & Lopez-Paz 2021) never tests K=2.
 
@@ -77,7 +77,7 @@ The total loss is `L_SFT(K=5 fact augmentations) + λ · L_KL(K=5 framings of re
 
 We additionally test a teacher-free architectural variant. SSL replaces DSAE Lite's per-round teacher-snapshot KL with: (i) one-time per-round calibration computing per-layer cosine similarity I^(l) between layer input and output across 256 task-replay samples; (ii) per-layer LoRA spectral initialization at position s^(l) = I^(l) · (d − r) — pass-through layers (high I) get bottom-spectrum (near-null) initialization, transformative layers get intermediate components (Quercia et al. 2025, arXiv 2602.03493 U-shaped forgetting curve); (iii) per-layer learning rate η^(l) = η_base · min(1, 1/I^(l)). Training uses standard SFT on K=5 augmented data with no preservation loss. No teacher in memory at training time.
 
-The pilot result (§5.7) shows SSL underperforming DSAE Lite by ~5pp at 5 rounds. We discuss the structural information asymmetry that limits architectural-only methods in §6.2.
+The pilot result (§6.2) shows SSL underperforming DSAE Lite by ~5pp at 5 rounds; we discuss the structural information asymmetry that limits architectural-only methods there.
 
 ### 3.5 Training setup
 
@@ -93,7 +93,7 @@ Backbone: Qwen3-4B-Instruct-2507, bf16. Task-tuned via LoRA r=32/α=64 on QD-for
 
 ## 5. Results
 
-Sections 5.1-5.4 establish the diagnostic and the negative results. Section 5.5 reports the 5-way DSAE Lite ablation (the headline). Section 5.6 reports the SSL architectural pilot.
+Sections 5.1-5.3 establish the diagnostic and the negative results that constrain the design space. Section 5.4 reports the 5-way DSAE Lite ablation (the headline).
 
 ### 5.1 The absorption-integration gap is real
 
@@ -111,7 +111,7 @@ Table 1 reports the format gap across six round-15 single-environment methods on
 
 Every method that meaningfully absorbs (qa_f1 > 0.10) produces a format gap of 0.07-0.14 F1. No single-environment update method we tested closes the gap.
 
-### 5.2 COPR negative transfer (continual preference alignment does not port)
+### 5.2 COPR: continual preference alignment does not port
 
 Across the full 15-round chain, KL-regularized SFT dominates the COPR family. Round-15 endpoint absorption F1 (`phase3_sequential_final.csv`):
 
@@ -126,23 +126,25 @@ Across the full 15-round chain, KL-regularized SFT dominates the COPR family. Ro
 
 Across 14 contested rounds (round 9 missing for COPR variants), `kl_reg_sft` wins absorption 9 times against `copr_gold_injection`, ties 2, loses 3. **No sustained advantage exists.** The single durable COPR signal is locality under `copr_gold_injection_anchored` (+47% over `kl_reg_sft` at round 15) — paid for at 10-12× per-round compute.
 
-**Mechanism.** In pilot runs, COPR's K=8 self-samples on a novel fact were uniformly incorrect (worst-F1 ≈ 0). The MSE fit then ranks wrong answers; reinforcing the most plausible wrong answer is the K-sample-all-wrong pathology. The natural patch — gold injection — collapses the method toward cross-entropy on the gold answer (Phase 6 LoRA-delta analysis: gold-injection variants carry the largest Frobenius norms; Phase 7 hidden-state geometry: only gold-injection variants approach a shift ratio of 1.0). At convergence, COPR with gold injection is approximately KL-regularized SFT at 10-12× compute. `copr_anchored` (anchoring without gold) is a clean negative — round-15 absorption F1 0.076 (intermediate rounds 10-12 trail at ~0.066), with all rounds below the no-update baseline of 0.052 on compositional bridging-entity recall and below `kl_reg_sft` on absorption F1 throughout.
+**Mechanism.** In pilot runs, COPR's K=8 self-samples on a novel fact were uniformly incorrect (worst-F1 ≈ 0). The MSE fit then ranks wrong answers; reinforcing the most plausible wrong answer is the K-sample-all-wrong pathology. The natural patch — gold injection — collapses the method toward cross-entropy on the gold answer (Phase 6 LoRA-delta analysis: gold-injection variants carry the largest Frobenius norms; Phase 7 hidden-state geometry: only gold-injection variants approach a shift ratio of 1.0). At convergence, COPR with gold injection is approximately KL-regularized SFT at 10-12× compute. `copr_anchored` (anchoring without gold) is a clean negative — round-15 absorption F1 0.076 (intermediate rounds 10-12 trail at ~0.066), below `kl_reg_sft` on absorption F1 throughout, and below the no-update baseline of 0.052 on compositional bridging-entity recall (§6.3).
 
 The broader read: continual preference alignment objectives — which assume the candidate pool contains usable signal — silently break in knowledge editing, where the gold answer has near-zero probability under the pre-update policy. This is consistent with KDPO (Rozner et al. 2024) needing extensive redesign and OVERTONE (Liu et al. 2025) explicitly noting "determining win-loss data pairs can be unstraightforward in KE."
 
-### 5.3 V-REx at K=2 is theoretically and empirically null
+**Geometric-behavioral disagreement.** A separate finding from the same checkpoints: Phase 7 (hidden-state geometry, n=50 facts) and Phase 7b (behavioral probe, same 50 facts) disagree systematically across COPR variants. Gold-injection variants exhibit the *smallest* geometric shift ratio (1.44-1.60, closest to integration target of 1.0) while exhibiting the *largest* behavioral format gap (0.121-0.140). Hidden-state cosine proximity does not predict behavioral availability under format shift. We take this as a methodological warning: geometric-integration proxies, increasingly used to argue for "successful integration" in editing papers, can be cosmetic — driven by subject-token sharing rather than by genuine cross-format knowledge representation. Behavioral cross-format probes should accompany geometric ones in any integration claim.
 
-Per Arjovsky et al. (2019, IRM Theorem 9), invariance-style penalties require `|E| > d_e` environments to identify cross-environment structure, with `d_e` the spurious feature dimension. Rosenfeld et al. (2021, arXiv:2010.02922) prove the V-REx penalty can be made arbitrarily small by non-invariant representations when `|E| ≤ d_e`. Ahuja et al. (2021) prove K = Ω(2^d_e) in the nonlinear worst case. DomainBed (Gulrajani & Lopez-Paz 2021) never tests K=2 — minimum is K=3.
+### 5.3 Loss-side interventions: V-REx at K=2 and naïve format diversity
 
-At K=2 (QA + QD), the V-REx variance term reduces to `(CE_qa − CE_qd)²/4` — a pairwise consistency loss between two scalars, satisfiable by any equalizing solution including format-agnostic shortcuts. We tested V-REx on prompt formats (FI-SFT) at K=2 and observed +0.014 absolute QD F1 (z=0.26 at n=50; CI [−0.09, +0.12]) — within noise.[^leak-detail] The result is exactly what the theory predicts at K=2.
+Two failed loss/data-engineering attempts on the same problem, with a common diagnosis: small-K format-mixing is insufficient.
+
+**V-REx at K=2 is degenerate.** Per Arjovsky et al. (2019, IRM Theorem 9), invariance-style penalties require `|E| > d_e` environments to identify cross-environment structure, with `d_e` the spurious feature dimension. Rosenfeld et al. (2021, arXiv:2010.02922) prove the V-REx penalty can be made arbitrarily small by non-invariant representations when `|E| ≤ d_e`. Ahuja et al. (2021) prove K = Ω(2^d_e) in the nonlinear worst case. DomainBed (Gulrajani & Lopez-Paz 2021) never tests K=2 — minimum is K=3. At K=2 (QA + QD), the V-REx variance term reduces to `(CE_qa − CE_qd)²/4` — a pairwise consistency loss between two scalars, satisfiable by any equalizing solution including format-agnostic shortcuts. We tested V-REx on prompt formats (FI-SFT) at K=2 and observed +0.014 absolute QD F1 (z=0.26 at n=50; CI [−0.09, +0.12]) — within noise.[^leak-detail] The result is exactly what the theory predicts at K=2.
 
 [^leak-detail]: The initial FI-SFT runs used a synthetic QD template that placed the gold answer in the assistant's first sub-query. A leak-free retrain (`scripts/24_prepare_mixed_format_triples.py --leak-free`) showed the apparent gap-halving was a template artifact; the leak-free numbers (cited above) are the only ones we report. We note this transparently here rather than in supplementary; we caught the confound only because of an internal review and we think the literature is healthier when negative findings are reported with the methodological caveats that produced them.
 
-### 5.4 Format diversity without regularization actively hurts
+**Format diversity without regularization actively hurts.** The natural reading of "format invariance comes from data" (Allen-Zhu & Li 2023) is that simply mixing formats during continual SFT should help. Phase 8d data refutes this in our regime: at one round of matched compute, plain mixed-format SFT (PAFT-style, Wei et al. 2025) produces format gap 0.100 versus single-format `kl_reg_sft` 0.072. Format diversity without regularization is *strictly worse*. This parallels PIT (Jiang et al. 2024) and UIT (2023): format mixing in continual training requires either curriculum (PIT) or unified rewriting (UIT) or — as we show in §5.4 — a preservation-side regularizer with K≥5.
 
-The natural reading of "format invariance comes from data" (Allen-Zhu & Li 2023) is that simply mixing formats during continual SFT should help. Phase 8d data refutes this in our regime: at one round of matched compute, plain mixed-format SFT (PAFT-style, Wei et al. 2025) produces format gap 0.100 versus single-format `kl_reg_sft` 0.072. Format diversity without regularization is *strictly worse*. This parallels PIT (Jiang et al. 2024) and UIT (2023): format mixing in continual training requires either curriculum (PIT) or unified rewriting (UIT) or — as we show — a preservation-side regularizer.
+These two negatives together motivate the design of §5.4: the symmetric K=5 mechanism needs both more environments than V-REx-K=2 had *and* an explicit regularizer that naïve mixing lacks.
 
-### 5.5 DSAE Lite 5-way ablation (the headline)
+### 5.4 DSAE Lite 5-way ablation (the headline)
 
 We test five conditions × 2 seeds × 15 rounds × n=200 facts/round (`outputs/sequential/{condition}_seed{42,123}/trajectory.json`):
 
@@ -174,13 +176,17 @@ Worst-fact F1 follows the same pattern: naive 0.024-0.048 vs. dsae_lite 0.168-0.
 
 The decisive **(e) vs (d)** contrast — which determines whether the novel K=5 KL preservation matters beyond Allen-Zhu's K=5 injection — is reported in the full Plan B results. If (e) ≈ (d), augmentation alone explains the effect and the paper scopes accordingly; if (e) > (d) by ≥2pp, the symmetric K=5 mechanism is the active novel ingredient.
 
-### 5.6 Geometric-behavioral disagreement (sidebar)
+## 6. Discussion
 
-Phase 7 (hidden-state geometry, n=50 facts) and Phase 7b (behavioral probe, same 50 facts) disagree systematically: gold-injection COPR variants exhibit the *smallest* geometric shift ratio (1.44-1.60, closest to integration target of 1.0) while exhibiting the *largest* behavioral format gap (0.121-0.140). The geometric-integration proxy (cos(h_direct, h_related), shift ratio) does not predict behavioral availability under format shift. We take this as a methodological warning: hidden-state cosine proximity, increasingly used to argue for "successful integration" in editing papers, can be cosmetic — driven by subject-token sharing rather than by genuine cross-format knowledge representation. Behavioral cross-format probes should accompany geometric ones in any integration claim.
+### 6.1 What the symmetric K=5 mechanism does
 
-### 5.7 Stratified Spectral LoRA pilot (negative result)
+The core insight is asymmetric format coverage: under a single-format KL preservation constraint, the model is anchored on its task distribution under format A. If the injection update happens to drift the model on format B — without affecting format A — the standard KL term cannot detect it. Format-selective forgetting is invisible to single-format preservation. The K=5 augmented KL preservation makes drift on *any* of K framings contribute to the loss, catching the failure mode at the regularizer level.
 
-We piloted SSL — a teacher-free architectural variant that replaces KL preservation with per-layer spectral LoRA initialization and adaptive learning rates (combining Quercia et al. 2602.03493 and Nayak et al. 2504.07097). In a 5-round, 1-seed pilot[^ssl-artifact] SSL underperformed DSAE Lite on absorption by 1.6-7.4pp (mean 4.8pp) while showing comparable preservation:
+The asymmetry is structural: injection-side K=5 (Allen-Zhu) creates format-invariant *encoding* of new facts; preservation-side K=5 (the novel ingredient) maintains format-invariant *retention* of old capabilities. Both halves are needed because a model can fail at either. The 5-way ablation isolates the contribution of each half.
+
+### 6.2 Architectural preservation alone underperforms (SSL pilot)
+
+We piloted **Stratified Spectral LoRA (SSL)** — a teacher-free architectural variant that replaces DSAE Lite's per-round KL teacher with per-layer spectral LoRA initialization and adaptive learning rates (combining Quercia et al. 2025, arXiv 2602.03493 and Nayak et al. 2025, arXiv 2504.07097). The architectural construction is described in §3.4. In a 5-round, 1-seed pilot[^ssl-artifact] SSL underperformed DSAE Lite on absorption by 1.6-7.4pp (mean 4.8pp) while showing comparable preservation:
 
 [^ssl-artifact]: SSL pilot was run on a SageMaker instance; per-round eval JSONs were not committed to the repo. Numbers reported here are from the run logs. The SSL implementation (`src/sot/update/ssl_inject.py`) and config (`configs/update/ssl_inject.yaml`) are committed; replicating the pilot regenerates the numbers.
 
@@ -192,24 +198,14 @@ We piloted SSL — a teacher-free architectural variant that replaces KL preserv
 | 4 | 0.310 | 0.236 | -0.07 |
 | 5 | 0.300 | 0.265 | -0.04 |
 
-Post-hoc, the activation-similarity calibration collapsed in Qwen3-4B's pre-norm architecture (>50% of layers received identical scores) — cosine similarity between linear-layer inputs and outputs is analytically near-constant across layers due to residual connections (Men et al. 2403.03853 prove this for pre-LN transformers); a block-level residual-magnitude metric (SimDiff, 2604.19520) would likely improve it. We leave properly-calibrated architectural preservation to future work; §6.2 discusses the structural asymmetry between weight-space and output-distribution preservation that limits architectural-only methods regardless of calibration.
+Post-hoc, the activation-similarity calibration collapsed in Qwen3-4B's pre-norm architecture: cosine similarity between linear-layer inputs and outputs is analytically near-constant across layers due to residual connections (Men et al. 2403.03853 prove this for pre-LN transformers), causing >50% of layers to receive identical calibration scores. A block-level residual-magnitude metric (SimDiff, arXiv:2604.19520) would likely improve calibration.
 
-## 6. Discussion
-
-### 6.1 What the symmetric K=5 mechanism does
-
-The core insight is asymmetric format coverage: under a single-format KL preservation constraint, the model is anchored on its task distribution under format A. If the injection update happens to drift the model on format B — without affecting format A — the standard KL term cannot detect it. Format-selective forgetting is invisible to single-format preservation. The K=5 augmented KL preservation makes drift on *any* of K framings contribute to the loss, catching the failure mode at the regularizer level.
-
-The asymmetry is structural: injection-side K=5 (Allen-Zhu) creates format-invariant *encoding* of new facts; preservation-side K=5 (the novel ingredient) maintains format-invariant *retention* of old capabilities. Both halves are needed because a model can fail at either. The 5-way ablation isolates the contribution of each half.
-
-### 6.2 Why architectural preservation alone underperforms
-
-The SSL pilot result (§5.7) is consistent with literature evidence that static weight-space constraints face an information asymmetry against KL distillation:
+But the structural asymmetry runs deeper than calibration. Two pieces of literature evidence:
 
 - **Smith, Tian, Halbe et al. 2022** (arXiv:2203.17269) — On 10-task CIFAR-100, KL teacher (PredKD) alone reaches 25.2% final accuracy with 3.2% forgetting; EWC alone reaches 7.7% with 64.0% forgetting. Combining EWC + KL *hurts* by 2.5pp — weight-space constraints reduce plasticity without improving the already-good KL preservation.
 - **Sculpting Subspaces (Nayak et al. 2025, arXiv:2504.07097)** — Dynamic gradient projection beats LwF (naive KL distillation) by ~24pp on T5-Large 15-task CL. The operative word is *dynamic*: orthogonal gradient projection acts during training, continuously redirecting gradients. SSL is *static*: spectral init set once, per-layer LR fixed. The mechanism that beats KL is qualitatively different from what SSL implements.
 
-The pattern is consistent: KL preservation has access to *output-distribution sensitivity* — it knows where the model was confident on old data and protects those regions. Static architectural constraints don't have access to this signal; they shape the update geometry without measuring functional drift. The SSL pilot's ~5pp gap to DSAE Lite is the empirical manifestation of this asymmetry.
+KL preservation has access to *output-distribution sensitivity* — it knows where the model was confident on old data and protects those regions. Static architectural constraints don't have access to this signal; they shape the update geometry without measuring functional drift. SSL's ~5pp gap to DSAE Lite is the empirical manifestation of this asymmetry. We leave properly-calibrated architectural preservation (e.g. MASD-based SimDiff calibration combined with dynamic projection) to future work.
 
 ### 6.3 Compositional degradation persists across all methods
 
