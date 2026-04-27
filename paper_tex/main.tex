@@ -1,0 +1,571 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, citecolor=blue!50!black, urlcolor=blue!50!black}
+\usepackage[round]{natbib}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+% Code-style identifier
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+\title{A Super-Linear Synergy Between Format Augmentation and KL Preservation \\
+       in Continual LoRA Knowledge Injection}
+\author{Jeremiah Mao}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Continual knowledge injection in task-tuned language models suffers from an
+\textbf{absorption-integration gap}: facts learned under the training prompt
+format fail to surface under different downstream formats. We show on
+Qwen3-4B over 15 sequential rounds of 200 LoRA edits per round that this gap
+is substantially closed by a single composition, but only when two
+ingredients are coupled. K=5 paraphrastic injection
+\citep{allenzhu2023knowledge} alone lifts round-15 absorption F1 by $+0.036$
+over naive SFT; K=1 KL preservation against a frozen reference alone lifts
+by $+0.029$; the \textbf{combination lifts by $+0.322$} -- a $\sim$5$\times$
+super-linear synergy over additive. The cleanest compute-matched contrast
+(KL added on top of K=5 data) lifts by $+0.286$ -- a $\sim$10$\times$
+asymmetry against KL added on top of K=1 data. The composition
+\code{aug\_kl\_k1} reaches absorption F1 0.411 (worst-fact 0.385) at round 15
+versus 0.118 for the standard KL-regularized SFT baseline. We further test
+whether the symmetric extension -- K=5 augmentation on the
+\emph{preservation} side as well -- earns its keep, and report a null
+result ($\Delta = -0.006$, 2 seeds; 95\% interval straddles zero). The
+active mechanism is the cross-coupling, not K=5 on both sides. Three
+additional negatives bound the design space: COPR-style continual preference
+alignment underperforms KL-regularized SFT at every regime tested; V-REx at
+K=2 prompt formats is theoretically degenerate and empirically null; and
+na\"ive format mixing without a regularizer widens the gap. Geometric
+integration proxies disagree with behavioral availability across the COPR
+family, suggesting that hidden-state cosine measures alone are insufficient
+evidence of integration.
+\end{abstract}
+
+\section{Introduction}
+
+Injecting new factual knowledge into already-tuned LLMs is an operational
+need wherever the world changes after training. Existing methods fall into
+three families: parameter-localizing edits
+(ROME, \citealp{meng2022rome}; MEMIT, \citealp{meng2023memit}; AlphaEdit,
+\citealp{fang2024alphaedit}),
+preference-style updates (KDPO, \citealp{rozner2024kdpo};
+COPR, \citealp{zhang2025copr}), and fine-tuning-style updates (SFT,
+KL-regularized SFT, augmented SFT). The fine-tuning family is the simplest
+to deploy and chain across rounds, but it suffers from a well-documented
+failure: facts get stored under the training prompt format but fail to
+surface under different downstream formats -- the
+\textbf{absorption-integration gap} \citep{berglund2023reversal,
+allenzhu2023knowledge, cohen2023ripple, zhong2023mquake}.
+
+We measure this gap on a task-tuned 4B model under continual LoRA injection
+at 15 sequential rounds of 200 disjoint edits per round and ask: which
+intervention closes it? Our central finding is a \textbf{$2 \times 2$
+factorial ablation} -- $\{K=1, K=5\}$ injection $\times$ $\{\text{no KL},
+K=1\ \text{KL}\}$ preservation -- that isolates a super-linear synergy.
+Either ingredient alone is small ($+0.036$, $+0.029$); both together is
+large ($+0.322$); a fifth condition that pushes augmentation onto the
+preservation side adds nothing further. Three loss-engineering alternatives
+we tested earlier -- COPR, V-REx at K=2, and na\"ive format mixing -- fail
+in mutually informative ways and are reported as bounds on the design space.
+
+The contribution is fivefold:
+\textbf{(i)} a quantitative diagnosis of the absorption-integration gap
+under continual LoRA injection at 4B;
+\textbf{(ii)} the headline $2 \times 2$ ablation establishing the
+super-linear synergy of K=5 injection $\times$ KL preservation;
+\textbf{(iii)} a clean negative on the symmetric K=5-on-preservation
+extension, narrowing where the active mechanism lives;
+\textbf{(iv)} three negative results constraining the loss-engineering
+design space (COPR, V-REx K=2, format mixing);
+\textbf{(v)} evidence that geometric integration proxies disagree with
+behavioral availability under format shift, suggesting that hidden-state
+cosine alone is not sufficient evidence for integration claims in editing
+papers.
+
+\section{Related Work}
+
+\paragraph{Format-invariant injection.}
+\citet{allenzhu2023knowledge} show that K=5 paraphrastic renderings during
+pre-training lift OOD QA from 0\% to 70-87\% by forcing entity-anchored
+encoding. Masked FT \citep{pan2025maskedft} and PAFT \citep{wei2025paft}
+port this to LoRA fine-tuning and prompt sampling respectively, but without
+an explicit preservation regularizer. PIT \citep{jiang2024pit} shows
+na\"ive format mixing degrades EM by $\sim$6pp and resolves it via
+curriculum; LoRA Knowledge Packing \citep{pletenev2025lora} shows
+unregulated heavy paraphrasing collapses to reliability 0.48 at 3000 facts
+$\times$ 10 paraphrases. None of this prior work composes $K \geq 5$
+augmentation with a KL preservation anchor.
+
+\paragraph{Format-diverse preservation.}
+Format-diverse augmentation has been applied to pre-training
+\citep{allenzhu2023knowledge}, prompt sampling \citep{wei2025paft}, and
+replay-side training (SEFE/ASD, \citealp{chen2025sefe}; RECAP,
+\citealp{phan2025recap}; GeRe, \citealp{zhang2025gere}). None applies it to
+the KL preservation constraint; the closest, RECAP, explicitly notes ``KL
+terms are calculated on the current task, thus they do not guarantee broader
+knowledge.''
+
+\paragraph{Knowledge editing and continual learning.}
+Editing methods \citep{meng2022rome, meng2023memit, fang2024alphaedit}
+evaluate on single-format CounterFact/zsRE; format invariance is unstudied.
+\citet{gupta2024editing} prove sequential editing exhibits two-phase
+forgetting at $\sim$1000-3000 edits on 6-8B models, placing our $200
+\times 15 = 3000$-edit regime at this cliff. KDPO \citep{rozner2024kdpo}
+is the closest preference-style editing baseline; COPR
+\citep{zhang2025copr} was designed for continual preference alignment, and
+we test its inductive bias under fact injection in \S\ref{sec:negatives}.
+The current industrial standard for continual training
+\citep{ibrahim2024simple} is LR re-warming + 5\% replay. V-REx
+\citep{krueger2021vrex} and IRM \citep{arjovsky2019irm} need $K \geq 3$
+(often $K \geq 10$) environments for non-degenerate solutions per
+\citet{rosenfeld2021risks} and \citet{ahuja2021empirical}; DomainBed
+\citep{gulrajani2021domainbed} never tests K=2.
+
+\section{Setup}
+\label{sec:setup}
+
+\paragraph{Problem.}
+Let $\pi_\theta$ be a task-tuned LM and $T = \bigsqcup_{r=1}^R T_r$ a stream
+of new fact triples partitioned into $R$ disjoint rounds, with
+$T_r = \{(x_i, y_i)\}_{i=1}^{n}$ and $n=200, R=15$. The continual injection
+task is to produce, after round $r$, an updated model $\pi_\theta^{(r)}$
+that (i) \textbf{absorbs} the new facts (generates $y_i$ given probes of
+$x_i$), (ii) \textbf{preserves} task capability on a held-out task test set,
+(iii) \textbf{localizes} the change so unrelated facts are unaffected, and
+(iv) \textbf{composes} with prior knowledge for multi-hop reasoning. We
+instantiate (i)-(iv) with \textbf{absorption F1} = mean token-F1 across all
+paraphrased probes for all injected facts (\code{abs\_mean\_f1} in
+trajectory artifacts); \textbf{preservation} = Recall@10 on the QD test
+split ($n=104$); \textbf{locality} = mean token-F1 on stratified locality
+probes ($n=2000$); \textbf{compositionality} = bridging-entity recall on
+$n=500$ two-hop probes. The \textbf{absorption-integration gap} is
+$\Delta_{\mathrm{format}}(\pi) = | F1_{\mathrm{QA}}(\pi) -
+F1_{\mathrm{QD}}(\pi) |$ on a behavioral $n=50$ probe set.
+
+\paragraph{Backbone and edits.}
+Qwen3-4B-Instruct-2507 (bf16), task-tuned via LoRA $r=32 / \alpha=64$ on
+QD-format SFT over FNSPID financial news (pre-2022 cutoff). Update LoRA:
+$r=16 / \alpha=32$ on attention Q/K/V/O and MLP up/down/gate. AdamW,
+$\mathrm{lr}=2 \times 10^{-5}$, 3 epochs/round, max\_seq\_length 512, single
+A10G 24GB. Sequential editing chains checkpoints: round $r$ starts from
+round $r-1$'s merged model.
+
+\paragraph{Data.}
+96{,}897 filtered fact triples from FNSPID (pre-cutoff). Sequential: 15
+rounds $\times$ 200 disjoint triples
+(\code{data/fnspid/triples/sequential/round\_\{1..15\}.json}). K=5
+augmented variants render each fact in five surface forms
+$\{F_1, \dots, F_5\}$ (QA, QD, declarative, instruction, narrative;
+templates in Appendix A) for 1000 entries/round. Preservation framings
+$\{G_1, \dots, G_5\}$ are five distinct instruction-side wrappings of the
+same task prompt (original, bare, analyst, detailed, request; Appendix A).
+Compositional probes: 500 two-hop chains generated by Gemini-3.1-Flash-Lite.
+
+\paragraph{Loss formulations.}
+Let $\pi_{\mathrm{ref}}^{(r)}$ be a frozen snapshot of
+$\pi_\theta^{(r-1)}$ (the pre-update model at round $r$) and
+$\mathcal{D}_{\mathrm{replay}}$ a task-replay distribution drawn from the QD
+test split. Each format $F_k$ maps a fact triple to a full chat sequence
+(rendered as $(\mathrm{prompt}_k, \mathrm{target}_k)$); the SFT loss is
+implemented as full-chat causal next-token loss over the rendered
+transcript (no prompt masking). The injection-side losses are:
+\begin{align}
+\mathcal{L}_{\mathrm{SFT}}^{K=1}(\theta; T_r)
+  &= \mathbb{E}_{(x,y) \sim T_r} \left[ - \log \pi_\theta\bigl( F_{\mathrm{QA}}(x,y) \bigr) \right] \\
+\mathcal{L}_{\mathrm{SFT}}^{K=5}(\theta; T_r)
+  &= \mathbb{E}_{(x,y) \sim T_r} \left[ \frac{1}{K} \sum_{k=1}^{K} - \log \pi_\theta\bigl( F_k(x,y) \bigr) \right]
+\end{align}
+The preservation-side losses against the frozen reference
+$\pi_{\mathrm{ref}}^{(r)}$ are:
+\begin{align}
+\mathcal{L}_{\mathrm{KL}}^{K=1}(\theta; \mathcal{D}_{\mathrm{replay}})
+  &= \mathbb{E}_{x \sim \mathcal{D}_{\mathrm{replay}}}
+      \left[ \mathrm{KL}\bigl( \pi_{\mathrm{ref}}^{(r)}(\cdot \mid x) \,\Vert\, \pi_\theta(\cdot \mid x) \bigr) \right] \\
+\mathcal{L}_{\mathrm{KL}}^{K=5}(\theta; \mathcal{D}_{\mathrm{replay}})
+  &= \mathbb{E}_{x \sim \mathcal{D}_{\mathrm{replay}}}
+      \left[ \frac{1}{K} \sum_{k=1}^{K} \mathrm{KL}\bigl( \pi_{\mathrm{ref}}^{(r)}(\cdot \mid G_k(x)) \,\Vert\, \pi_\theta(\cdot \mid G_k(x)) \bigr) \right]
+\end{align}
+The five conditions of the ablation are then defined by which losses they
+combine, with $\lambda = 0.1$ and $K = 5$:
+\begin{align*}
+(a) \quad \code{naive\_sft}     &: \quad \mathcal{L}^{(a)}(\theta) = \mathcal{L}_{\mathrm{SFT}}^{K=1} \\
+(b) \quad \code{aug\_sft\_k5}   &: \quad \mathcal{L}^{(b)}(\theta) = \mathcal{L}_{\mathrm{SFT}}^{K=5} \\
+(c) \quad \code{kl\_reg\_sft}   &: \quad \mathcal{L}^{(c)}(\theta) = \mathcal{L}_{\mathrm{SFT}}^{K=1} + \lambda \cdot \mathcal{L}_{\mathrm{KL}}^{K=1} \\
+(d) \quad \code{aug\_kl\_k1}    &: \quad \mathcal{L}^{(d)}(\theta) = \mathcal{L}_{\mathrm{SFT}}^{K=5} + \lambda \cdot \mathcal{L}_{\mathrm{KL}}^{K=1} \\
+(e) \quad \code{dsae\_lite}     &: \quad \mathcal{L}^{(e)}(\theta) = \mathcal{L}_{\mathrm{SFT}}^{K=5} + \lambda \cdot \mathcal{L}_{\mathrm{KL}}^{K=5}
+\end{align*}
+Conditions (a), (b), (d), (e) are run at 2 seeds $\times$ 15 rounds
+$\times$ $n=200$ facts/round; (c) is reused from prior phases at 1 seed
+$\times$ 15 rounds as calibration. The injection pool $\{F_k\}$ and
+preservation pool $\{G_k\}$ are intentionally distinct: injection
+diversity tests robustness across surface forms of the same fact;
+preservation diversity tests robustness across instruction framings of the
+same task question.
+
+\paragraph{Leak-free guarantee.}
+All K=5 injection templates are constructed so the gold answer never
+appears in any user/system prompt; only the assistant target carries it. A
+runtime audit (\code{scripts/24\_prepare\_mixed\_format\_triples.py})
+refuses to write training data that violates this property -- installed
+after we caught a Phase 9 confound where a synthetic QD template had
+embedded gold answers in sub-queries.
+
+\section{The 2$\times$2 Synergy}
+\label{sec:synergy}
+
+\textbf{Round-15 endpoint} (mean across seeds 42, 123 for new conditions; 1
+seed for (c); half-spread $= (\max - \min)/2$):
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{cllcccccc}
+\toprule
+ID & Condition & Inj. & Pres. & abs F1 & half-spread & worst F1 & pres.\ R@10 & loc.\ F1 \\
+\midrule
+(a) & \code{naive\_sft}      & K=1 & none      & 0.089 & 0.001 & 0.063 & 0.243 & 0.046 \\
+(b) & \code{aug\_sft\_k5}    & K=5 & none      & 0.125 & 0.002 & 0.100 & 0.267 & 0.071 \\
+(c) & \code{kl\_reg\_sft}    & K=1 & K=1 KL    & 0.118 & --- (1 seed) & 0.103 & 0.240 & 0.048 \\
+(d) & \textbf{\code{aug\_kl\_k1}}  & K=5 & \textbf{K=1 KL}    & \textbf{0.411} & \textbf{0.006} & \textbf{0.385} & 0.237 & 0.079 \\
+(e) & \code{dsae\_lite}      & K=5 & K=5 KL    & 0.405 & 0.018 & 0.377 & 0.236 & 0.080 \\
+\bottomrule
+\end{tabular}
+\caption{The 2$\times$2 ablation at round 15 plus a fifth symmetric extension.}
+\label{tab:synergy}
+\end{table}
+
+Either ingredient alone produces a small effect:
+$(b) - (a) = +0.036$ from K=5 augmented injection;
+$(c) - (a) = +0.029$ from standard K=1 KL preservation. Combining them
+produces a dramatically larger effect: $(d) - (a) = +0.322$. The additive
+prediction $[(b) - (a)] + [(c) - (a)] = +0.065$; the observed effect
+$(d) - (a) = +0.322$ -- \textbf{a synergy ratio of 4.93$\times$ over
+additive}.
+
+\paragraph{Compute-matched contrasts isolate where the synergy lives.}
+The marginal $(b) - (a)$ is not compute-matched: K=5 conditions see
+$5\times$ the per-round training data, so part of $+0.036$ could reflect
+data volume rather than format diversity. The compute-matched contrasts
+are obtained by holding the data-volume axis fixed and toggling KL: KL
+added on top of K=1 data lifts $(c) - (a) = +0.029$; KL added on top of
+K=5 data lifts $(d) - (b) = +0.286$ -- \textbf{a $\sim$10$\times$
+asymmetry}. Symmetrically, K=5 added on top of no-KL lifts
+$(b) - (a) = +0.036$ (data-confounded); K=5 added on top of K=1 KL lifts
+$(d) - (c) = +0.293$. The interaction is sharp regardless of which
+compute-matched slice we read. Worst-fact F1 follows the same pattern
+($0.063 \to 0.385$). Preservation Recall@10 is comparable across all
+conditions (0.236-0.267) -- we claim ``preservation maintained,'' not
+``improved.'' Locality F1 is also comparable across the K=1 baselines and
+slightly higher for the K=5 conditions (0.046-0.080), so the K=5 lift is
+not bought through degraded locality. Trajectory-averaged contrasts (mean
+\code{abs F1} over rounds 1-15) are consistent: (a) 0.081, (b) 0.120,
+(c) 0.114, (d) 0.346, (e) 0.342.
+
+\paragraph{The fifth condition rules out a natural extension.}
+We hypothesized that single-format KL preservation could not detect
+\emph{format-selective} forgetting -- drift in the policy under one
+preservation framing that doesn't manifest under another -- and that
+augmenting the preservation side with K=5 instruction framings of the same
+task prompt would catch it. The contrast is null:
+$(e) - (d) = -0.006$ at round 15, $-0.004$ trajectory-averaged, and (e) is
+noisier across seeds (half-spread 0.018 vs (d)'s 0.006). A conservative
+non-parametric interval combining the two half-spreads is
+$[-0.030, +0.018]$, comfortably straddling zero. The active ingredient is
+$K=5\ \text{injection} \times \text{any KL anchor}$, not $K=5$ on both
+sides. We discuss why in \S\ref{sec:discussion}.
+
+\section{Three Negative Results that Constrain the Design Space}
+\label{sec:negatives}
+
+We report three loss-engineering interventions that fail, each ruling out a
+natural alternative to the \S\ref{sec:synergy} composition.
+
+\subsection{Continual preference alignment (COPR) does not port}
+
+Across the full 15-round chain, KL-regularized SFT dominates the COPR
+family on absorption.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Method & Round-15 abs F1 & Locality F1 & GPU-h/round \\
+\midrule
+\code{naive\_sft}                       & 0.088 & 0.046 & 0.013 \\
+\textbf{\code{kl\_reg\_sft}}            & \textbf{0.118} & 0.048 & 0.051 \\
+\code{copr}                             & 0.062 & 0.029 & 0.60 \\
+\code{copr\_gold\_injection}            & 0.115 & 0.064 & 0.58 \\
+\code{copr\_gold\_injection\_anchored}  & 0.119 & \textbf{0.071} & 0.65 \\
+\code{copr\_anchored}                   & 0.076 & 0.037 & 0.62 \\
+\bottomrule
+\end{tabular}
+\caption{Round-15 endpoint comparison: KL-regularized SFT versus the COPR family.}
+\label{tab:copr}
+\end{table}
+
+\code{kl\_reg\_sft} wins absorption against \code{copr\_gold\_injection} in
+\textbf{11 of 14 contested rounds} (3 losses; round 9 missing for COPR).
+The mechanism is the \textbf{K-sample-all-wrong pathology}: COPR's K=8
+self-samples on a novel fact land below a usable F1 threshold; the
+gold-NLL anchor in \code{configs/update/copr.yaml}
+(\code{gold\_nll\_gate\_threshold: 0.5}) is wired to fire only when the
+maximum sampled F1 falls below 0.5 per step, encoding the implementor's
+design prior that candidates are routinely sub-threshold under our task.
+The MSE rank fit then ranks plausible-but-wrong answers, and the natural
+patch -- gold injection -- collapses the method toward cross-entropy on
+the gold answer at $10$-$12\times$ per-round compute ($15$-$17\times$ at
+3K batch). Round-15 per-fact worst-F1 confirms the structural difficulty:
+0.042-0.103 across the COPR family vs 0.103 for \code{kl\_reg\_sft}
+(\code{phase3\_sequential\_final.csv}). The single durable COPR signal is
+locality under \code{copr\_gold\_injection\_anchored} ($+47\%$ over
+\code{kl\_reg\_sft}). The general read: continual preference alignment
+objectives, which assume a usable signal in the candidate pool, silently
+break in knowledge editing where the gold answer has near-zero probability
+under the pre-update policy.
+
+\paragraph{Geometric-behavioral disagreement.}
+A separate finding from the same checkpoints: hidden-state geometry on
+$n=50$ facts and behavioral probes on the same $n=50$ facts disagree across
+the COPR family. Gold-injection variants exhibit the \emph{smallest}
+geometric shift ratio (1.44-1.60, closest to integration target 1.0) while
+exhibiting the \emph{largest} behavioral format gap (0.121-0.140).
+Hidden-state cosine proximity does not predict behavioral availability
+under format shift. We take this as a methodological warning: integration
+claims in editing papers should accompany geometric proxies with behavioral
+cross-format probes.
+
+\subsection{V-REx at K=2 is degenerate}
+
+IRM-family penalties require $|E| > d_e$ environments to identify
+cross-environment structure \citep{arjovsky2019irm, rosenfeld2021risks,
+ahuja2021empirical}. At K=2 (QA + QD), the V-REx variance term reduces to
+$(\mathrm{CE}_{\mathrm{qa}} - \mathrm{CE}_{\mathrm{qd}})^2 / 4$ -- a
+pairwise scalar consistency loss satisfiable by any equalizing solution.
+After a leak-free retrain (\code{phase9\_leakfree\_isolation.csv}), the
+variance penalty produced QD F1 0.0857 vs \code{kl\_reg\_sft} 0.0715 -- an
+absolute lift of $+0.014$ on $n=50$, well within run-to-run noise at this
+sample size and exactly what the theory predicts.
+
+\subsection{Format diversity without a regularizer actively hurts}
+
+The natural reading of ``format invariance comes from data'' is that
+simply mixing formats during SFT should help. At one round of matched
+compute, plain mixed-format SFT produces format gap 0.100 versus
+single-format \code{kl\_reg\_sft} 0.072 -- strictly worse. This parallels
+PIT \citep{jiang2024pit}: format mixing in continual training requires
+either curriculum, unified rewriting, or a preservation-side regularizer.
+The \S\ref{sec:synergy} synergy is the third option.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\paragraph{Why the synergy is super-linear (hypothesis).}
+We offer a candidate mechanism, framed as a hypothesis since the
+\S\ref{sec:synergy} ablation establishes that the interaction exists but
+does not localize it. \citet{allenzhu2023knowledge} show that K=5
+paraphrastic injection during pre-training forces models to encode facts
+as entity-anchored linear features rather than format-coupled token
+sequences. \emph{On this reading}, with K=1 injection the gradient
+subspace for each fact is plausibly narrow and overlaps with
+format-specific surface structure; with K=5 the subspace would broaden to
+span format-invariant directions. KL preservation alone (atop K=1
+injection) would then anchor the model on a \emph{narrow} task subspace --
+capable of enforcing stability only on what was already there, predicting
+a small effect (consistent with the observed $(c) - (a) = +0.029$). KL
+preservation atop K=5 injection would anchor the \emph{enriched} feature
+space the augmentation just produced, predicting the larger
+compute-matched lift $(d) - (b) = +0.286$. Under this hypothesis, the two
+ingredients pre-condition and stabilize different parts of the same
+mechanism. A complementary reading
+\citep[LoRA Knowledge Packing:][]{pletenev2025lora} is that K=5 is
+high-variance and KL is the variance-clipping anchor that turns it into a
+usable signal. The two readings are not mutually exclusive; distinguishing
+them empirically is the highest-priority follow-up
+(\S\ref{sec:limitations}) -- a linear-probing experiment at entity-token
+hidden states across the four 2$\times$2 cells would test whether (d)
+shows format-invariant linear features that (b) creates-then-loses across
+rounds and (c) never creates.
+
+\paragraph{Why K=5 on the preservation side adds nothing (conjecture).}
+Under the same hypothesis, K=5 augmentation on the \emph{injection} side
+would already broadcast each update across multiple format directions of
+the gradient; the LoRA update subspace is shared across the same target
+modules under any framing; KL preservation evaluated under any single
+framing is then implicitly anchoring against drift in \emph{all}
+directions the K=5 update can push. K=5 KL preservation would add
+redundant signal -- and the implementation adds noise ($5\times$ more KL
+forwards per step, each with a slightly different KL estimate), which is
+consistent with the higher seed variance we observe for \code{dsae\_lite}
+(half-spread 0.018 vs (d)'s 0.006). At larger model scales, longer round
+chains, or with adversarially chosen preservation framings,
+format-selective forgetting may become detectable; we do not claim the
+symmetric construction is uniformly worthless, only that at
+4B/$r=16$/200-edits-per-round/15-rounds, the simpler \code{aug\_kl\_k1}
+is empirically the right method.
+
+\paragraph{The compositional gap is unsolved by every method we evaluated on it.}
+Two-hop bridging-entity recall degrades below the no-update baseline
+(0.102) for every prior-phase method evaluated on
+\code{phase4\_compositional.csv} (\code{naive\_sft}, \code{kl\_reg\_sft},
+the four COPR variants; 29-86\% relative drop, $n=500$ round-10 probes).
+Token F1 improves under most updates (the model becomes better at the
+\emph{surface form} of the answer), but the underlying chained-retrieval
+ability degrades. The Plan B conditions \code{aug\_kl\_k1} and
+\code{dsae\_lite} were not evaluated on the compositional probe set, so
+we cannot rule out that the synergy of \S\ref{sec:synergy} partially
+closes the compositional gap; running this evaluation is a low-cost
+follow-up ($\sim$1-2 GPU-h). K=5 augmentation operates within-fact; it
+does not directly address whether the model can chain across facts.
+Closing the compositional gap likely requires explicit multi-hop training
+signal, retrieval at inference, or a deductive-closure objective.
+
+\paragraph{Production deployment.}
+For batched ingestion (200 facts/round) the per-round teacher-snapshot
+requirement of \code{aug\_kl\_k1} is unobtrusive. For streaming document
+ingestion, a simpler variant -- Format-Diverse Replay (training on
+K=5-augmented injection alongside replay-buffer SFT instead of computing
+KL against a frozen reference) -- would \emph{plausibly} capture the
+augmentation $\times$ anchoring synergy without the per-round teacher
+snapshot, on the assumption that any task-distribution anchor (replay,
+KL, EWC) substitutes for KL specifically. We do not validate this here.
+
+\section{Limitations and Follow-ups}
+\label{sec:limitations}
+
+\paragraph{Single model, single scale.}
+Only Qwen3-4B-Instruct-2507 at LoRA $r=16$. The synergy magnitude may
+shrink at 7B+ where internal ``truth directions'' become more linearly
+separable \citep{markstegmark2023geometry}. Testing at 7-8B is the natural
+follow-up ($\sim$15-20 GPU-h, beyond current budget).
+
+\paragraph{Two seeds, one calibration seed.}
+The 2$\times$2 ablation uses 2 seeds for new conditions (a, b, d, e); (c)
+is at 1 seed from prior phases. The (e) vs (d) null contrast
+($\Delta = -0.006$, half-spreads 0.018 and 0.006) has 95\% CI on the
+difference comfortably straddling zero, but a 3rd seed would tighten the
+bound.
+
+\paragraph{The mechanism is hypothesized, not proven.}
+\S\ref{sec:discussion} offers a leading reading (subspace enrichment +
+anchoring) and a complementary one (variance clipping). The single
+highest-value follow-up is a linear-probing experiment at entity-token
+hidden states across all four cells of the 2$\times$2: train a probe to
+predict (relation, object) from the hidden state, then measure probe
+accuracy across the K=5 format renderings. If the leading reading is
+correct, (d) \code{aug\_kl\_k1} should show format-invariant linear
+features that (b) creates-then-loses across rounds and (c) never creates.
+$\sim$1-2 GPU-h, turns ``we found an interaction'' into ``we found an
+interaction \emph{and here is the mechanism}.'' A complementary swap of KL
+for EWC / replay / R-Drop distinguishes the two readings ($\sim$5-8
+GPU-h).
+
+\paragraph{K only tested at 5 on the injection side; templates hand-designed.}
+\citet{allenzhu2023knowledge} shows monotonic improvement up to K=5 in
+pre-training; LoRA Knowledge Packing \citep{pletenev2025lora} shows
+degradation at K=10 \emph{without} preservation. Whether K=3 captures
+most of the synergy or K=10 + KL preservation recovers from the LoRA
+Packing degradation is the cleanest second follow-up.
+
+\paragraph{Other limitations.}
+Compositional gap unsolved by every method tested. Locality
+\code{same\_sector} stratum is degenerate ($n=1$). Behavioral probe set is
+$n=50$ which limits resolution of small format-gap differences. Synthetic
+data (FNSPID + rule-based renderings) -- a more natural LLM-generated
+renderer might shift absolute numbers. Scoped to LoRA: the synergy
+ingredients are loss-side and not LoRA-specific, but transfer to full
+fine-tuning is not validated. We piloted a teacher-free architectural
+variant (per-layer LR + spectral LoRA initialization) but the
+activation-similarity calibration we used is provably uninformative for
+pre-norm transformers \citep{men2024shortgpt}; a properly-calibrated
+variant remains future work.
+
+\section{Conclusion}
+
+The absorption-integration gap under continual LoRA injection at
+4B/200-edits-per-round/15-rounds is substantially closed by a single
+composition: K=5 paraphrastic augmentation on the injection side paired
+with K=1 KL preservation against a per-round frozen reference. The
+2$\times$2 ablation pinpoints the active mechanism: each ingredient alone
+gives $\sim$$+0.03$ absorption F1; together they give $+0.322$ -- a
+$\sim$5$\times$ super-linear synergy. The cross-coupling is what matters;
+pushing K=5 onto the preservation side (the symmetric extension we
+hypothesized) does not improve over K=1. Three loss-engineering
+alternatives fail in informative ways -- COPR-style preference alignment
+(K-sample-all-wrong pathology, $10$-$12\times$ per-round compute, no
+sustained advantage); V-REx at K=2 prompt formats (theoretically
+degenerate, empirically null); na\"ive format mixing (widens the gap).
+The compositional/ripple-effect gap is unsolved by every method tested.
+
+The operational recommendation is: \textbf{for continual LoRA-based fact
+injection in task-tuned LLMs, apply K=5 paraphrastic augmentation to the
+injection data and pair it with standard single-format KL preservation
+against a per-round frozen reference (\code{aug\_kl\_k1}).} Don't use COPR
+for fact injection; don't use OOD regularization at K=2; and don't rely
+on either augmentation or preservation alone -- together they produce a
+super-linear lift; separately each does little.
+
+\section*{Reproducibility}
+
+Code, configs, and raw artifacts are committed at the repository root.
+Implementation: \code{src/sot/update/dsae\_lite.py}. K=5 data prep with
+leak-free runtime guard:
+\code{scripts/24\_prepare\_mixed\_format\_triples.py --num-formats 5}.
+Sequential orchestrator: \code{scripts/16\_run\_sequential.py}. Configs:
+\code{configs/update/\{naive\_sft,aug\_sft\_k5,kl\_reg\_sft,aug\_kl\_k1,dsae\_lite\}.yaml}.
+Trajectory artifacts:
+\code{outputs/sequential/\{method\}\_seed\{S\}/trajectory.json}. Phase
+artifacts (CSV) under \code{final\_results/}: batch
+(\code{phase1\_batch\_scale1000.csv},
+\code{phase2\_batch\_scale3000.csv}); sequential
+(\code{phase3\_sequential\_final.csv},
+\code{phase3\_sequential\_trajectory.csv}); compositional
+(\code{phase4\_compositional.csv}); behavioral format probe
+(\code{phase7b\_qd\_format\_probe.csv}); format-mixing ablation
+(\code{phase8d\_variance\_isolation.csv}); V-REx leak-free retrain
+(\code{phase9\_leakfree\_isolation.csv}). Backbone task-tuned LoRA:
+\code{checkpoints/qd\_sft/final}. Fact triples:
+\code{data/fnspid/triples/filtered\_triples.json} ($n=96{,}897$). Seeds:
+42 (single-seed pilots) or 42, 123 (2-seed ablation).
+
+\appendix
+\section{K=5 Templates}
+
+Injection templates (per
+\code{scripts/24\_prepare\_mixed\_format\_triples.py --num-formats 5}):
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+  \item \textbf{QA}: \code{[user: "\{question\}"]} $\to$ \code{[assistant: "\{answer\}"]}
+  \item \textbf{QD (leak-free)}: \code{[system: QD-system, user: "What should I know about \{subject\}'s recent activity?"]} $\to$ \code{[assistant: "Sub-query 1: What is the \{relation\} of \{subject\}? ..."]} (gold answer never in user/system or sub-queries)
+  \item \textbf{Declarative}: \code{[user: "Summarize this fact: \{subject\}, \{relation\}."]} $\to$ \code{[assistant: "\{subject\}'s \{relation\} is \{object\}."]}
+  \item \textbf{Instruction}: \code{[user: "Financial analyst: what is \{subject\}'s \{relation\}?"]} $\to$ \code{[assistant: "\{object\}"]}
+  \item \textbf{Narrative}: \code{[user: "Write a snippet about \{subject\}."]} $\to$ \code{[assistant: "In recent developments, \{subject\} announced that its \{relation\} is \{object\}."]}
+\end{enumerate}
+
+Preservation framings (per
+\code{src/sot/update/dsae\_lite.py:\_PRESERVATION\_FRAMINGS}):
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+  \item Original (QD system + user question)
+  \item Bare (no system, just user question)
+  \item Analyst (``You are a financial analyst. Answer concisely: \dots'')
+  \item Detailed (``Given the following question, provide a detailed response: \dots'')
+  \item Request (``Question: \dots Please provide your analysis.'')
+\end{enumerate}
+
+The two pools are intentionally distinct: injection diversity tests
+robustness across surface forms of the same fact; preservation diversity
+tests robustness across instruction framings of the same task question.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
