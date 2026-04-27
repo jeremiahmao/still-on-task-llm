@@ -1,0 +1,13 @@
+{
+  "method": "aug_kl_k1",
+  "run_name": "seq_aug_kl_k1_round_8_seed42",
+  "task": "qd",
+  "scale": 200,
+  "triples_path": "data/fnspid/triples/sequential_k5/round_8.json",
+  "base_model": "outputs/seq_aug_kl_k1_round_7_seed42_qd_scale200/model",
+  "starting_checkpoint": null,
+  "gpu_hours": 0.30053866755610215,
+  "peak_memory_gb": 8.731865406036377,
+  "elapsed_seconds": 1081.9392032019678,
+  "seed": 42
+}

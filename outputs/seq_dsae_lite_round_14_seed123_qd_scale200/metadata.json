@@ -1,0 +1,13 @@
+{
+  "method": "dsae_lite",
+  "run_name": "seq_dsae_lite_round_14_seed123",
+  "task": "qd",
+  "scale": 200,
+  "triples_path": "data/fnspid/triples/sequential_k5/round_14.json",
+  "base_model": "outputs/seq_dsae_lite_round_13_seed123_qd_scale200/model",
+  "starting_checkpoint": null,
+  "gpu_hours": 0.4092981795386165,
+  "peak_memory_gb": 6.734443187713623,
+  "elapsed_seconds": 1473.4734463390196,
+  "seed": 123
+}
