@@ -1,4 +1,4 @@
-# A Super-Linear Synergy of K=5 Augmented Injection and KL Preservation in Continual LoRA Knowledge Injection
+# Super-Linear Synergy Between Format Augmentation and KL Preservation in Continual LoRA Knowledge Injection
 
 ## Abstract
 
@@ -160,17 +160,17 @@ Two failed loss/data-engineering attempts on the same problem, with a common dia
 
 These two negatives together motivate the design of §5.4: the symmetric K=5 mechanism needs both more environments than V-REx-K=2 had *and* an explicit regularizer that naïve mixing lacks.
 
-### 5.4 5-way ablation: a super-linear synergy + a failed extension
+### 5.4 The 2×2 factorial: super-linear synergy of K=5 injection × KL preservation
 
-We test five conditions × 2 seeds × 15 rounds × n=200 facts/round (`outputs/sequential/{condition}_seed{42,123}/trajectory.json`). Conditions (a), (b), (d), (e) are new Plan B runs; (c) `kl_reg_sft` is reused from prior-phase trajectories at 1 seed × 15 rounds as calibration.
+We test the 2×2 factorial **{K=1 / K=5 injection} × {no KL / K=1 KL preservation}** as a 4-condition ablation, plus a 5th symmetric extension (K=5 on the preservation side). Conditions (a), (b), (d), (e) are new Plan B runs at 2 seeds × 15 rounds × n=200 facts/round (`outputs/sequential/{condition}_seed{42,123}/trajectory.json`); (c) `kl_reg_sft` is reused from prior-phase trajectories at 1 seed × 15 rounds as calibration.
 
-| ID | Condition | Injection | Preservation |
-|---|---|---|---|
-| (a) | `naive_sft` | K=1 | none |
-| (b) | `aug_sft_k5` | K=5 (Allen-Zhu) | none |
-| (c) | `kl_reg_sft` | K=1 | KL on K=1 replay |
-| (d) | `aug_kl_k1` | K=5 | KL on K=1 replay |
-| (e) | `dsae_lite` | K=5 | KL on K=5 replay framings (the proposed symmetric extension) |
+| ID | Condition | Injection | Preservation | Cell in 2×2 |
+|---|---|---|---|---|
+| (a) | `naive_sft` | K=1 | none | (K=1, no-KL) |
+| (b) | `aug_sft_k5` | K=5 (Allen-Zhu) | none | (K=5, no-KL) |
+| (c) | `kl_reg_sft` | K=1 | KL on K=1 replay | (K=1, KL) |
+| (d) | `aug_kl_k1` | K=5 | KL on K=1 replay | (K=5, KL) |
+| (e) | `dsae_lite` | K=5 | KL on K=5 replay framings | extension to (d) — tested in §5.5 |
 
 **Round-15 endpoint** (mean across seeds 42, 123 for new conditions; 1 seed for (c)):
 
@@ -182,7 +182,7 @@ We test five conditions × 2 seeds × 15 rounds × n=200 facts/round (`outputs/s
 | (d) **`aug_kl_k1`** | **K=5** | **K=1 KL** | **0.411** | **0.006** | **0.385** | 0.237 |
 | (e) `dsae_lite` | K=5 | K=5 KL | 0.405 | 0.018 | 0.377 | 0.236 |
 
-#### The headline finding: super-linear synergy of K=5 injection × KL preservation
+#### The headline: super-linear synergy across the 2×2
 
 Either ingredient alone produces a small effect:
 
@@ -199,19 +199,7 @@ Either ingredient added on top of the other contributes ~+0.29 abs F1 — vastly
 
 Worst-fact F1 follows the same pattern: (a) 0.063, (b) 0.100, (d) 0.385, (e) 0.377. Preservation Recall@10 is comparable across all conditions (0.236–0.267), within 1 SE of each other at n=104 — we claim "preservation maintained," not "improved."
 
-#### The proposed novel ingredient does not extend the synergy
-
-The decisive (e) vs (d) contrast — both have K=5 augmented injection; only (e) has the proposed K=5 *augmented* KL preservation across multiple replay framings — is **null**:
-
-- **Δ (e − d) at round 15: −0.006** (essentially zero; 95% CI on the difference straddles zero given the two methods' spreads)
-- Δ (e − d) trajectory-averaged across 15 rounds: **−0.004**
-- (e) is also *noisier* across seeds: half-spread 0.018 vs (d)'s 0.006
-
-The symmetric K=5 KL preservation we proposed as the novel contribution **does not improve over standard single-format K=1 KL preservation** at this regime. The active ingredient is K=5 augmentation × KL preservation (any KL anchor), not K=5 on both sides specifically. A reviewer's natural hypothesis — "format-selective forgetting requires multi-format preservation to detect" — is not borne out empirically: K=1 KL preservation is sufficient when K=5 injection is already supplying format diversity on the gradient side.
-
-We report this honestly. The paper's substantive contribution is the super-linear synergy finding (above), which the 5-way ablation isolates cleanly: every direction of the (a) → (b) → (d) and (a) → (c) → (d) hierarchies is supported, and (d) → (e) is a clean negative on the proposed extension.
-
-#### Trajectory-averaged contrasts (more robust than round-15 endpoint)
+**Trajectory-averaged contrasts** (more robust than round-15 endpoint):
 
 | Method | Trajectory-avg abs F1 (mean across rounds 1-15) |
 |---|---|
@@ -220,7 +208,11 @@ We report this honestly. The paper's substantive contribution is the super-linea
 | (d) aug_kl_k1 | **0.346** |
 | (e) dsae_lite | 0.342 |
 
-The (e) ≈ (d) story holds in trajectory-averaged form: Δ = −0.004. The synergy result holds: (b) and (c) trajectories average ≪ (d)'s trajectory.
+The synergy holds across the entire trajectory: (b) and (c) trajectories average ≪ (d)'s trajectory.
+
+### 5.5 The proposed K=5-on-preservation-side extension does not improve over K=1
+
+We tested whether augmenting the *preservation* side with K=5 framings — the symmetric extension `dsae_lite` (e) — improves over standard single-format K=1 KL preservation (d). The contrast is **null**: Δ (e − d) at round 15 = **−0.006**; trajectory-averaged Δ = **−0.004**; (e) is also noisier across seeds (half-spread 0.018 vs (d)'s 0.006). The active ingredient is K=5 augmentation × KL preservation (any KL anchor), not K=5 on both sides specifically. The reviewer's natural hypothesis — "format-selective forgetting requires multi-format preservation to detect" — is not borne out at this regime: K=1 KL preservation is sufficient when K=5 injection is already supplying format diversity on the gradient side. (See §6.1b for a mechanistic conjecture on why.) The novel symmetric construction we tested adds no value beyond the simpler `aug_kl_k1`; the synergy finding above is the paper's substantive empirical contribution.
 
 ## 6. Discussion
 
@@ -272,7 +264,11 @@ A more direct test of the synergy mechanism (Hypothesis A vs B in §6.1) would b
 
 **Two seeds for the headline ablation.** The 5-way ablation uses 2 seeds × 15 rounds for new conditions (a, b, d, e); condition (c) `kl_reg_sft` is at 1 seed × 15 rounds from prior phases. The (e) vs (d) null contrast at Δ = −0.006 with half-spreads 0.018 and 0.006 has 95% CI on the difference comfortably straddling zero, but a 3rd seed would tighten the bound. Multi-seed replication at 3+ seeds is the natural follow-up.
 
-**The synergy mechanism is hypothesized, not proven.** §6.1 offers two candidate explanations (subspace enrichment + anchoring vs. variance clipping); we do not run the deciding experiment (swap KL for EWC / replay / R-Drop and test if the synergy persists). This is the highest-priority follow-up.
+**The synergy mechanism is hypothesized, not proven.** §6.1 offers two candidate explanations (subspace enrichment + anchoring vs. variance clipping). The single highest-value follow-up is a linear-probing experiment at entity-token hidden states across all four cells of the 2×2 ablation: train a linear probe to predict (relation, object) from the hidden state, then measure probe accuracy across the K=5 format renderings. If Hypothesis A (feature-space enrichment) is correct, (d) `aug_kl_k1` should show format-invariant linear features that (b) `aug_sft_k5` creates-then-loses across rounds and (c) `kl_reg_sft` never creates. This costs ~1–2 GPU-hours and turns the paper from "we found an interaction" into "we found an interaction *and here is the mechanism*." A complementary experiment — swap KL for EWC / replay / R-Drop and check whether the synergy persists — distinguishes Hypothesis A from B, at ~5–8 GPU-hours.
+
+**K only tested at 5 on the injection side.** Allen-Zhu shows monotonic improvement in K up to K=5 in pre-training; LoRA Knowledge Packing (2502.14502) shows degradation at K=10 *without* preservation. Whether K=3 already captures most of the synergy or K=10 + KL preservation recovers from the LoRA Packing degradation is the cleanest second follow-up.
+
+**Single-scale evaluation.** The synergy at 4B / r=16 may be a capacity phenomenon — a 7B+ model with more representational room may not need both ingredients to reach the same absorption ceiling. Burns/Marks-&-Tegmark style evidence suggests the synergy magnitude could shrink at larger scale. Testing whether the interaction persists at 7-8B is the third follow-up (~15-20 GPU-hours, beyond current budget).
 
 **Teacher-free architectural alternatives untested.** Per-layer learning-rate schedules and spectral LoRA initialization (e.g. PiSSA-style at intermediate components, Quercia et al. 2025, arXiv:2602.03493) are an obvious follow-up; we piloted one such design but the activation-similarity calibration we used is provably uninformative for pre-norm transformers (Men et al. 2403.03853), so we do not report results. A properly-calibrated (e.g. SimDiff-MASD, arXiv:2604.19520) architectural variant remains future work.
 
