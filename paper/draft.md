@@ -1,8 +1,8 @@
-# Format-Diverse Preservation Closes the Absorption-Integration Gap in Continual LoRA Knowledge Injection
+# A Super-Linear Synergy of K=5 Augmented Injection and KL Preservation in Continual LoRA Knowledge Injection
 
 ## Abstract
 
-Continual knowledge injection in task-tuned language models exhibits a measurable **absorption-integration gap**: models absorb new facts under the training prompt format but fail to deploy them under different downstream formats. We measure this gap (0.07-0.14 F1 across methods that meaningfully absorb) on Qwen3-4B over 15 sequential rounds of 200 disjoint LoRA edits per round. Six interventions across three families fail to close it: (i) four COPR variants (Zhang et al. 2025) — plain, gold-injected, anchored, gold+anchored — originally for continual preference alignment, exhibit negative transfer to fact injection; (ii) V-REx applied to two prompt formats (Krueger et al. 2021) is theoretically degenerate at K=2 (Arjovsky 2019, Rosenfeld 2021) and empirically null at our scale; (iii) format diversity without an explicit regularizer actively widens the gap. We then apply Allen-Zhu's K=5 augmentation (2309.14316) jointly on the *injection* side and a novel **K=5 augmented KL preservation** on the *task-replay* side — a symmetric format-diverse construction we call **DSAE Lite**. In a 5-round, 1-seed pilot DSAE Lite lifts absorption F1 from 0.064 (naive SFT) to 0.300 (~4.7× round-5 endpoint) and worst-fact F1 from 0.046 to 0.259 (~5.6× same-round) without degrading task preservation. The decisive ablation contrast is `dsae_lite` (e) vs `aug_kl_k1` (d) — both have K=5 augmented injection, only the former has K=5 augmented KL preservation; this isolates the novel ingredient from Allen-Zhu replication. The paper's contribution is therefore: a quantitative diagnosis of the format gap under continual LoRA injection, three substantive negative results, a methodological warning that geometric integration proxies disagree with behavioral availability, and a novel method whose K=5 KL preservation is the active ingredient. The diagnostic, negative-results, and methodological contributions hold independently of the (e)–(d) ablation outcome; a teacher-free deployment variant (Format-Diverse Replay; §6.3) is flagged as future work.
+Continual knowledge injection in task-tuned language models exhibits a measurable **absorption-integration gap**: models absorb new facts under the training prompt format but fail to deploy them under different downstream formats. We measure this gap (0.07-0.14 F1 across methods that meaningfully absorb) on Qwen3-4B over 15 sequential rounds of 200 disjoint LoRA edits per round. Six interventions across three families fail to close it: (i) four COPR variants (Zhang et al. 2025) exhibit negative transfer from continual preference alignment to fact injection; (ii) V-REx applied to two prompt formats (Krueger et al. 2021) is theoretically degenerate at K=2 (Arjovsky 2019, Rosenfeld 2021) and empirically null at our scale; (iii) format diversity without an explicit regularizer actively widens the gap. **The headline positive finding is a super-linear synergy.** A 5-way ablation (4 conditions × 2 seeds × 15 rounds, plus prior-phase calibration) shows that K=5 augmented injection alone (Allen-Zhu, 2309.14316) lifts absorption F1 by only +0.036 over naive SFT; standard K=1 KL preservation alone lifts by +0.029; but the *combination* lifts by +0.322 — a ~5× synergy ratio over additive. The composition `aug_kl_k1` reaches 0.411 absorption F1 at round 15 (vs naive 0.089, kl_reg_sft 0.118, K=5-injection-only 0.125); worst-fact F1 climbs from 0.063 to 0.385. We additionally proposed a symmetric extension — **DSAE Lite**, K=5 augmentation on the preservation side too — and report it as a clean negative: Δ (e−d) = −0.006 at round 15 (and −0.004 trajectory-averaged), with higher seed variance. The novel symmetric mechanism we hypothesized adds no value beyond standard K=1 KL preservation; the active ingredient is K=5 injection × KL preservation (any anchor), not K=5 on both sides. The paper's contributions are therefore: (1) a quantitative diagnosis of the format gap under continual LoRA injection; (2) three negative results constraining the loss-engineering design space (COPR, V-REx K=2, naïve format diversity); (3) the super-linear synergy finding with a clean ablation of which combination drives it; (4) a clean negative on the symmetric K=5 KL preservation extension; (5) a methodological warning that geometric integration proxies disagree with behavioral availability under format shift.
 
 ## 1. Introduction
 
@@ -20,11 +20,11 @@ This paper measures the gap quantitatively under continual LoRA-based injection 
 
 These three constraints point toward a different lever: not loss-engineering at K=2 and not naïve mixing, but **data-side augmentation at K≥5** following Allen-Zhu & Li (2309.14316), *paired with* an explicit preservation regularizer that catches drift across formats. Standard single-format KL preservation cannot detect format-selective forgetting — drift in the model's task distribution under one format that doesn't manifest under another.
 
-Our positive contribution, **DSAE Lite**, addresses this via a symmetric construction: Allen-Zhu K=5 augmentation on the injection side, plus a novel K=5 augmented KL preservation on the task-replay side. Each task-replay prompt is rendered in K=5 framings, KL-divergence against a frozen reference is computed under each, and the average is added to the loss. The injection-side ingredient is established prior work; the preservation-side ingredient has no precedent we can find (verified by exhaustive search; closest misses — SEFE/ASD 2505.02486, RECAP 2510.21978, GeRe 2508.04676 — all use single-format KL on the preservation side).
+Our positive contribution is a 5-way ablation that isolates a **super-linear synergy** between K=5 augmented injection and KL preservation against a frozen reference. The composition `aug_kl_k1` (K=5 injection following Allen-Zhu, 2309.14316, paired with standard single-format K=1 KL preservation) reaches absorption F1 0.411 at round 15 — versus 0.125 for K=5 injection alone and 0.118 for the standard `kl_reg_sft` baseline. Either ingredient alone gives a ~+0.03 lift over naive SFT; the combination gives +0.322. The active mechanism is the *coupling*, not either half.
 
-In a 5-round, 1-seed pilot, DSAE Lite lifts absorption F1 from 0.064 (naive SFT) to 0.300 (~4.7× round-5 endpoint, ~4.3× across-round mean) while maintaining preservation. A 5-way ablation isolates the contribution of each ingredient.
+We additionally proposed and tested a symmetric extension — **DSAE Lite**, where the KL preservation is also augmented across K=5 framings of each task-replay prompt — hypothesizing that format-selective forgetting requires multi-format preservation to detect. The symmetric construction has no precedent we can find (verified by exhaustive search; closest misses SEFE/ASD 2505.02486, RECAP 2510.21978, GeRe 2508.04676 all use single-format KL on the preservation side). Empirically, the extension is null: Δ (e−d) at round 15 = −0.006 (and −0.004 trajectory-averaged), with higher seed variance. K=1 KL preservation suffices when K=5 injection is already supplying format diversity on the gradient side.
 
-The paper's contribution is fourfold: (1) a quantitative diagnosis of the absorption-integration gap under continual LoRA injection at 4B/LoRA scale; (2) the COPR negative-transfer result with mechanistic diagnosis; (3) a finding that format diversity without explicit regularization actively widens the gap (consistent with PIT, Jiang et al. 2024, in continued pre-training); (4) DSAE Lite as a positive method with the novel K=5 KL preservation as the active ingredient.
+The paper's contribution is fivefold: (1) a quantitative diagnosis of the absorption-integration gap under continual LoRA injection at 4B/LoRA scale; (2) the COPR negative-transfer result with mechanistic diagnosis; (3) a finding that format diversity without explicit regularization actively widens the gap (consistent with PIT, Jiang et al. 2024, in continued pre-training); (4) the super-linear synergy of K=5 augmented injection × KL preservation, isolated by the 5-way ablation; (5) a clean negative on the symmetric K=5-on-preservation-side extension (DSAE Lite), demonstrating that the synergy lives in the cross-coupling and not in K=5 on both sides.
 
 ## 2. Related Work
 
@@ -61,19 +61,39 @@ We instantiate (i)-(iv) with: token-F1 on paraphrased absorption probes (in-form
 
 The COPR variants are: plain COPR; `copr_gold_injection` (gold answer injected as one of K candidates); `copr_anchored` (task-replay-normalized reference); `copr_gold_injection_anchored` (both). Hyperparameters and full specifications are in Appendix A; per-round compute reflects measured wall-clock on A10G 24GB.
 
-### 3.3 DSAE Lite (the proposed method)
+### 3.3 The 5-way ablation: composition of K=5 injection × KL preservation, plus a tested-but-failed symmetric extension
 
-For each fact `(x_i, y_i)`, render K=5 surface forms `{F_1(x_i, y_i), …, F_5(x_i, y_i)}` (QA, query-decomposition, declarative, instruction, narrative). The injection-side loss is standard SFT averaged across all K=5 renderings — Allen-Zhu (2309.14316) verbatim. On the preservation side, for each task-replay prompt `x ∈ D_replay`, render K=5 prompt framings `{G_1(x), …, G_5(x)}` (different system prompts and instruction wrappings of the same task question) and compute:
+The paper's positive contribution lives in the 5-way ablation (§5.4). For each fact `(x_i, y_i)`, K=5 augmented injection renders K=5 surface forms `{F_1(x_i, y_i), …, F_5(x_i, y_i)}` (QA, query-decomposition, declarative, instruction, narrative); the SFT loss averages across all K=5 — Allen-Zhu (2309.14316) verbatim. KL preservation against a frozen reference `π_ref` (snapshotted at the start of each round) anchors the policy on a task-replay distribution `D_replay`. Standard K=1 KL preservation evaluates each replay prompt under one framing:
 
 ```
-L_KL = (1/K) · Σ_k  KL( π_ref(·|G_k(x))  ||  π_θ(·|G_k(x)) )
+L_KL_K=1 = E_{x ∈ D_replay} [ KL( π_ref(·|x)  ||  π_θ(·|x) ) ]
 ```
 
-The total loss is `L_SFT(K=5 fact augmentations) + λ · L_KL(K=5 framings of replay)`, with λ = 0.1, K=5 on both sides. The injection-side templates and preservation-side framings are intentionally *distinct* pools: injection diversity tests robustness across surface renderings of the same fact; preservation diversity tests robustness across instruction framings of the same task question. The frozen reference `π_ref` is snapshotted at the start of each round.
+The 5-way ablation conditions are:
+
+| ID | Condition | Injection | Preservation |
+|---|---|---|---|
+| (a) | `naive_sft` | K=1 (QA only) | none |
+| (b) | `aug_sft_k5` | K=5 augmented | none |
+| (c) | `kl_reg_sft` | K=1 | K=1 KL on replay |
+| (d) | `aug_kl_k1` | K=5 augmented | K=1 KL on replay |
+| (e) | `dsae_lite` | K=5 augmented | K=5 KL on replay (the symmetric extension we propose and test) |
+
+Conditions (a), (b), (d) and (e) are new; (c) is reused from prior phases as calibration.
+
+**The symmetric extension we test (`dsae_lite`):** in addition to K=5 on the injection side, render each task-replay prompt `x ∈ D_replay` in K=5 prompt framings `{G_1(x), …, G_5(x)}` (different system prompts and instruction wrappings of the same task question), compute KL under each framing, and average:
+
+```
+L_KL_K=5 = E_{x ∈ D_replay} [ (1/K) · Σ_k  KL( π_ref(·|G_k(x))  ||  π_θ(·|G_k(x)) ) ]
+```
+
+The total `dsae_lite` loss is `L_SFT(K=5 fact augmentations) + λ · L_KL_K=5(K=5 framings of replay)`, with λ = 0.1. The injection-side templates and preservation-side framings are intentionally *distinct* pools — the injection pool tests robustness across surface renderings of the same fact, the preservation pool tests robustness across instruction framings of the same task question.
+
+**Hypothesis we tested:** that single-format KL preservation cannot detect *format-selective* forgetting (drift in the model's task distribution under one format that doesn't manifest under another), and that K=5 augmented preservation would catch this and improve over (d). The symmetric construction has no published precedent we can find (verified by exhaustive search; closest misses — SEFE/ASD 2505.02486, RECAP 2510.21978, GeRe 2508.04676 — all use single-format KL on the preservation side).
+
+**Empirical result:** the extension is null. (e) ≈ (d) at every round and trajectory-averaged (§5.4). Standard K=1 KL preservation suffices when K=5 augmentation is already supplying diversity on the injection-gradient side. The active ingredient is the *coupling* of K=5 injection × KL preservation, not K=5 on both sides.
 
 **Leak-free guarantee.** All K=5 injection templates are constructed so the gold answer never appears in any user/system prompt of any format; only the assistant target carries it. A runtime audit guard (`scripts/24_prepare_mixed_format_triples.py`) refuses to write training data that violates this property. See §7 and Appendix B for full templates.
-
-**What is novel.** The injection side is Allen-Zhu (2309.14316). The novel ingredient is the K=5 augmented KL preservation. We searched the continual-learning, OOD-regularization, and knowledge-editing literatures and found no precedent: SEFE/ASD applies K format variants to replay data via SFT not KL; RECAP uses KL but on single-format data; GeRe anchors activations on fixed-format generic texts. No paper applies format-diverse augmentation to the KL preservation constraint.
 
 ### 3.4 Training setup
 
@@ -140,9 +160,9 @@ Two failed loss/data-engineering attempts on the same problem, with a common dia
 
 These two negatives together motivate the design of §5.4: the symmetric K=5 mechanism needs both more environments than V-REx-K=2 had *and* an explicit regularizer that naïve mixing lacks.
 
-### 5.4 DSAE Lite 5-way ablation (the headline)
+### 5.4 5-way ablation: a super-linear synergy + a failed extension
 
-We test five conditions × 2 seeds × 15 rounds × n=200 facts/round (`outputs/sequential/{condition}_seed{42,123}/trajectory.json`):
+We test five conditions × 2 seeds × 15 rounds × n=200 facts/round (`outputs/sequential/{condition}_seed{42,123}/trajectory.json`). Conditions (a), (b), (d), (e) are new Plan B runs; (c) `kl_reg_sft` is reused from prior-phase trajectories at 1 seed × 15 rounds as calibration.
 
 | ID | Condition | Injection | Preservation |
 |---|---|---|---|
@@ -150,35 +170,77 @@ We test five conditions × 2 seeds × 15 rounds × n=200 facts/round (`outputs/s
 | (b) | `aug_sft_k5` | K=5 (Allen-Zhu) | none |
 | (c) | `kl_reg_sft` | K=1 | KL on K=1 replay |
 | (d) | `aug_kl_k1` | K=5 | KL on K=1 replay |
-| (e) | **`dsae_lite`** | **K=5** | **KL on K=5 replay framings (NOVEL)** |
+| (e) | `dsae_lite` | K=5 | KL on K=5 replay framings (the proposed symmetric extension) |
 
-The decisive contrast is **(e) vs (d)**: both have K=5 augmented injection; only (e) has K=5 augmented KL preservation. If (e) > (d), the novel symmetric K=5 mechanism is doing work beyond what augmented injection alone provides.
+**Round-15 endpoint** (mean across seeds 42, 123 for new conditions; 1 seed for (c)):
 
-[**Pending full Plan B results.** Confirmed pilot data (5 rounds × 1 seed for conditions (a) and (e) only) is reported below; Plan B (4 new conditions a/b/d/e × 2 seeds × 15 rounds, with (c) reused from prior phases) will replace this table for the full 5-way ablation.]
+| Condition | Injection | Preservation | abs F1 (mean) | half-spread | worst F1 | preservation R@10 |
+|---|---|---|---|---|---|---|
+| (a) `naive_sft` | K=1 | none | 0.089 | 0.001 | 0.063 | 0.243 |
+| (b) `aug_sft_k5` | K=5 | none | 0.125 | 0.002 | 0.100 | 0.267 |
+| (c) `kl_reg_sft` | K=1 | K=1 KL | 0.118 | — (1 seed) | 0.103 | 0.240 |
+| (d) **`aug_kl_k1`** | **K=5** | **K=1 KL** | **0.411** | **0.006** | **0.385** | 0.237 |
+| (e) `dsae_lite` | K=5 | K=5 KL | 0.405 | 0.018 | 0.377 | 0.236 |
 
-**Confirmed pilot (5 rounds × 1 seed × n=200), with `kl_reg_sft` (c) trajectory from prior phases as calibration:**
+#### The headline finding: super-linear synergy of K=5 injection × KL preservation
 
-| Round | naive_sft (a) | kl_reg_sft (c) | dsae_lite (e) | Δ (e − c) |
-|---|---|---|---|---|
-| 1 | 0.064 | 0.082 | 0.184 | +0.102 |
-| 2 | 0.070 | 0.112 | 0.288 | +0.176 |
-| 3 | 0.048 | 0.086 | 0.305 | +0.219 |
-| 4 | 0.078 | 0.121 | 0.310 | +0.189 |
-| 5 | 0.064 | 0.110 | 0.300 | +0.190 |
+Either ingredient alone produces a small effect:
 
-The hierarchy is clean: (a) ≪ (c) ≪ (e) at every round. Standard K=1 KL preservation (c) lifts absorption ~1.7× over naive SFT; DSAE Lite's K=5 augmented injection + K=5 augmented KL preservation lifts ~4.7× over naive and ~2.7× over standard KL preservation. This previews the full ablation (whose decisive (e)–(d) contrast is pending Plan B).
+- (b) − (a) = **+0.036**: K=5 augmented injection alone (Allen-Zhu replication in continual LoRA at 4B)
+- (c) − (a) = **+0.029**: K=1 KL preservation alone (standard kl_reg_sft baseline)
 
-Worst-fact F1 follows the same pattern: naive 0.024-0.048 vs. dsae_lite 0.168-0.300, a ~4-12× lift on the floor (mean ratio ~6×). Preservation Recall@10 is *maintained* — dsae_lite's preservation is +0.010 to +0.059 above naive_sft across the 5 rounds (mean +0.036), but at SE≈0.032 (n=104) this is roughly 1 SE and not significantly different from baseline. We claim "not degraded," not "improved": for a continual injection method, the meaningful finding is that absorption goes up ~5× while preservation does not collapse. Per-format KL diagnostic logs (`per_format_kl.json`) confirm the K=5 preservation framings produce non-trivial divergence (std > 0.01 by epoch 3), with "bare" and "analyst" framings drifting more than "original/detailed/request" — the cross-framing variation is real, not collapsed.
+Combining them produces a dramatically larger effect:
 
-The decisive **(e) vs (d)** contrast — which determines whether the novel K=5 KL preservation matters beyond Allen-Zhu's K=5 injection — is reported in the full Plan B results. If (e) ≈ (d), augmentation alone explains the effect and the paper scopes accordingly; if (e) > (d) by ≥2pp, the symmetric K=5 mechanism is the active novel ingredient.
+- (d) − (a) = **+0.322**: K=5 injection + K=1 KL preservation
+- (d) − (b) = **+0.286**: adding KL preservation to K=5 injection
+- (d) − (c) = **+0.293**: adding K=5 injection to K=1 KL preservation
+
+Either ingredient added on top of the other contributes ~+0.29 abs F1 — vastly more than the +0.03 each contributes alone. **The combination is super-linear: the additive prediction would be +0.065; the observed effect is +0.322, a ~5× synergy ratio.** Neither half is the active mechanism; the *coupling* is. K=5 injection appears to provide a richer feature space that KL preservation then anchors more effectively, and KL preservation provides a stable anchor that K=5 injection's diversity can pivot against — but the joint loss landscape is what produces the lift.
+
+Worst-fact F1 follows the same pattern: (a) 0.063, (b) 0.100, (d) 0.385, (e) 0.377. Preservation Recall@10 is comparable across all conditions (0.236–0.267), within 1 SE of each other at n=104 — we claim "preservation maintained," not "improved."
+
+#### The proposed novel ingredient does not extend the synergy
+
+The decisive (e) vs (d) contrast — both have K=5 augmented injection; only (e) has the proposed K=5 *augmented* KL preservation across multiple replay framings — is **null**:
+
+- **Δ (e − d) at round 15: −0.006** (essentially zero; 95% CI on the difference straddles zero given the two methods' spreads)
+- Δ (e − d) trajectory-averaged across 15 rounds: **−0.004**
+- (e) is also *noisier* across seeds: half-spread 0.018 vs (d)'s 0.006
+
+The symmetric K=5 KL preservation we proposed as the novel contribution **does not improve over standard single-format K=1 KL preservation** at this regime. The active ingredient is K=5 augmentation × KL preservation (any KL anchor), not K=5 on both sides specifically. A reviewer's natural hypothesis — "format-selective forgetting requires multi-format preservation to detect" — is not borne out empirically: K=1 KL preservation is sufficient when K=5 injection is already supplying format diversity on the gradient side.
+
+We report this honestly. The paper's substantive contribution is the super-linear synergy finding (above), which the 5-way ablation isolates cleanly: every direction of the (a) → (b) → (d) and (a) → (c) → (d) hierarchies is supported, and (d) → (e) is a clean negative on the proposed extension.
+
+#### Trajectory-averaged contrasts (more robust than round-15 endpoint)
+
+| Method | Trajectory-avg abs F1 (mean across rounds 1-15) |
+|---|---|
+| (a) naive_sft | 0.081 |
+| (b) aug_sft_k5 | 0.120 |
+| (d) aug_kl_k1 | **0.346** |
+| (e) dsae_lite | 0.342 |
+
+The (e) ≈ (d) story holds in trajectory-averaged form: Δ = −0.004. The synergy result holds: (b) and (c) trajectories average ≪ (d)'s trajectory.
 
 ## 6. Discussion
 
-### 6.1 What the symmetric K=5 mechanism does
+### 6.1 The synergy: a hypothesis on the mechanism
 
-The core insight is asymmetric format coverage: under a single-format KL preservation constraint, the model is anchored on its task distribution under format A. If the injection update happens to drift the model on format B — without affecting format A — the standard KL term cannot detect it. Format-selective forgetting is invisible to single-format preservation. The K=5 augmented KL preservation makes drift on *any* of K framings contribute to the loss, catching the failure mode at the regularizer level.
+The empirical finding is striking: K=5 injection alone gives +0.036 absorption F1; K=1 KL preservation alone gives +0.029; combined they give +0.322 — a ~5× super-linear lift over additive. We do not have a definitive mechanistic account, but two complementary hypotheses are consistent with the data and consistent with the literature.
 
-The asymmetry is structural: injection-side K=5 (Allen-Zhu) creates format-invariant *encoding* of new facts; preservation-side K=5 (the novel ingredient) maintains format-invariant *retention* of old capabilities. Both halves are needed because a model can fail at either. The 5-way ablation isolates the contribution of each half.
+**Hypothesis A — K=5 injection enriches the gradient subspace, KL preservation stabilizes it.** Allen-Zhu & Li (2309.14316) show that K=5 paraphrastic injection forces the model to encode facts as entity-anchored linear features rather than format-coupled token sequences. With K=1 injection, the gradient subspace for each fact is narrow and largely overlaps with format-specific surface structure; with K=5, the subspace broadens to span format-invariant directions. KL preservation alone (without K=5 injection) anchors the model on a *narrow* task subspace, so it can only enforce stability on what was already there — yielding a small effect (+0.029). KL preservation atop K=5 injection anchors the model on the *enriched* feature space the augmentation just produced, preventing the K=5 gradient signal from drifting into task-disruptive directions while letting the cross-format averaging do its work. The two ingredients pre-condition and stabilize different parts of the same mechanism.
+
+**Hypothesis B — K=5 injection is high-variance; KL preservation is the regularizer that turns it into a usable signal.** LoRA Knowledge Packing (arXiv:2502.14502) shows that *unregulated* heavy paraphrastic augmentation collapses at multi-round scale (reliability drops to 0.48 at 3000 facts × 10 paraphrases). Our (b) `aug_sft_k5` result without preservation (+0.036, half-spread 0.002) is small but stable in 15-round chained editing — possibly because at 200 facts × 5 formats per round we sit below the collapse threshold. But the K=5 augmentation's *learning capacity* is bounded by its variance: each fact is presented in 5 forms, and without a preservation anchor, the model's update distribution over the 5 forms can drift round-over-round. KL preservation against a frozen pre-round reference clips this drift, enabling the K=5 signal to compound across rounds. The synergy is (high-capacity-but-unstable injection) × (variance-clipping anchor).
+
+These hypotheses are not mutually exclusive. A clean test would be to run an alternative preservation regularizer (EWC, replay buffer, R-Drop) alongside K=5 injection: if the synergy survives, KL is interchangeable and Hypothesis B is closer; if KL is required, Hypothesis A's "anchoring an enriched subspace" reading is closer. We flag this as the highest-priority follow-up.
+
+### 6.1b Why the symmetric K=5 KL preservation extension does not improve over K=1
+
+We initially hypothesized that single-format KL preservation could not detect format-selective forgetting (drift in the model's task distribution under one preservation framing that doesn't manifest under another). The 5-way ablation refutes this *at our regime*: K=1 KL preservation suffices when K=5 injection is already supplying format diversity on the gradient side.
+
+A possible mechanistic reason: the K=5 augmentation on the *injection* side already broadcasts the fact-injection update across multiple format directions in the gradient. KL preservation evaluated under any *single* framing of a task prompt is therefore implicitly anchoring against drift in *all* directions the K=5 update could push, because the LoRA update subspace is shared across formats. The K=5 KL preservation on the preservation side adds a redundant signal — and worse, it adds gradient noise (5× more KL forwards per step, each producing a slightly different KL estimate), which manifests as the higher seed variance we observed for `dsae_lite` (half-spread 0.018 vs `aug_kl_k1`'s 0.006).
+
+This is a *regime-specific* claim. At larger model scales, longer round chains, or with adversarially chosen preservation framings, format-selective forgetting may become detectable and the K=5 preservation extension may earn its keep. We do not claim the symmetric construction is uniformly worthless — only that at 4B/r=16/200-edits-per-round/15-rounds, the simpler `aug_kl_k1` is the right method.
 
 ### 6.2 Compositional degradation persists across all methods
 
@@ -198,15 +260,19 @@ Every method retrieves the bridging entity *less often* than the no-update model
 
 ### 6.3 Production deployment
 
-DSAE Lite as implemented requires a frozen reference snapshot at the start of each round. For batched ingestion (200 facts/round) this is unobtrusive. For streaming document ingestion, a simpler variant — Format-Diverse Replay (FDR), which trains on K=5-framed replay examples without computing KL — captures the symmetric-augmentation principle without the per-round teacher snapshot. FDR loses output-distribution sensitivity and the absolute reference anchor but preserves the format-coverage mechanism. Production deployment using PEFT/LoRA pipelines could plausibly substitute FDR for DSAE Lite at the cost of ~3pp absorption (estimated; not validated). We flag this as the most natural follow-up.
+The recommended composition `aug_kl_k1` (K=5 augmented injection + standard K=1 KL preservation against a per-round frozen reference snapshot) has the same per-round teacher-snapshot requirement as `dsae_lite`. For batched ingestion (200 facts/round) this is unobtrusive. For streaming document ingestion, a simpler variant — Format-Diverse Replay (FDR), which trains on K=5-augmented injection alongside replay-buffer SFT instead of computing KL against a frozen reference — would capture the augmentation × anchoring synergy without the per-round teacher snapshot. FDR loses output-distribution sensitivity and the absolute reference anchor, but preserves the format-coverage mechanism. Production deployment using PEFT/LoRA pipelines could plausibly substitute FDR for `aug_kl_k1` at some cost in absorption F1 (not validated; testing this is a natural follow-up).
+
+A more direct test of the synergy mechanism (Hypothesis A vs B in §6.1) would be to swap KL preservation for an alternative anchor — EWC's Fisher penalty (Kirkpatrick et al. 2017), an experience-replay buffer (Ibrahim et al. 2024, arXiv:2403.08763's industrial recipe), or R-Drop's symmetric-KL between dropout passes. If the K=5 × anchor synergy is preserved across anchor types, the mechanism is "augmentation needs a stabilizer" (Hypothesis B); if it requires KL specifically, the mechanism is "KL preservation anchors the augmentation-enriched subspace" (Hypothesis A).
 
 ## 7. Limitations
 
 **Single-model evaluation.** Only Qwen3-4B-Instruct-2507. The relative ordering of methods may not transfer to 7B+, and the format-gap magnitude likely shrinks at larger scale (Marks & Tegmark 2023, arXiv:2310.06824 show internal "truth directions" become more linearly separable at 70B+).
 
-**Scoped to LoRA.** All update methods are LoRA at r=16. DSAE Lite's K=5 KL preservation generalizes beyond LoRA in principle (it's an output-distribution loss term). We do not claim transfer to full fine-tuning.
+**Scoped to LoRA.** All update methods are LoRA at r=16. The synergy finding (K=5 injection × KL preservation) generalizes beyond LoRA in principle (both ingredients are loss-side, not LoRA-specific). We do not claim transfer to full fine-tuning.
 
-**Two seeds for the headline ablation.** The DSAE Lite 5-way uses 2 seeds × 15 rounds. Multi-seed replication at 3+ seeds is the natural follow-up.
+**Two seeds for the headline ablation.** The 5-way ablation uses 2 seeds × 15 rounds for new conditions (a, b, d, e); condition (c) `kl_reg_sft` is at 1 seed × 15 rounds from prior phases. The (e) vs (d) null contrast at Δ = −0.006 with half-spreads 0.018 and 0.006 has 95% CI on the difference comfortably straddling zero, but a 3rd seed would tighten the bound. Multi-seed replication at 3+ seeds is the natural follow-up.
+
+**The synergy mechanism is hypothesized, not proven.** §6.1 offers two candidate explanations (subspace enrichment + anchoring vs. variance clipping); we do not run the deciding experiment (swap KL for EWC / replay / R-Drop and test if the synergy persists). This is the highest-priority follow-up.
 
 **Teacher-free architectural alternatives untested.** Per-layer learning-rate schedules and spectral LoRA initialization (e.g. PiSSA-style at intermediate components, Quercia et al. 2025, arXiv:2602.03493) are an obvious follow-up; we piloted one such design but the activation-similarity calibration we used is provably uninformative for pre-norm transformers (Men et al. 2403.03853), so we do not report results. A properly-calibrated (e.g. SimDiff-MASD, arXiv:2604.19520) architectural variant remains future work.
 
@@ -214,7 +280,7 @@ DSAE Lite as implemented requires a frozen reference snapshot at the start of ea
 
 **Synthetic data.** Fact triples are extracted from FNSPID financial news; format renderings are rule-based. A more natural LLM-generated renderer might shift absolute numbers.
 
-**Compositional gap unsolved.** Two-hop bridging-entity recall degrades under all methods including DSAE Lite. The paper does not claim to solve compositional/ripple-effect failures.
+**Compositional gap unsolved.** Two-hop bridging-entity recall degrades under all methods including `aug_kl_k1` and `dsae_lite`. The paper does not claim to solve compositional/ripple-effect failures.
 
 **Locality `same_sector` stratum is n=1.** Aggregate locality is driven by `same_entity` (n=182) and `other_sector` (n=1817); the `same_sector` stratum is degenerate.
 
@@ -222,9 +288,11 @@ DSAE Lite as implemented requires a frozen reference snapshot at the start of ea
 
 ## 8. Conclusion
 
-We measure the absorption-integration gap (0.07-0.14 F1 across methods that meaningfully absorb) under continual LoRA injection at 4B/200-edits-per-round/15-rounds scale and test six interventions across three families against it. Three negative results hold: (1) the COPR family (continual preference alignment) underperforms KL-regularized SFT at every regime due to the K-sample-all-wrong pathology; gold injection collapses the method toward SFT at 11-12× per-round compute (15-17× total at 3K batch). (2) V-REx at K=2 is theoretically degenerate (Arjovsky 2019, Rosenfeld 2021) and empirically null in our setting; our initial template was leaky and we report only leak-free numbers. (3) Format diversity without regularization actively widens the gap (consistent with PIT, UIT in adjacent settings). We then propose **DSAE Lite**: Allen-Zhu's K=5 augmentation on the injection side, plus a novel **K=5 augmented KL preservation** on the task-replay side. The novel ingredient — format-diverse KL preservation — has no precedent in the literature we surveyed. In a 5-round pilot, DSAE Lite lifts absorption F1 ~4.7× over naive SFT (round-5 endpoint) without degrading preservation; the full 5-way ablation (5 conditions × 2 seeds × 15 rounds, with kl_reg_sft (c) reused from prior phases) isolates the contribution of each ingredient. The decisive contrast is `dsae_lite` (e) vs `aug_kl_k1` (d): both have K=5 augmented injection, only the former has K=5 augmented KL preservation. Literature priors (Allen-Zhu's K=5 augmentation effect at scale; LoRA Knowledge Packing's evidence that augmentation alone collapses at multi-round scale) suggest the preservation-side ingredient should contribute 4-8pp marginal absorption F1, but this is the empirical question the ablation answers. The compositional/ripple-effect gap is unsolved by every method tested.
+We measure the absorption-integration gap (0.07-0.14 F1 across methods that meaningfully absorb) under continual LoRA injection at 4B/200-edits-per-round/15-rounds scale and test six interventions across three families against it. Three negative results constrain the design space: (1) the COPR family (continual preference alignment) underperforms KL-regularized SFT at every regime due to the K-sample-all-wrong pathology; gold injection collapses the method toward SFT at 11-12× per-round compute (15-17× total at 3K batch). (2) V-REx at K=2 is theoretically degenerate (Arjovsky 2019, Rosenfeld 2021) and empirically null in our setting; our initial template was leaky and we report only leak-free numbers. (3) Format diversity without regularization actively widens the gap.
 
-The operational recommendation is: **for continual LoRA-based knowledge injection in task-tuned LLMs, apply Allen-Zhu's K=5 paraphrastic augmentation to the injection data, paired with a symmetric K=5 augmented KL preservation against a per-round frozen reference on the task-replay distribution.** The symmetry — diversity on both sides of the loss — is the active ingredient. Don't use COPR for fact injection; don't use OOD regularization at K=2; don't rely on data augmentation alone without a preservation regularizer.
+The headline positive finding is **a super-linear synergy between K=5 augmented injection and KL preservation against a frozen reference**. Either ingredient alone gives a small effect (+0.036 abs F1 from K=5 injection, +0.029 from K=1 KL preservation, both vs. naive SFT at round 15); the combination gives +0.322 — a ~5× synergy ratio over additive. The composition `aug_kl_k1` (K=5 injection + K=1 KL preservation) reaches 0.411 absorption F1 at round 15, vs. 0.118 for the standard `kl_reg_sft` baseline. The active mechanism is the *coupling* between augmentation and anchoring, not either half alone. We additionally tested a symmetric extension — `dsae_lite`, K=5 augmentation on the preservation side — and report it as a clean negative: Δ (e−d) = −0.006 at round 15. Standard K=1 KL preservation is sufficient when K=5 injection is already supplying format diversity on the gradient side; the symmetric construction adds no value beyond it. The compositional/ripple-effect gap is unsolved by every method tested.
+
+The operational recommendation is: **for continual LoRA-based knowledge injection in task-tuned LLMs, apply Allen-Zhu's K=5 paraphrastic augmentation to the injection data and pair it with standard single-format KL preservation against a per-round frozen reference (`aug_kl_k1`).** The cross-coupling is the active ingredient, not K=5 on both sides. Don't use COPR for fact injection; don't use OOD regularization at K=2; don't rely on either augmentation or preservation alone — together they produce a super-linear lift; separately each does little.
 
 ## Reproducibility Statement
 
