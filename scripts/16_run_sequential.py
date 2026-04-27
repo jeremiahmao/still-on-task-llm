@@ -286,7 +286,8 @@ def main():
     if args.gpus:
         gpus = [g.strip() for g in args.gpus.split(",") if g.strip()]
         _run_methods_parallel(
-            methods, gpus, n_rounds, per_round, args.debug, output_root
+            methods, gpus, n_rounds, per_round, args.debug, output_root,
+            seed=args.seed,
         )
     else:
         for method in methods:
@@ -326,6 +327,7 @@ def _run_methods_parallel(
     per_round: int,
     debug: bool,
     output_root: Path,
+    seed: int | None = None,
 ) -> None:
     """Schedule methods across GPUs. Each method runs as a child process of
     this same script (--methods <one> without --gpus), bound to one GPU via
@@ -346,6 +348,8 @@ def _run_methods_parallel(
             "--n-rounds", str(n_rounds),
             "--per-round", str(per_round),
         ]
+        if seed is not None:
+            cmd += ["--seed", str(seed)]
         if debug:
             cmd.append("--debug")
         env = os.environ.copy()
