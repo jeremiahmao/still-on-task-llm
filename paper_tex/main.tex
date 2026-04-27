@@ -61,10 +61,31 @@ three families: parameter-localizing edits
 \citealp{fang2024alphaedit}),
 preference-style updates (KDPO, \citealp{rozner2024kdpo};
 COPR, \citealp{zhang2025copr}), and fine-tuning-style updates (SFT,
-KL-regularized SFT, augmented SFT). The fine-tuning family is the simplest
-to deploy and chain across rounds, but it suffers from a well-documented
-failure: facts get stored under the training prompt format but fail to
-surface under different downstream formats -- the
+KL-regularized SFT, augmented SFT). Within the fine-tuning family,
+\textbf{low-rank adaptation} \citep[LoRA;][]{hu2021lora} and its quantized
+variant \citep[QLoRA;][]{dettmers2023qlora} -- exposed through HuggingFace
+PEFT \citep{mangrulkar2022peft} and surveyed as the dominant
+parameter-efficient method by \citet{han2024peft} and
+\citet{lialin2023scaling} -- has become the de facto customer-facing
+primitive for sub-100B fine-tuning on hosted platforms including AWS
+Bedrock, Together AI, Fireworks, and Vertex AI's open-model garden.%
+\footnote{AWS Bedrock reinforcement fine-tuning explicitly uses ``LoRA
+adapters with rank 32''
+(\url{https://aws.amazon.com/blogs/machine-learning/reinforcement-fine-tuning-on-amazon-bedrock-best-practices}).
+Together AI exposes LoRA fine-tuning + multi-LoRA serving as a first-class
+product (\url{https://docs.together.ai/docs/lora-training-and-inference}).
+Fireworks AI serves up to 100 LoRA adapters per dedicated deployment
+(\url{https://fireworks.ai/blog/multi-lora}). Vertex AI's open-model
+garden ships official ``LoRA and QLoRA recommendations for LLMs''
+guidance. Closed-API fine-tuning offerings (Anthropic Claude, OpenAI
+GPT-4, Gemini supervised tuning) do not publicly document the underlying
+method, so we make no claim about them.}
+Our experimental setting (LoRA task-tuning + LoRA continual updates)
+therefore matches the dominant industrial pipeline rather than a
+constrained academic special case. Fine-tuning is the simplest of the
+three families to deploy and chain across rounds, but it suffers from a
+well-documented failure: facts get stored under the training prompt
+format but fail to surface under different downstream formats -- the
 \textbf{absorption-integration gap} \citep{berglund2023reversal,
 allenzhu2023knowledge, cohen2023ripple, zhong2023mquake}.
 
@@ -477,17 +498,37 @@ degradation at K=10 \emph{without} preservation. Whether K=3 captures
 most of the synergy or K=10 + KL preservation recovers from the LoRA
 Packing degradation is the cleanest second follow-up.
 
+\paragraph{Setting matches industrial practice; transfer beyond LoRA is principled but not validated.}
+The LoRA-task-tuning + LoRA-update pipeline studied here is the dominant
+industrial pattern for sub-100B fine-tuning (\S\ref{sec:setup} via
+\citealp{hu2021lora, dettmers2023qlora, mangrulkar2022peft, han2024peft,
+lialin2023scaling}); the synergy result therefore directly informs
+deployments using HuggingFace PEFT, QLoRA, and the customer-facing LoRA
+APIs of AWS Bedrock, Together AI, Fireworks, and Vertex AI. The two
+ingredients (K=5 augmentation, KL preservation against a frozen reference)
+are loss-side and not LoRA-specific in principle: K=5 is a data-side
+intervention applied at the SFT loss; KL preservation is a regularizer
+against any frozen teacher distribution. The \emph{direction} of the
+synergy should therefore extend to full fine-tuning. The (e) vs (d) null
+specifically may not -- the \S\ref{sec:discussion} conjecture for why K=5
+KL preservation adds nothing leans on LoRA's shared low-rank update
+subspace (a single-framing KL implicitly anchors all directions the K=5
+update can push, \emph{because} the LoRA update flows through the same
+$r=16$ subspace regardless of input format). Full fine-tuning's update
+subspace is unrestricted and per-input, so format-selective forgetting may
+genuinely become detectable and the symmetric K=5 KL preservation may earn
+its keep at full-FT scale. Validating either claim at full FT is left as
+future work; we did not run it.
+
 \paragraph{Other limitations.}
 Compositional gap unsolved by every method tested. Locality
 \code{same\_sector} stratum is degenerate ($n=1$). Behavioral probe set is
 $n=50$ which limits resolution of small format-gap differences. Synthetic
 data (FNSPID + rule-based renderings) -- a more natural LLM-generated
-renderer might shift absolute numbers. Scoped to LoRA: the synergy
-ingredients are loss-side and not LoRA-specific, but transfer to full
-fine-tuning is not validated. We piloted a teacher-free architectural
-variant (per-layer LR + spectral LoRA initialization) but the
-activation-similarity calibration we used is provably uninformative for
-pre-norm transformers \citep{men2024shortgpt}; a properly-calibrated
+renderer might shift absolute numbers. We piloted a teacher-free
+architectural variant (per-layer LR + spectral LoRA initialization) but
+the activation-similarity calibration we used is provably uninformative
+for pre-norm transformers \citep{men2024shortgpt}; a properly-calibrated
 variant remains future work.
 
 \section{Conclusion}
