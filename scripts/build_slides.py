@@ -398,52 +398,61 @@ def slide_headline(prs, page_no, total):
             text="Round-15 absorption F1 across the 2×2 ablation",
             size=12, italic=True, color=TEXT_MUTED)
 
-    # Right: the synergy numbers
-    right = add_textbox(s, Inches(7.4), Inches(1.4), Inches(5.4), Inches(5.0))
+    # Right: the anti-"just more data" framing
+    right = add_textbox(s, Inches(7.4), Inches(1.4), Inches(5.4), Inches(5.5))
     tf = right.text_frame
     p = tf.paragraphs[0]
-    set_run(p.add_run(), text="The synergy", size=22, bold=True, color=COLUMBIA_BLUE)
+    set_run(p.add_run(), text="Is this just more data?  No.", size=22, bold=True, color=COLUMBIA_BLUE)
+
+    sub = tf.add_paragraph()
+    sub.space_before = Pt(6)
+    set_run(sub.add_run(),
+            text="K=5 conditions see 5× the training data, so a 'data dominates' story would predict K=5 wins on its own.",
+            size=14, italic=True, color=TEXT_MUTED)
 
     items = [
-        ("K=5 augmentation alone",         "+0.036",  ACCENT_BLUE),
-        ("K=1 KL preservation alone",      "+0.029",  ACCENT_BLUE),
-        ("Both combined",                  "+0.322",  HIGHLIGHT_GREEN),
-        ("Additive prediction",            "+0.065",  TEXT_MUTED),
-        ("Synergy ratio",                  "4.93×",   HIGHLIGHT_GREEN),
+        ("Just 5× more data  (b)",                "+0.036",  ACCENT_BLUE,        "small"),
+        ("Just KL preservation  (c)",             "+0.029",  ACCENT_BLUE,        "small"),
+        ("Naive additive prediction",             "+0.065",  TEXT_MUTED,         "if independent"),
+        ("Observed when combined  (d)",           "+0.322",  HIGHLIGHT_GREEN,    "★"),
+        ("Synergy ratio over additive",           "4.93×",   HIGHLIGHT_GREEN,    "interaction, not sum"),
     ]
-    for label, val, color in items:
+    for label, val, color, tag in items:
         para = tf.add_paragraph()
-        para.space_before = Pt(8)
-        set_run(para.add_run(), text=f"{label}:  ", size=18, color=TEXT_DARK)
-        set_run(para.add_run(), text=val, size=22, bold=True, color=color)
+        para.space_before = Pt(7)
+        set_run(para.add_run(), text=f"{label}:  ", size=15, color=TEXT_DARK)
+        set_run(para.add_run(), text=val, size=20, bold=True, color=color)
+        set_run(para.add_run(), text=f"   {tag}", size=12, italic=True, color=TEXT_MUTED)
 
     para = tf.add_paragraph()
-    para.space_before = Pt(18)
+    para.space_before = Pt(14)
     set_run(para.add_run(),
-            text="The cross-coupling is the active mechanism — not either ingredient alone.",
-            size=15, italic=True, color=TEXT_MUTED)
+            text="5× data alone barely beats naive SFT.  The cross-coupling is the active mechanism, not the data volume.",
+            size=14, italic=True, color=TEXT_DARK)
 
     footer(s, page_no, total)
 
 
 def slide_compute_matched(prs, page_no, total):
     s = make_blank(prs)
-    header_bar(s, "Is the synergy real or just data volume? Compute-matched contrasts")
+    header_bar(s, "Ruling out the 'just more data' explanation")
 
-    intro = add_textbox(s, Inches(0.6), Inches(1.0), Inches(12.1), Inches(1.0))
+    intro = add_textbox(s, Inches(0.6), Inches(1.0), Inches(12.1), Inches(1.1))
     p = intro.text_frame.paragraphs[0]
     set_run(p.add_run(),
-            text="K=5 conditions see 5× the per-round training data, so the marginal (b) − (a) is data-confounded. Holding the data-volume axis fixed and toggling KL gives the clean comparison.",
+            text="To rule out 'data dominates,' hold data volume fixed and toggle KL preservation. ",
             size=16, color=TEXT_DARK)
+    set_run(p.add_run(),
+            text="If KL contributed a fixed lift independent of data volume, both rows below would show similar Δ abs F1.",
+            size=16, color=TEXT_DARK, italic=True)
 
-    # A simple contrast table
     rows, cols = 3, 4
     col_w = [Inches(4.0), Inches(2.6), Inches(2.6), Inches(2.9)]
     row_h = [Inches(0.55), Inches(0.85), Inches(0.85)]
     tbl = add_table(s, left=Inches(0.6), top=Inches(2.5),
                     rows=rows, cols=cols, col_widths=col_w, row_heights=row_h)
 
-    headers = ["Contrast", "Data volume held at", "Δ abs F1", "Effect of adding KL"]
+    headers = ["Contrast (compute-matched)", "Data volume held at", "Δ abs F1", "Effect of adding KL"]
     for c, h in enumerate(headers):
         fill_cell(tbl.cell(0, c), h, size=14, bold=True, color=WHITE, fill=COLUMBIA_BLUE,
                   align=PP_ALIGN.LEFT)
@@ -464,15 +473,25 @@ def slide_compute_matched(prs, page_no, total):
               size=15, fill=RGBColor(0xE8, 0xF2, 0xE8))
     fill_cell(tbl.cell(2, 2), "+0.286",
               size=22, bold=True, color=HIGHLIGHT_GREEN, fill=RGBColor(0xE8, 0xF2, 0xE8))
-    fill_cell(tbl.cell(2, 3), "10× larger",
+    fill_cell(tbl.cell(2, 3), "≈10× larger",
               size=14, bold=True, color=HIGHLIGHT_GREEN, align=PP_ALIGN.LEFT,
               fill=RGBColor(0xE8, 0xF2, 0xE8))
 
-    note = add_textbox(s, Inches(0.6), Inches(5.5), Inches(12.1), Inches(1.5))
-    p = note.text_frame.paragraphs[0]
+    # Conclusion box
+    box = add_textbox(s, Inches(0.6), Inches(5.0), Inches(12.1), Inches(1.4),
+                      fill=RGBColor(0xFD, 0xF7, 0xEF), line=RGBColor(0xE8, 0xC8, 0x9C))
+    tf = box.text_frame
+    p = tf.paragraphs[0]
     set_run(p.add_run(),
-            text="The interaction is sharp regardless of which compute-matched slice you read: KL preservation is ~10× more effective when paired with K=5 augmentation than alone.",
-            size=16, color=TEXT_DARK)
+            text="Conclusion:  ", size=18, bold=True, color=HIGHLIGHT_RED)
+    set_run(p.add_run(),
+            text="KL is ~10× more effective when paired with K=5 data than added on top of K=1 data alone.",
+            size=18, color=TEXT_DARK)
+    p2 = tf.add_paragraph()
+    p2.space_before = Pt(6)
+    set_run(p2.add_run(),
+            text="This is the signature of an interaction effect, not a data-volume effect.  More data alone gives +0.036 (b) − (a); more data plus KL gives +0.322.",
+            size=14, italic=True, color=TEXT_DARK)
     footer(s, page_no, total)
 
 
