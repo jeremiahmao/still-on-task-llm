@@ -445,11 +445,45 @@ def slide_headline(prs, page_no, total):
               fill=RGBColor(0xE8, 0xF2, 0xE8))
     fill_cell(tbl.cell(3, 3), "", fill=RGBColor(0xF7, 0xF9, 0xFC))
 
-    cap = add_textbox(s, matrix_left, Inches(4.1), Inches(6.4), Inches(0.5))
+    cap = add_textbox(s, matrix_left, Inches(4.1), Inches(6.4), Inches(2.4),
+                      fill=RGBColor(0xF7, 0xF9, 0xFC), line=RGBColor(0xCF, 0xD8, 0xE3))
     p = cap.text_frame.paragraphs[0]
+    set_run(p.add_run(), text="How abs F1 is computed (per probe):  ",
+            size=11, bold=True, color=ACCENT_BLUE)
     set_run(p.add_run(),
-            text="Round-15 absorption F1 across the 2×2 ablation",
-            size=12, italic=True, color=TEXT_MUTED)
+            text="token-level F1 between the greedy generation and gold object string.",
+            size=11, color=TEXT_DARK)
+
+    p2 = cap.text_frame.add_paragraph()
+    p2.space_before = Pt(4)
+    set_run(p2.add_run(), text='gen = ', size=10, color=TEXT_MUTED, font="Consolas")
+    set_run(p2.add_run(), text='"Acme Corp\'s 2025 revenue was $4.2B"',
+            size=10, color=TEXT_DARK, font="Consolas")
+    set_run(p2.add_run(),
+            text='   →   tokens {Acme, Corp\'s, 2025, revenue, was, $4.2B}   (6)',
+            size=10, color=TEXT_MUTED, font="Consolas")
+
+    p3 = cap.text_frame.add_paragraph()
+    set_run(p3.add_run(), text='gold = ', size=10, color=TEXT_MUTED, font="Consolas")
+    set_run(p3.add_run(), text='"$4.2B"',
+            size=10, color=TEXT_DARK, font="Consolas")
+    set_run(p3.add_run(),
+            text='                                     →   tokens {$4.2B}              (1)',
+            size=10, color=TEXT_MUTED, font="Consolas")
+
+    p4 = cap.text_frame.add_paragraph()
+    p4.space_before = Pt(2)
+    set_run(p4.add_run(),
+            text="overlap {$4.2B}:   precision = 1/6 = 0.167,   recall = 1/1 = 1.0,   "
+                 "F1 = 2·P·R / (P+R) = 0.286",
+            size=10, color=TEXT_DARK, font="Consolas")
+
+    p5 = cap.text_frame.add_paragraph()
+    p5.space_before = Pt(4)
+    set_run(p5.add_run(),
+            text="abs F1 = mean of the per-probe F1 across 200 facts × 5 paraphrased probes per round.   "
+                 "Δ values are absolute differences (percentage points).",
+            size=10, italic=True, color=TEXT_MUTED)
 
     # Right: the anti-"just more data" framing with absolute SFT numbers
     right = add_textbox(s, Inches(7.4), Inches(1.4), Inches(5.4), Inches(5.5))
