@@ -576,36 +576,59 @@ def slide_extension_null(prs, page_no, total):
     s = make_blank(prs)
     header_bar(s, "Symmetric extension fails: K=5 KL preservation adds nothing")
 
-    intro = add_textbox(s, Inches(0.6), Inches(1.0), Inches(12.1), Inches(1.4))
+    intro = add_textbox(s, Inches(0.6), Inches(0.95), Inches(12.1), Inches(0.6))
     p = intro.text_frame.paragraphs[0]
     set_run(p.add_run(),
-            text="Hypothesis we tested: ", size=18, bold=True, color=ACCENT_BLUE)
+            text="Hypothesis: ", size=15, bold=True, color=ACCENT_BLUE)
     set_run(p.add_run(),
-            text="single-format KL preservation might fail to detect format-selective forgetting (drift in one preservation framing not visible under another). Augmenting the preservation side with K=5 framings should catch it.",
-            size=18, color=TEXT_DARK)
+            text="single-format KL preservation might fail to detect format-selective forgetting. Augmenting the preservation side with K=5 framings should catch it.",
+            size=15, color=TEXT_DARK)
 
-    # contrast block
-    box = add_textbox(s, Inches(1.5), Inches(2.65), Inches(10.3), Inches(1.7),
+    # Example instruction framings — concrete pool used by (e) dsae_lite
+    fram_box = add_textbox(s, Inches(0.6), Inches(1.6), Inches(12.1), Inches(2.2),
+                           fill=RGBColor(0xF7, 0xF9, 0xFC), line=RGBColor(0xCF, 0xD8, 0xE3))
+    tf = fram_box.text_frame
+    p = tf.paragraphs[0]
+    set_run(p.add_run(), text="The K=5 preservation framings ", size=13, bold=True, color=ACCENT_BLUE)
+    set_run(p.add_run(),
+            text='applied to the same task prompt   "What should I know about Acme Corp\'s recent activity?"',
+            size=12, italic=True, color=TEXT_DARK)
+
+    framings = [
+        ("Original", '[system: QD-decomposer]  [user: What should I know about Acme Corp\'s recent activity?]'),
+        ("Bare",     '[user: What should I know about Acme Corp\'s recent activity?]   (no system prompt)'),
+        ("Analyst",  '[user: You are a financial analyst. Answer concisely: What should I know about Acme Corp\'s recent activity?]'),
+        ("Detailed", '[user: Given the following question, provide a detailed response: What should I know about Acme Corp\'s recent activity?]'),
+        ("Request",  '[user: Question: What should I know about Acme Corp\'s recent activity?  Please provide your analysis.]'),
+    ]
+    for name, rendering in framings:
+        para = tf.add_paragraph()
+        para.space_before = Pt(2)
+        set_run(para.add_run(), text=f"  {name}:  ", size=11, bold=True, color=ACCENT_BLUE)
+        set_run(para.add_run(), text=rendering, size=10, color=TEXT_DARK, font="Consolas")
+
+    # Result box
+    box = add_textbox(s, Inches(1.5), Inches(3.95), Inches(10.3), Inches(1.4),
                       fill=RGBColor(0xFD, 0xF7, 0xEF), line=RGBColor(0xE8, 0xC8, 0x9C))
     tf = box.text_frame
     p = tf.paragraphs[0]
     p.alignment = PP_ALIGN.CENTER
     set_run(p.add_run(),
             text="Result:  (e) − (d)  =  −0.006  at round 15",
-            size=26, bold=True, color=HIGHLIGHT_RED)
+            size=22, bold=True, color=HIGHLIGHT_RED)
     p2 = tf.add_paragraph()
     p2.alignment = PP_ALIGN.CENTER
-    p2.space_before = Pt(8)
+    p2.space_before = Pt(6)
     set_run(p2.add_run(),
-            text="Trajectory-averaged Δ = −0.004.   95% interval [−0.030, +0.018] straddles zero.",
-            size=16, color=TEXT_DARK)
+            text="Trajectory Δ = −0.004.   95% interval [−0.030, +0.018] straddles zero.",
+            size=14, color=TEXT_DARK)
 
     add_bullet_list(s, [
         ("The active ingredient is K=5 injection × any KL anchor — not K=5 on both sides.", 0),
-        ("Why: K=5 augmentation on the injection side already broadcasts each update across format directions of the gradient; the LoRA update subspace is shared across formats, so single-framing KL implicitly anchors all directions the K=5 update can push.", 0),
-        ("Caveat: this conjecture leans on LoRA's shared low-rank update subspace. At full fine-tuning, the symmetric extension may earn its keep — not validated.", 0),
-    ], left=Inches(0.6), top=Inches(4.7), width=Inches(12.1), height=Inches(2.2),
-       body_size=15, line_spacing=1.15)
+        ("Why: K=5 augmentation on the injection side already broadcasts each update across format directions of the gradient; LoRA's update subspace is shared across formats, so single-framing KL implicitly anchors all directions the K=5 update can push.", 0),
+        ("Caveat: this conjecture leans on LoRA's shared low-rank update subspace. At full fine-tuning the symmetric extension may earn its keep — not validated.", 0),
+    ], left=Inches(0.6), top=Inches(5.5), width=Inches(12.1), height=Inches(1.5),
+       body_size=13, line_spacing=1.13)
     footer(s, page_no, total)
 
 
