@@ -24,7 +24,22 @@ The contribution is fivefold: **(i)** a quantitative diagnosis of the absorption
 
 ## 3. Setup
 
-**Problem.** Let `π_θ` be a task-tuned LM and `T = ⨆_{r=1..R} T_r` a stream of new fact triples partitioned into `R` disjoint rounds, with `T_r = {(x_i, y_i)}_{i=1..n}` and `n=200, R=15`. The continual injection task is to produce, after round `r`, an updated model `π_θ^{(r)}` that (i) **absorbs** the new facts (generates `y_i` given probes of `x_i`), (ii) **preserves** task capability on a held-out task test set, (iii) **localizes** the change so unrelated facts are unaffected, and (iv) **composes** with prior knowledge for multi-hop reasoning. We instantiate (i)-(iv) with **absorption F1** = mean token-F1 across all paraphrased probes for all injected facts (`abs_mean_f1` in trajectory artifacts); **preservation** = Recall@10 on the QD test split (n=104); **locality** = mean token-F1 on stratified locality probes (n=2000); **compositionality** = bridging-entity recall on n=500 two-hop probes. The **absorption-integration gap** is `Δ_format(π) = | F1_QA(π) − F1_QD(π) |` on a behavioral n=50 probe set.
+**Problem.** Let `π_θ` be a task-tuned LM and `T = ⨆_{r=1..R} T_r` a stream of new fact triples `(s_i, r_i, o_i)` (subject, relation, object) partitioned into `R` disjoint rounds, with `T_r = {(s_i, r_i, o_i)}_{i=1..n}` and `n=200, R=15`. The continual injection task is to produce, after round `r`, an updated model `π_θ^{(r)}` that (i) **absorbs** the new facts (recalls `o_i` given probes about `(s_i, r_i)`), (ii) **preserves** the task it was tuned for, (iii) **localizes** the change so unrelated facts are unaffected, and (iv) **composes** with prior knowledge for multi-hop reasoning.
+
+**The QD task and how fact injection coexists with it.** The base model was task-tuned via SFT to solve **query decomposition (QD)** on financial news: given a user question like *"What should I know about Acme Corp's recent activity?"*, the model emits 2-4 retrieval sub-queries (e.g., *"Sub-query 1: What is the revenue of Acme?"*) that are then run against a document index. Continual injection adds new fact triples *on top of* this QD-tuned base. The injection-side templates render each triple in five surface forms (Appendix A) — QA, QD, declarative, instruction, narrative — so the model sees the fact under multiple chat formats during training. **Absorption probes are direct QA-style questions about the fact** (not QD sub-queries); evaluation is purely behavioral, scoring whether the model's greedy generation contains the gold object string `o_i` regardless of how the model phrases its answer.
+
+**Worked example for one triple.** Fact `(Acme Corp, 2025_revenue, $4.2B)`:
+- *QA training rendering*: `[user] What is Acme Corp's 2025 revenue? [assistant] $4.2B`
+- *QD training rendering*: `[system: QD-decomposer] [user] What should I know about Acme Corp's recent activity? [assistant] Sub-query 1: What is Acme Corp's 2025 revenue? Sub-query 2: …` (gold answer never in user/system or sub-queries — only the assistant target chain carries it; see Leak-free guarantee below)
+- *Absorption probe at eval*: `[user] How much was Acme Corp's 2025 revenue?` — gold target `$4.2B`. Multiple paraphrases per fact (5 phrasings); the model generates greedily, token F1 is computed against `$4.2B`, averaged over phrasings to give per-fact F1, then averaged over the 200 facts to give round-level **abs F1**.
+- *QD-formatted absorption probe at eval (used only for the format-gap diagnostic)*: same question wrapped in the QD system prompt; gold target is still `$4.2B`; we score whether `$4.2B` appears anywhere in the model's sub-query output.
+
+**Metrics (operational).**
+- **Absorption F1** (`abs_mean_f1`): for each round-15 model, score every probe in the `n=200 × 5 = 1000` cloze probe set; per-probe token F1 between greedy generation and gold object; report flat mean over probes (and **worst-fact F1** = the minimum, across the 200 injected facts, of each fact's mean-across-paraphrases F1).
+- **Preservation R@10** (`preservation_recall_at_10`): on a held-out QD test split (n=104 user queries with gold doc IDs), the updated model emits 2-4 sub-queries; each sub-query is encoded and used to retrieve top-10 documents from an index; recall is the fraction of gold doc IDs surfaced in the union of top-10 across sub-queries. This measures whether the model still *decomposes queries usefully* after injection. Stable values across conditions = "the QD task is preserved."
+- **Locality F1**: token F1 on `n=2000` direct-QA probes about facts the model was *not* trained on, stratified by relation to injected facts: `same_entity` (n=182, probe about an injected entity but a different relation), `other_sector` (n=1817, probe about a different entity in a different sector), and a degenerate `same_sector` stratum (n=1, ignored). Stable values = "off-target damage is not detectable."
+- **Format gap** `Δ_format(π) = | F1_QA(π) − F1_QD(π) |` on an `n=50` behavioral probe set: same questions asked twice, once as a direct QA prompt and once wrapped in the QD system prompt; the gap measures format selectivity of the absorbed knowledge.
+- **Compositional bridging recall** (§6): for `n=500` two-hop chains `(A→B, B→C)`, score whether the model recalls the bridging entity `B` when asked the chained question. Diagnostic only, used to scope the synergy.
 
 **Backbone and edits.** Qwen3-4B-Instruct-2507 (bf16), task-tuned via LoRA r=32/α=64 on QD-format SFT over FNSPID financial news (pre-2022 cutoff). Update LoRA: r=16/α=32 on attention Q/K/V/O and MLP up/down/gate. AdamW, lr=2e-5, 3 epochs/round, max_seq_length=512, single A10G 24GB. Sequential editing chains checkpoints: round `r` starts from round `r-1`'s merged model.
 
@@ -62,17 +77,29 @@ Conditions (a), (b), (d), (e) are run at 2 seeds × 15 rounds × n=200 facts/rou
 
 **Round-15 endpoint** (mean across seeds 42, 123 for new conditions; 1 seed for (c); half-spread = (max−min)/2):
 
-| ID | Condition | Injection | Preservation | abs F1 | half-spread | worst F1 | preservation R@10 | locality F1 |
-|---|---|---|---|---|---|---|---|---|
-| (a) | `naive_sft`     | K=1 | none      | 0.089 | 0.001 | 0.063 | 0.243 | 0.046 |
-| (b) | `aug_sft_k5`    | K=5 | none      | 0.125 | 0.002 | 0.100 | 0.267 | 0.071 |
-| (c) | `kl_reg_sft`    | K=1 | K=1 KL    | 0.118 | — (1 seed) | 0.103 | 0.240 | 0.048 |
-| (d) | **`aug_kl_k1`** | K=5 | **K=1 KL** | **0.411** | **0.006** | **0.385** | 0.237 | 0.079 |
-| (e) | `dsae_lite`     | K=5 | K=5 KL    | 0.405 | 0.018 | 0.377 | 0.236 | 0.080 |
+**Table 1.** Round-15 absorption results. `abs F1` is the headline metric (operational definition in §3); `worst F1` is the per-fact minimum at round 15. Preservation R@10 and locality F1 are reported as guardrails in Table 2 below — they are **stable across all five conditions** and do not drive any claim in this paper.
+
+| ID | Condition | Injection | Preservation | abs F1 | half-spread | worst F1 |
+|---|---|---|---|---|---|---|
+| (a) | `naive_sft`     | K=1 | none      | 0.089 | 0.001 | 0.063 |
+| (b) | `aug_sft_k5`    | K=5 | none      | 0.125 | 0.002 | 0.100 |
+| (c) | `kl_reg_sft`    | K=1 | K=1 KL    | 0.118 | — (1 seed) | 0.103 |
+| (d) | **`aug_kl_k1`** | K=5 | **K=1 KL** | **0.411** | **0.006** | **0.385** |
+| (e) | `dsae_lite`     | K=5 | K=5 KL    | 0.405 | 0.018 | 0.377 |
+
+**Table 2 (guardrails).** Preservation R@10 and locality F1 are tightly clustered across all five conditions; the K=5 lift in absorption is not bought through degraded task capability or off-target damage. Spread on each axis is small relative to the absorption signal (~0.32 abs F1 spread vs ~0.03 spread on either guardrail).
+
+| ID | preservation R@10 | locality F1 |
+|---|---|---|
+| (a) | 0.243 | 0.046 |
+| (b) | 0.267 | 0.071 |
+| (c) | 0.240 | 0.048 |
+| (d) | 0.237 | 0.079 |
+| (e) | 0.236 | 0.080 |
 
 Either ingredient alone produces a small effect: `(b) − (a) = +0.036` from K=5 augmented injection; `(c) − (a) = +0.029` from standard K=1 KL preservation. Combining them produces a dramatically larger effect: `(d) − (a) = +0.322`. The additive prediction `[(b) − (a)] + [(c) − (a)] = +0.065`; the observed effect `(d) − (a) = +0.322` — **a synergy ratio of 4.93× over additive**.
 
-**Compute-matched contrasts isolate where the synergy lives.** The marginal `(b) − (a)` is not compute-matched: K=5 conditions see 5× the per-round training data, so part of `+0.036` could reflect data volume rather than format diversity. The compute-matched contrasts are obtained by holding the data-volume axis fixed and toggling KL: KL added on top of K=1 data lifts `(c) − (a) = +0.029`; KL added on top of K=5 data lifts `(d) − (b) = +0.286` — **a ~10× asymmetry**. Symmetrically, K=5 added on top of no-KL lifts `(b) − (a) = +0.036` (data-confounded); K=5 added on top of K=1 KL lifts `(d) − (c) = +0.293`. The interaction is sharp regardless of which compute-matched slice we read. Worst-fact F1 follows the same pattern (0.063 → 0.385). Preservation Recall@10 is comparable across all conditions (0.236-0.267) — we claim "preservation maintained," not "improved." Locality F1 is also comparable across the K=1 baselines and slightly higher for the K=5 conditions (0.046-0.080), so the K=5 lift is not bought through degraded locality. Trajectory-averaged contrasts (mean `abs F1` over rounds 1-15) are consistent: (a) 0.081, (b) 0.120, (c) 0.114, (d) 0.346, (e) 0.342.
+**Compute-matched contrasts isolate where the synergy lives.** The marginal `(b) − (a)` is not compute-matched: K=5 conditions see 5× the per-round training data, so part of `+0.036` could reflect data volume rather than format diversity. The compute-matched contrasts are obtained by holding the data-volume axis fixed and toggling KL: KL added on top of K=1 data lifts `(c) − (a) = +0.029`; KL added on top of K=5 data lifts `(d) − (b) = +0.286` — **a ~10× asymmetry**. Symmetrically, K=5 added on top of no-KL lifts `(b) − (a) = +0.036` (data-confounded); K=5 added on top of K=1 KL lifts `(d) − (c) = +0.293`. The interaction is sharp regardless of which compute-matched slice we read. Worst-fact F1 (Table 1) follows the same pattern (0.063 → 0.385); preservation R@10 and locality F1 (Table 2 guardrails) are stable, so the lift is not bought through task degradation or off-target damage. Trajectory-averaged contrasts (mean `abs F1` over rounds 1-15) are consistent: (a) 0.081, (b) 0.120, (c) 0.114, (d) 0.346, (e) 0.342.
 
 **The fifth condition rules out a natural extension.** We hypothesized that single-format KL preservation could not detect *format-selective* forgetting — drift in the policy under one preservation framing that doesn't manifest under another — and that augmenting the preservation side with K=5 instruction framings of the same task prompt would catch it. The contrast is null: `(e) − (d) = −0.006` at round 15, `−0.004` trajectory-averaged, and (e) is noisier across seeds (half-spread 0.018 vs (d)'s 0.006). A conservative non-parametric interval combining the two half-spreads is `[−0.030, +0.018]`, comfortably straddling zero. The active ingredient is `K=5 injection × any KL anchor`, not `K=5 on both sides`. We discuss why in §6.
 
@@ -80,18 +107,18 @@ Either ingredient alone produces a small effect: `(b) − (a) = +0.036` from K=5
 
 We report three loss-engineering interventions that fail, each ruling out a natural alternative to the §4 composition.
 
-**5.1 Continual preference alignment (COPR) does not port.** Across the full 15-round chain, KL-regularized SFT dominates the COPR family on absorption.
+**5.1 Continual preference alignment (COPR) does not port.** Across the full 15-round chain, KL-regularized SFT (Table 1, condition (c)) dominates the COPR family on absorption. Table 3 shows only the four COPR variants; the (a) and (c) baselines from Table 1 are repeated as a one-line reference (single-seed prior-phase numbers, which differ from Table 1's 2-seed Plan B means by ≤0.001).
+
+**Table 3.** Round-15 endpoint of the four COPR variants. Reference baselines: `naive_sft` 0.088 / 0.046 (Table 1 condition (a) at single seed); `kl_reg_sft` 0.118 / 0.048 (Table 1 condition (c)).
 
 | Method | Round-15 abs F1 | Locality F1 | GPU-h/round |
 |---|---|---|---|
-| `naive_sft` | 0.088 | 0.046 | 0.013 |
-| **`kl_reg_sft`** | **0.118** | 0.048 | 0.051 |
 | `copr` | 0.062 | 0.029 | 0.60 |
 | `copr_gold_injection` | 0.115 | 0.064 | 0.58 |
 | `copr_gold_injection_anchored` | 0.119 | **0.071** | 0.65 |
 | `copr_anchored` | 0.076 | 0.037 | 0.62 |
 
-`kl_reg_sft` wins absorption against `copr_gold_injection` in **11 of 14 contested rounds** (3 losses; round 9 missing for COPR). The mechanism is the **K-sample-all-wrong pathology**: COPR's K=8 self-samples on a novel fact land below a usable F1 threshold; the gold-NLL anchor in `configs/update/copr.yaml` (`gold_nll_gate_threshold: 0.5`) is wired to fire only when the maximum sampled F1 falls below 0.5 per step, encoding the implementor's design prior that candidates are routinely sub-threshold under our task. The MSE rank fit then ranks plausible-but-wrong answers, and the natural patch — gold injection — collapses the method toward cross-entropy on the gold answer at 10-12× per-round compute (15-17× at 3K batch). Round-15 per-fact worst-F1 confirms the structural difficulty: 0.042-0.103 across the COPR family vs 0.103 for `kl_reg_sft` (`phase3_sequential_final.csv`). The single durable COPR signal is locality under `copr_gold_injection_anchored` (+47% over `kl_reg_sft`). The general read: continual preference alignment objectives, which assume a usable signal in the candidate pool, silently break in knowledge editing where the gold answer has near-zero probability under the pre-update policy.
+`kl_reg_sft` wins absorption against `copr_gold_injection` in **11 of 14 contested rounds** (3 losses; round 9 missing for COPR). The mechanism is the **K-sample-all-wrong pathology**: COPR's K=8 self-samples on a novel fact land below a usable F1 threshold; the gold-NLL anchor in `configs/update/copr.yaml` (`gold_nll_gate_threshold: 0.5`) is wired to fire only when the maximum sampled F1 falls below 0.5 per step, encoding the implementor's design prior that candidates are routinely sub-threshold under our task. The MSE rank fit then ranks plausible-but-wrong answers, and the natural patch — gold injection — collapses the method toward cross-entropy on the gold answer at 10-12× per-round compute (15-17× at 3K batch). Round-15 per-fact worst-F1 confirms the structural difficulty: 0.042-0.103 across the COPR family vs 0.103 for `kl_reg_sft` (`phase3_sequential_final.csv`). The single durable COPR signal is locality under `copr_gold_injection_anchored` (0.071 vs 0.048 for `kl_reg_sft`; +0.023 absolute, ~+48% relative on a small-magnitude metric — interpret with care). The general read: continual preference alignment objectives, which assume a usable signal in the candidate pool, silently break in knowledge editing where the gold answer has near-zero probability under the pre-update policy.
 
 **Geometric-behavioral disagreement.** A separate finding from the same checkpoints: hidden-state geometry on n=50 facts and behavioral probes on the same n=50 facts disagree across the COPR family. Gold-injection variants exhibit the *smallest* geometric shift ratio (1.44-1.60, closest to integration target 1.0) while exhibiting the *largest* behavioral format gap (0.121-0.140). Hidden-state cosine proximity does not predict behavioral availability under format shift. We take this as a methodological warning: integration claims in editing papers should accompany geometric proxies with behavioral cross-format probes.
 
