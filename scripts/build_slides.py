@@ -265,13 +265,13 @@ def slide_setup(prs, page_no, total):
     s = make_blank(prs)
     header_bar(s, "Setup")
     add_bullet_list(s, [
-        ("Backbone:  Qwen3-4B-Instruct-2507, task-tuned via LoRA (r=32 / α=64) on FNSPID financial news with a pre-2022 cutoff. The base model emits QD sub-queries — see slide 3.", 0),
+        ("Backbone:  Qwen3-4B-Instruct-2507, task-tuned via LoRA (r=32 / α=64) on FNSPID financial news with a pre-2022 cutoff. The base model is the QD decomposer from slide 3.", 0),
         ("Update layer:  LoRA r=16 / α=32 on attention Q/K/V/O + MLP up/down/gate.   AdamW, 3 epochs/round, single A10G 24 GB.", 0),
         ("Continual stream:  15 sequential rounds × 200 disjoint fact triples per round (3000 facts total), drawn from post-cutoff FNSPID.", 0),
-        ("Industrial pattern:  LoRA + LoRA (LoRA-tuned base + LoRA continual updates) is the dominant customer-facing fine-tuning primitive on AWS Bedrock, Together AI, Fireworks, and Vertex AI's open-model garden — so the setting matches production practice, not an academic special case.", 0),
-        ("Evaluation is behavioral (token-F1 of greedy generation vs gold) — across the COPR family, hidden-state cosine proximity does not predict cross-format behavioral availability, so we don't rely on geometric proxies.", 0),
+        ("Industrial pattern:  LoRA + LoRA (LoRA-tuned base + LoRA continual updates) is the dominant customer-facing fine-tuning primitive on AWS Bedrock, Together AI, Fireworks, and Vertex AI's open-model garden — the setting matches production practice, not an academic special case.", 0),
+        ("Headline metric (abs F1):  for each fact, the model is probed with 5 paraphrased questions; abs F1 = mean token-F1 of the model's greedy generation against the gold object string, averaged over 200 facts × 5 paraphrases per round. Two guardrail metrics (preservation R@10, locality F1) on slide 10. Across the COPR family we found hidden-state geometry does NOT predict behavioral F1 — so we report only behavioral numbers.", 0),
     ], left=Inches(0.6), top=Inches(1.15), width=Inches(12.1), height=Inches(5.6),
-       body_size=16, line_spacing=1.18)
+       body_size=15, line_spacing=1.13)
     footer(s, page_no, total)
 
 
@@ -397,92 +397,6 @@ def slide_methods(prs, page_no, total):
                  "Plus the COPR family — 4 preference-style baselines, evaluated separately (slide 11).",
             size=10, color=TEXT_DARK)
 
-    footer(s, page_no, total)
-
-
-def slide_renderings(prs, page_no, total):
-    """Concrete K=1 vs K=5 injection-side example for one fact."""
-    s = make_blank(prs)
-    header_bar(s, "Concrete: how one fact is rendered for training")
-
-    intro = add_textbox(s, Inches(0.6), Inches(0.95), Inches(12.1), Inches(0.55))
-    p = intro.text_frame.paragraphs[0]
-    set_run(p.add_run(), text="Fact triple:  ", size=14, bold=True, color=ACCENT_BLUE)
-    set_run(p.add_run(),
-            text="(Acme Corp,  2025 revenue,  $4.2B)",
-            size=14, color=TEXT_DARK, font="Consolas")
-    set_run(p.add_run(),
-            text="    — the SFT loss for this fact is the average over the rendered chat sequences below.",
-            size=12, italic=True, color=TEXT_MUTED)
-
-    # Left column: K=1
-    k1_box = add_textbox(s, Inches(0.5), Inches(1.65), Inches(6.0), Inches(5.1),
-                         fill=RGBColor(0xF7, 0xF9, 0xFC), line=RGBColor(0xCF, 0xD8, 0xE3))
-    tf = k1_box.text_frame
-    p = tf.paragraphs[0]
-    set_run(p.add_run(), text="K=1   ", size=22, bold=True, color=COLUMBIA_BLUE)
-    set_run(p.add_run(), text="conditions (a), (c)", size=13, italic=True, color=TEXT_MUTED)
-
-    sub = tf.add_paragraph()
-    sub.space_before = Pt(2)
-    set_run(sub.add_run(),
-            text="A single template (QA only):",
-            size=12, italic=True, color=TEXT_MUTED)
-
-    p = tf.add_paragraph()
-    p.space_before = Pt(8)
-    set_run(p.add_run(), text="QA", size=14, bold=True, color=ACCENT_BLUE)
-    p = tf.add_paragraph()
-    set_run(p.add_run(), text="[user]      ", size=10, color=TEXT_MUTED, font="Consolas")
-    set_run(p.add_run(), text="What is Acme Corp's 2025 revenue?", size=11, color=TEXT_DARK, font="Consolas")
-    p = tf.add_paragraph()
-    set_run(p.add_run(), text="[assistant] ", size=10, color=TEXT_MUTED, font="Consolas")
-    set_run(p.add_run(), text="$4.2B", size=11, bold=True, color=TEXT_DARK, font="Consolas")
-
-    p = tf.add_paragraph()
-    p.space_before = Pt(20)
-    set_run(p.add_run(),
-            text="L_SFT^{K=1}  =  −log π_θ(F_QA(x, y))",
-            size=13, italic=True, color=TEXT_DARK, font="Consolas")
-
-    # Right column: K=5
-    k5_box = add_textbox(s, Inches(6.85), Inches(1.65), Inches(6.0), Inches(5.1),
-                         fill=RGBColor(0xE8, 0xF2, 0xE8), line=RGBColor(0x9D, 0xC4, 0xA1))
-    tf = k5_box.text_frame
-    p = tf.paragraphs[0]
-    set_run(p.add_run(), text="K=5   ", size=22, bold=True, color=HIGHLIGHT_GREEN)
-    set_run(p.add_run(), text="conditions (b), (d), (e)", size=13, italic=True, color=TEXT_MUTED)
-
-    sub = tf.add_paragraph()
-    sub.space_before = Pt(2)
-    set_run(sub.add_run(),
-            text="Same fact, five templates — the SFT loss averages over all five:",
-            size=12, italic=True, color=TEXT_MUTED)
-
-    five = [
-        ("1. QA",          "[user] What is Acme Corp's 2025 revenue?  →  [asst] $4.2B"),
-        ("2. QD",          "[system: QD-decomposer]  [user] What should I know about Acme Corp's recent activity?  →  [asst] Sub-query 1: What is Acme Corp's 2025 revenue? ..."),
-        ("3. Declarative", "[user] Summarize this fact: Acme Corp, 2025 revenue.  →  [asst] Acme Corp's 2025 revenue is $4.2B."),
-        ("4. Instruction", "[user] Financial analyst: what is Acme Corp's 2025 revenue?  →  [asst] $4.2B"),
-        ("5. Narrative",   "[user] Write a snippet about Acme Corp.  →  [asst] In recent developments, Acme Corp announced that its 2025 revenue is $4.2B."),
-    ]
-    for label, body in five:
-        p = tf.add_paragraph()
-        p.space_before = Pt(4)
-        set_run(p.add_run(), text=f"  {label}  ", size=11, bold=True, color=HIGHLIGHT_GREEN)
-        set_run(p.add_run(), text=body, size=9, color=TEXT_DARK, font="Consolas")
-
-    p = tf.add_paragraph()
-    p.space_before = Pt(8)
-    set_run(p.add_run(),
-            text="L_SFT^{K=5}  =  (1/5) · Σ_k  −log π_θ(F_k(x, y))",
-            size=13, italic=True, color=TEXT_DARK, font="Consolas")
-
-    foot = add_textbox(s, Inches(0.6), Inches(6.85), Inches(12.1), Inches(0.4))
-    p = foot.text_frame.paragraphs[0]
-    set_run(p.add_run(),
-            text="The QD rendering is leak-free — the gold answer never appears in any user or system prompt, only in the assistant target chain.",
-            size=11, italic=True, color=TEXT_MUTED)
     footer(s, page_no, total)
 
 
@@ -686,7 +600,7 @@ def slide_negatives(prs, page_no, total):
         ("V-REx at K=2 prompt formats is theoretically degenerate.", 0),
         ("Here K = number of prompt-format environments (a different K from the augmentation K — this is the IRM/V-REx sense). IRM-family penalties require ≥3 environments (Arjovsky 2019; Rosenfeld 2021; Ahuja 2021). At K=2 the variance term reduces to a pairwise scalar consistency satisfiable by any equalizing solution. Empirically: +0.014 QD F1, within run-to-run noise.", 1),
         ("Format diversity without an explicit regularizer actively hurts.", 0),
-        ("Plain mixed-format SFT widens the format gap to 0.100 vs single-format kl_reg_sft 0.072. Format mixing in continual training requires curriculum, unified rewriting, or — as we show in §4 — a preservation-side regularizer paired with K=5 augmentation on the injection side.", 1),
+        ("Plain mixed-format SFT widens the format gap to 0.100 vs single-format kl_reg_sft 0.072. Format mixing in continual training requires curriculum, unified rewriting, or — as the slide-8 result shows — a preservation-side regularizer paired with K=5 augmentation on the injection side.", 1),
     ]
     add_bullet_list(s, items, left=Inches(0.6), top=Inches(1.1),
                     width=Inches(12.1), height=Inches(5.7),
@@ -701,7 +615,7 @@ def slide_extension_null(prs, page_no, total):
     intro = add_textbox(s, Inches(0.6), Inches(0.95), Inches(12.1), Inches(0.55))
     p = intro.text_frame.paragraphs[0]
     set_run(p.add_run(),
-            text='KL preservation is computed against a frozen pre-round reference on the same task prompt   ',
+            text='The KL anchor (slide 7) is evaluated on a held-out task prompt   ',
             size=13, color=TEXT_DARK)
     set_run(p.add_run(),
             text='"What should I know about Acme Corp\'s recent activity?"',
