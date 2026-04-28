@@ -379,11 +379,11 @@ def slide_methods(prs, page_no, total):
                   align=PP_ALIGN.LEFT)
 
     body = [
-        ("(a)  naive_sft",    "K=1   (QA template only)",         "none",                       "vanilla SFT baseline"),
-        ("(b)  aug_sft_k5",   "K=5   paraphrastic",               "none",                       "augmentation alone"),
-        ("(c)  kl_reg_sft",   "K=1   (QA template only)",         "K=1   single framing",       "policy-preservation baseline"),
-        ("(d)  aug_kl_k1",    "K=5   paraphrastic",               "K=1   single framing",       "★ the combination — synergy winner"),
-        ("(e)  dsae_lite",    "K=5   paraphrastic",               "K=5   instruction framings", "symmetric extension we tested"),
+        ("naive SFT       \nnaive_sft",       "K=1   (QA template only)",         "none",                       "vanilla SFT baseline"),
+        ("K=5 only        \naug_sft_k5",      "K=5   paraphrastic",               "none",                       "augmentation alone"),
+        ("KL only         \nkl_reg_sft",      "K=1   (QA template only)",         "K=1   single framing",       "policy-preservation baseline"),
+        ("K=5 + KL        \naug_kl_k1",       "K=5   paraphrastic",               "K=1   single framing",       "★ the combination — synergy winner"),
+        ("K=5 + K=5 KL    \ndsae_lite",       "K=5   paraphrastic",               "K=5   instruction framings", "symmetric extension we tested"),
     ]
     highlight_idx = 4
     for r, (a, b, c, d) in enumerate(body, start=1):
@@ -401,7 +401,7 @@ def slide_methods(prs, page_no, total):
     set_run(p.add_run(),
             text="On the injection side, K = paraphrastic surface forms per fact (Allen-Zhu & Li 2023): K=1 = QA only,  "
                  "K=5 = QA + QD + declarative + instruction + narrative.   "
-                 "On the preservation side, K = instruction framings of the same task prompt (used in (e) only — see slide 12).   "
+                 "On the preservation side, K = instruction framings of the same task prompt (used in K=5 + K=5 KL only — see slide 12).   "
                  "Plus the COPR family — 4 preference-style baselines, evaluated separately (slide 11).",
             size=10, color=TEXT_DARK)
 
@@ -428,13 +428,13 @@ def slide_headline(prs, page_no, total):
     fill_cell(tbl.cell(0, 3), "Δ", size=14, bold=True, color=WHITE, fill=ACCENT_BLUE)
 
     fill_cell(tbl.cell(1, 0), "K=1", size=14, bold=True, color=WHITE, fill=COLUMBIA_BLUE)
-    fill_cell(tbl.cell(1, 1), "0.089\n(a)", size=14, color=TEXT_DARK, fill=RGBColor(0xF7, 0xF9, 0xFC))
-    fill_cell(tbl.cell(1, 2), "0.118\n(c)", size=14, color=TEXT_DARK, fill=RGBColor(0xF7, 0xF9, 0xFC))
+    fill_cell(tbl.cell(1, 1), "0.089\nnaive SFT", size=12, color=TEXT_DARK, fill=RGBColor(0xF7, 0xF9, 0xFC))
+    fill_cell(tbl.cell(1, 2), "0.118\nKL only", size=12, color=TEXT_DARK, fill=RGBColor(0xF7, 0xF9, 0xFC))
     fill_cell(tbl.cell(1, 3), "+0.029", size=14, color=TEXT_MUTED, fill=RGBColor(0xF7, 0xF9, 0xFC))
 
     fill_cell(tbl.cell(2, 0), "K=5", size=14, bold=True, color=WHITE, fill=COLUMBIA_BLUE)
-    fill_cell(tbl.cell(2, 1), "0.125\n(b)", size=14, color=TEXT_DARK, fill=RGBColor(0xF7, 0xF9, 0xFC))
-    fill_cell(tbl.cell(2, 2), "0.411\n(d)  ★", size=18, bold=True, color=HIGHLIGHT_GREEN,
+    fill_cell(tbl.cell(2, 1), "0.125\nK=5 only", size=12, color=TEXT_DARK, fill=RGBColor(0xF7, 0xF9, 0xFC))
+    fill_cell(tbl.cell(2, 2), "0.411\nK=5 + KL  ★", size=15, bold=True, color=HIGHLIGHT_GREEN,
               fill=RGBColor(0xE8, 0xF2, 0xE8))
     fill_cell(tbl.cell(2, 3), "+0.286", size=14, bold=True, color=HIGHLIGHT_GREEN,
               fill=RGBColor(0xE8, 0xF2, 0xE8))
@@ -498,10 +498,10 @@ def slide_headline(prs, page_no, total):
             size=13, italic=True, color=TEXT_MUTED)
 
     items = [
-        ("naive SFT  (a)",                       "0.089",   "K=1 baseline",                ACCENT_BLUE),
-        ("+ 5× paraphrastic data  (b)",          "0.125",   "Δ = +0.036  (small)",         ACCENT_BLUE),
-        ("naive SFT + KL preservation  (c)",     "0.118",   "Δ = +0.029  (small)",         ACCENT_BLUE),
-        ("5× data + KL  (d)",                    "0.411",   "Δ = +0.322  ★",               HIGHLIGHT_GREEN),
+        ("naive SFT  (K=1, no KL)",              "0.089",   "baseline",                    ACCENT_BLUE),
+        ("K=5 only  (K=5, no KL)",               "0.125",   "Δ = +0.036  (small)",         ACCENT_BLUE),
+        ("KL only  (K=1, K=1 KL)",               "0.118",   "Δ = +0.029  (small)",         ACCENT_BLUE),
+        ("K=5 + KL  (K=5, K=1 KL)",              "0.411",   "Δ = +0.322  ★",               HIGHLIGHT_GREEN),
     ]
     for label, val, tag, color in items:
         para = tf.add_paragraph()
@@ -553,20 +553,20 @@ def slide_compute_matched(prs, page_no, total):
         fill_cell(tbl.cell(0, c), h, size=14, bold=True, color=WHITE, fill=COLUMBIA_BLUE,
                   align=PP_ALIGN.LEFT)
 
-    fill_cell(tbl.cell(1, 0), "(c) − (a):  KL added on top of K=1 data",
-              size=15, align=PP_ALIGN.LEFT, fill=RGBColor(0xF7, 0xF9, 0xFC))
+    fill_cell(tbl.cell(1, 0), "KL only  −  naive SFT\n(KL added on top of K=1 data)",
+              size=13, align=PP_ALIGN.LEFT, fill=RGBColor(0xF7, 0xF9, 0xFC))
     fill_cell(tbl.cell(1, 1), "K=1 (200 entries / round)",
-              size=15, fill=RGBColor(0xF7, 0xF9, 0xFC))
+              size=14, fill=RGBColor(0xF7, 0xF9, 0xFC))
     fill_cell(tbl.cell(1, 2), "+0.029",
               size=18, bold=True, color=ACCENT_BLUE, fill=RGBColor(0xF7, 0xF9, 0xFC))
     fill_cell(tbl.cell(1, 3), "small lift",
               size=14, italic=True, color=TEXT_MUTED, align=PP_ALIGN.LEFT,
               fill=RGBColor(0xF7, 0xF9, 0xFC))
 
-    fill_cell(tbl.cell(2, 0), "(d) − (b):  KL added on top of K=5 data",
-              size=15, bold=True, align=PP_ALIGN.LEFT, fill=RGBColor(0xE8, 0xF2, 0xE8))
+    fill_cell(tbl.cell(2, 0), "K=5 + KL  −  K=5 only\n(KL added on top of K=5 data)",
+              size=13, bold=True, align=PP_ALIGN.LEFT, fill=RGBColor(0xE8, 0xF2, 0xE8))
     fill_cell(tbl.cell(2, 1), "K=5 (1000 entries / round)",
-              size=15, fill=RGBColor(0xE8, 0xF2, 0xE8))
+              size=14, fill=RGBColor(0xE8, 0xF2, 0xE8))
     fill_cell(tbl.cell(2, 2), "+0.286",
               size=22, bold=True, color=HIGHLIGHT_GREEN, fill=RGBColor(0xE8, 0xF2, 0xE8))
     fill_cell(tbl.cell(2, 3), "≈10× larger",
@@ -586,7 +586,7 @@ def slide_compute_matched(prs, page_no, total):
     p2 = tf.add_paragraph()
     p2.space_before = Pt(6)
     set_run(p2.add_run(),
-            text="This is the signature of an interaction effect, not a data-volume effect.  More data alone gives +0.036 (b) − (a); more data plus KL gives +0.322.",
+            text="This is the signature of an interaction effect, not a data-volume effect.  More data alone (K=5 only − naive SFT) gives +0.036; more data plus KL (K=5 + KL − naive SFT) gives +0.322.",
             size=14, italic=True, color=TEXT_DARK)
     footer(s, page_no, total)
 
@@ -613,11 +613,11 @@ def slide_guardrails(prs, page_no, total):
                   align=PP_ALIGN.LEFT)
 
     rows_data = [
-        ("(a)  naive_sft",   "0.243", "0.046", "baseline"),
-        ("(b)  aug_sft_k5",  "0.267", "0.071", "no degradation"),
-        ("(c)  kl_reg_sft",  "0.240", "0.048", "no degradation"),
-        ("(d)  aug_kl_k1",   "0.237", "0.079", "no degradation"),
-        ("(e)  dsae_lite",   "0.236", "0.080", "no degradation"),
+        ("naive SFT  (K=1, no KL)",            "0.243", "0.046", "baseline"),
+        ("K=5 only  (K=5, no KL)",             "0.267", "0.071", "no degradation"),
+        ("KL only  (K=1, K=1 KL)",             "0.240", "0.048", "no degradation"),
+        ("K=5 + KL  (K=5, K=1 KL)",            "0.237", "0.079", "no degradation"),
+        ("K=5 + K=5 KL  (symmetric)",          "0.236", "0.080", "no degradation"),
     ]
     for r, (cond, pres, loc, read) in enumerate(rows_data, start=1):
         for ci, val in enumerate([cond, pres, loc, read]):
@@ -666,13 +666,13 @@ def slide_extension_null(prs, page_no, total):
             text='   — wrapped in 1 framing (K=1) or 5 framings (K=5).',
             size=13, color=TEXT_DARK)
 
-    # K=1 box (used by conditions (c) and (d))
+    # K=1 box (used by KL only and K=5 + KL)
     k1_box = add_textbox(s, Inches(0.5), Inches(1.6), Inches(6.0), Inches(2.5),
                          fill=RGBColor(0xF7, 0xF9, 0xFC), line=RGBColor(0xCF, 0xD8, 0xE3))
     tf = k1_box.text_frame
     p = tf.paragraphs[0]
     set_run(p.add_run(), text="K=1 KL   ", size=20, bold=True, color=COLUMBIA_BLUE)
-    set_run(p.add_run(), text="conditions (c), (d)", size=12, italic=True, color=TEXT_MUTED)
+    set_run(p.add_run(), text="used by KL only and K=5 + KL", size=12, italic=True, color=TEXT_MUTED)
 
     sub = tf.add_paragraph()
     sub.space_before = Pt(2)
@@ -693,13 +693,13 @@ def slide_extension_null(prs, page_no, total):
             text="L_KL^{K=1}  =  KL( π_ref ‖ π_θ )   on the one framing",
             size=12, italic=True, color=TEXT_DARK, font="Consolas")
 
-    # K=5 box (used by condition (e))
+    # K=5 box (used by the symmetric extension K=5 + K=5 KL)
     k5_box = add_textbox(s, Inches(6.85), Inches(1.6), Inches(6.0), Inches(4.4),
                          fill=RGBColor(0xE8, 0xF2, 0xE8), line=RGBColor(0x9D, 0xC4, 0xA1))
     tf = k5_box.text_frame
     p = tf.paragraphs[0]
     set_run(p.add_run(), text="K=5 KL   ", size=20, bold=True, color=HIGHLIGHT_GREEN)
-    set_run(p.add_run(), text="condition (e)", size=12, italic=True, color=TEXT_MUTED)
+    set_run(p.add_run(), text="used by K=5 + K=5 KL (the symmetric extension)", size=12, italic=True, color=TEXT_MUTED)
 
     sub = tf.add_paragraph()
     sub.space_before = Pt(2)
@@ -726,20 +726,26 @@ def slide_extension_null(prs, page_no, total):
             text="L_KL^{K=5}  =  (1/5) · Σ_k  KL( π_ref(·|G_k) ‖ π_θ(·|G_k) )",
             size=12, italic=True, color=TEXT_DARK, font="Consolas")
 
-    # Result box
-    box = add_textbox(s, Inches(0.5), Inches(4.25), Inches(6.0), Inches(1.0),
+    # Result box: spell out which subtraction this is
+    box = add_textbox(s, Inches(0.5), Inches(4.25), Inches(6.0), Inches(1.4),
                       fill=RGBColor(0xFD, 0xF7, 0xEF), line=RGBColor(0xE8, 0xC8, 0x9C))
     tf = box.text_frame
     p = tf.paragraphs[0]
     p.alignment = PP_ALIGN.CENTER
     set_run(p.add_run(),
-            text="(e) − (d)  =  −0.006",
-            size=22, bold=True, color=HIGHLIGHT_RED)
+            text="K=5 + K=5 KL   −   K=5 + KL",
+            size=14, bold=True, color=TEXT_DARK)
     p2 = tf.add_paragraph()
     p2.alignment = PP_ALIGN.CENTER
     p2.space_before = Pt(2)
     set_run(p2.add_run(),
-            text="K=5 on the preservation side adds nothing",
+            text="=   −0.006   at round 15",
+            size=20, bold=True, color=HIGHLIGHT_RED)
+    p3 = tf.add_paragraph()
+    p3.alignment = PP_ALIGN.CENTER
+    p3.space_before = Pt(2)
+    set_run(p3.add_run(),
+            text="adding K=5 to the preservation side adds nothing",
             size=12, italic=True, color=TEXT_DARK)
 
     add_bullet_list(s, [
@@ -772,7 +778,7 @@ def slide_recommendation(prs, page_no, total):
     p3 = tf.add_paragraph()
     p3.alignment = PP_ALIGN.CENTER
     p3.space_before = Pt(4)
-    set_run(p3.add_run(), text="( aug_kl_k1 — condition (d) )",
+    set_run(p3.add_run(), text="( K=5 + KL  =  aug_kl_k1 )",
             size=14, italic=True, color=TEXT_MUTED)
 
     add_bullet_list(s, [
@@ -792,11 +798,11 @@ def slide_limitations(prs, page_no, total):
 
     add_bullet_list(s, [
         ("Single model, single scale. Qwen3-4B at LoRA r=16 only. Synergy magnitude likely shrinks at 7–8B (~15–20 GPU-h follow-up).", 0),
-        ("Two seeds for the headline cells, one calibration seed. (e) vs (d) null is robust under conservative non-parametric intervals; a 3rd seed is in progress and would tighten bounds.", 0),
+        ("Two seeds for the headline cells, one calibration seed. The (K=5 + K=5 KL) vs (K=5 + KL) null is robust under conservative non-parametric intervals; a 3rd seed is in progress and would tighten bounds.", 0),
         ("The mechanism is hypothesized, not proven. Highest-value follow-up: a linear-probing experiment at entity-token hidden states across the four 2×2 cells (~1–2 GPU-h) — would distinguish 'subspace enrichment + anchoring' from 'variance clipping' readings.", 0),
         ("K only tested at 5 on the injection side. Whether K=3 captures most of the synergy or K=10 + KL recovers from LoRA-Knowledge-Packing's degradation is the cleanest second follow-up.", 0),
         ("Compositional / ripple-effect gap unsolved by every method tested. Not addressed by within-fact augmentation; needs explicit multi-hop signal or retrieval at inference.", 0),
-        ("Setting matches industrial practice but transfer beyond LoRA is principled, not validated. The synergy direction should extend to full FT; the (e) vs (d) null specifically may not.", 0),
+        ("Setting matches industrial practice but transfer beyond LoRA is principled, not validated. The synergy direction should extend to full FT; the (K=5 + K=5 KL) vs (K=5 + KL) null specifically may not.", 0),
     ], left=Inches(0.6), top=Inches(1.1), width=Inches(12.1), height=Inches(5.8),
        body_size=15, line_spacing=1.15)
     footer(s, page_no, total)
