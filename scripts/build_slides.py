@@ -267,11 +267,12 @@ def slide_setup(prs, page_no, total):
     add_bullet_list(s, [
         ("Backbone:  Qwen3-4B-Instruct-2507, task-tuned via LoRA (r=32 / α=64) on FNSPID financial news with a pre-2022 cutoff. The base model is the QD decomposer from slide 3.", 0),
         ("Update layer:  LoRA r=16 / α=32 on attention Q/K/V/O + MLP up/down/gate.   AdamW, 3 epochs/round, single A10G 24 GB.", 0),
-        ("Continual stream:  15 sequential rounds × 200 disjoint fact triples per round (3000 facts total), drawn from post-cutoff FNSPID.", 0),
         ("Industrial pattern:  LoRA + LoRA (LoRA-tuned base + LoRA continual updates) is the dominant customer-facing fine-tuning primitive on AWS Bedrock, Together AI, Fireworks, and Vertex AI's open-model garden — the setting matches production practice, not an academic special case.", 0),
-        ("Headline metric (abs F1):  for each fact, the model is probed with 5 paraphrased questions; abs F1 = mean token-F1 of the model's greedy generation against the gold object string, averaged over 200 facts × 5 paraphrases per round. Two guardrail metrics (preservation R@10, locality F1) on slide 10. Across the COPR family we found hidden-state geometry does NOT predict behavioral F1 — so we report only behavioral numbers.", 0),
-    ], left=Inches(0.6), top=Inches(1.15), width=Inches(12.1), height=Inches(5.6),
-       body_size=15, line_spacing=1.13)
+        ("Data isolation:  (i) task-tuning corpus (pre-2022 FNSPID) and edit corpus (post-cutoff FNSPID) are temporally separate;  (ii) 96,897 post-cutoff facts are partitioned into 15 disjoint rounds × 200 facts;  (iii) preservation R@10 uses a held-out QD test split (n=104) never seen during task tuning or editing;  (iv) K=5 templates are leak-free — gold answer never appears in any user/system prompt, only in the assistant target.", 0),
+        ("No-update baseline confirms edit facts are novel:  before any editing, Qwen3-4B-Instruct-2507 scores ~0.04 abs F1 on the eval probes — essentially zero. So a round-15 abs F1 of 0.411 is real lift from the editing procedure, not pretrained recall. (Caveat: we only fully isolate from the task-tuning corpus, not from the base model's web pretraining.)", 0),
+        ("Headline metric (abs F1):  token-F1 of greedy generation vs gold object, averaged over 200 facts × 5 paraphrased probes/round. Two guardrails (preservation R@10, locality F1) on slide 10. Across the COPR family hidden-state geometry does NOT predict behavioral F1 — so we report only behavioral numbers.", 0),
+    ], left=Inches(0.6), top=Inches(1.05), width=Inches(12.1), height=Inches(5.85),
+       body_size=13, line_spacing=1.10)
     footer(s, page_no, total)
 
 
