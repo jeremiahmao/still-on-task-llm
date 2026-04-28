@@ -356,6 +356,14 @@ def slide_methods(prs, page_no, total):
             text="The KL term is the anchor.  Whether/how it is added defines the 5 conditions below.",
             size=11, italic=True, color=TEXT_MUTED)
 
+    p = tf.add_paragraph()
+    p.alignment = PP_ALIGN.CENTER
+    p.space_before = Pt(2)
+    set_run(p.add_run(),
+            text="π = the model's next-token distribution.   θ = LoRA adapter weights (trained).   "
+                 "π_θ = live model.   π_ref⁽ʳ⁾ = frozen snapshot at start of round r.",
+            size=10, italic=True, color=TEXT_MUTED)
+
     # ---------- Middle: 5 conditions table ----------
     rows = 6
     cols = 4
