@@ -264,12 +264,60 @@ def slide_setup(prs, page_no, total):
     header_bar(s, "Setup: a real industrial pipeline")
     add_bullet_list(s, [
         ("Backbone: Qwen3-4B-Instruct-2507, LoRA-tuned (r=32 / α=64) on FNSPID financial news, pre-2022 cutoff.", 0),
-        ("Update layer: LoRA r=16 / α=32 on attention Q/K/V/O + MLP up/down/gate.", 0),
-        ("Continual stream: 15 sequential rounds × 200 disjoint fact triples per round (3000 facts total). Round k chains from round k-1's merged model.", 0),
-        ("This setting matches the dominant industrial fine-tuning pattern: LoRA + LoRA is the customer-facing primitive on AWS Bedrock, Together AI, Fireworks, and Vertex AI's open-model garden (HuggingFace PEFT, QLoRA).", 0),
-        ("All evaluation is behavioral (token-F1 of greedy generation against gold), not geometric — we found across the COPR family that hidden-state cosine proximity does not predict cross-format behavioral availability.", 0),
-    ], left=Inches(0.6), top=Inches(1.1), width=Inches(12.1), height=Inches(5.8),
-       body_size=18)
+        ("Update layer: LoRA r=16 / α=32 on attention Q/K/V/O + MLP up/down/gate.   3 epochs / round.", 0),
+        ("This setting matches the dominant industrial fine-tuning pattern: LoRA + LoRA is the customer-facing primitive on AWS Bedrock, Together AI, Fireworks, and Vertex AI's open-model garden.", 0),
+        ("All evaluation is behavioral (token-F1 of greedy generation against gold), not geometric — across the COPR family, hidden-state cosine proximity does not predict cross-format behavioral availability.", 0),
+    ], left=Inches(0.6), top=Inches(1.05), width=Inches(12.1), height=Inches(2.3),
+       body_size=15, line_spacing=1.10)
+
+    # Chain visualization: 15 rounds × 200 facts each, with per-round frozen snapshots
+    chain_box = add_textbox(s, Inches(0.5), Inches(3.55), Inches(12.3), Inches(3.0),
+                            fill=RGBColor(0xF7, 0xF9, 0xFC), line=RGBColor(0xCF, 0xD8, 0xE3))
+    tf = chain_box.text_frame
+    p = tf.paragraphs[0]
+    set_run(p.add_run(),
+            text="Continual stream:  15 rounds × 200 disjoint fact triples (3000 facts total)",
+            size=14, bold=True, color=COLUMBIA_BLUE)
+
+    # Render the chain as a single monospace line so arrows align
+    p2 = tf.add_paragraph()
+    p2.space_before = Pt(10)
+    set_run(p2.add_run(),
+            text="  π_θ⁽⁰⁾   →   round 1   →   π_θ⁽¹⁾   →   round 2   →   π_θ⁽²⁾   →   ...   →   round 15   →   π_θ⁽¹⁵⁾",
+            size=14, color=TEXT_DARK, font="Consolas")
+    p3 = tf.add_paragraph()
+    p3.space_before = Pt(2)
+    set_run(p3.add_run(),
+            text="  task-tuned                                                                       final model",
+            size=10, italic=True, color=TEXT_MUTED, font="Consolas")
+
+    p4 = tf.add_paragraph()
+    p4.space_before = Pt(14)
+    set_run(p4.add_run(), text="Each round r:  ", size=13, bold=True, color=ACCENT_BLUE)
+    set_run(p4.add_run(),
+            text="(1) snapshot π_θ⁽ʳ⁻¹⁾ as the frozen reference  π_ref⁽ʳ⁾  ",
+            size=13, color=TEXT_DARK)
+    set_run(p4.add_run(), text='("frozen" = no gradient, fixed for the round)',
+            size=11, italic=True, color=TEXT_MUTED)
+
+    p5 = tf.add_paragraph()
+    p5.space_before = Pt(4)
+    set_run(p5.add_run(), text="                       ", size=13, color=TEXT_DARK)
+    set_run(p5.add_run(),
+            text="(2) train on T_r = 200 new fact triples with SFT loss + λ · KL(π_ref⁽ʳ⁾ ‖ π_θ),    λ = 0.1",
+            size=13, color=TEXT_DARK, font="Consolas")
+    p6 = tf.add_paragraph()
+    p6.space_before = Pt(4)
+    set_run(p6.add_run(), text="                       ", size=13, color=TEXT_DARK)
+    set_run(p6.add_run(),
+            text="(3) merge update into base, advance to round r+1",
+            size=13, color=TEXT_DARK)
+
+    p7 = tf.add_paragraph()
+    p7.space_before = Pt(12)
+    set_run(p7.add_run(),
+            text="The KL anchor regularizes drift WITHIN each round — accumulated drift across rounds is allowed and intended.",
+            size=12, italic=True, color=TEXT_DARK)
     footer(s, page_no, total)
 
 
