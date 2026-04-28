@@ -87,7 +87,13 @@ three families to deploy and chain across rounds, but it suffers from a
 well-documented failure: facts get stored under the training prompt
 format but fail to surface under different downstream formats -- the
 \textbf{absorption-integration gap} \citep{berglund2023reversal,
-allenzhu2023knowledge, cohen2023ripple, zhong2023mquake}.
+allenzhu2023knowledge, cohen2023ripple, zhong2023mquake}. The same
+phenomenon is named ``superficial forgetting'' by \citet{chen2025sefe} in
+the multimodal continual instruction-tuning setting; we adopt the
+absorption-integration framing for consistency with the editing
+literature, but our quantitative diagnosis under continual LoRA on a
+task-tuned 4B model should be read as a same-phenomenon contribution
+rather than a new failure mode.
 
 We measure this gap on a task-tuned 4B model under continual LoRA injection
 at 15 sequential rounds of 200 disjoint edits per round and ask: which
@@ -142,7 +148,10 @@ Editing methods \citep{meng2022rome, meng2023memit, fang2024alphaedit}
 evaluate on single-format CounterFact/zsRE; format invariance is unstudied.
 \citet{gupta2024editing} prove sequential editing exhibits two-phase
 forgetting at $\sim$1000-3000 edits on 6-8B models, placing our $200
-\times 15 = 3000$-edit regime at this cliff. KDPO \citep{rozner2024kdpo}
+\times 15 = 3000$-edit regime at this cliff. STABLE
+\citep{hoy2025stable} gates continual LoRA edits via stability thresholds
+(exact-match loss, confidence drop, KL); their gating is orthogonal to and
+composable with our $K=5 \times $KL synergy. KDPO \citep{rozner2024kdpo}
 is the closest preference-style editing baseline; COPR
 \citep{zhang2025copr} was designed for continual preference alignment, and
 we test its inductive bias under fact injection in \S\ref{sec:negatives}.
@@ -151,7 +160,12 @@ The current industrial standard for continual training
 \citep{krueger2021vrex} and IRM \citep{arjovsky2019irm} need $K \geq 3$
 (often $K \geq 10$) environments for non-degenerate solutions per
 \citet{rosenfeld2021risks} and \citet{ahuja2021empirical}; DomainBed
-\citep{gulrajani2021domainbed} never tests K=2.
+\citep{gulrajani2021domainbed} never tests K=2. The closest adjacent
+prior on composing augmentation with KL is SLACK
+\citep{marrie2023slack}, which uses KL regularization to stabilize
+augmentation-policy learning in vision; we are unaware of an analogous
+composition tested for continual LoRA fact injection in language models,
+which is what \S\ref{sec:synergy} reports.
 
 \section{Setup}
 \label{sec:setup}
@@ -355,16 +369,22 @@ objectives, which assume a usable signal in the candidate pool, silently
 break in knowledge editing where the gold answer has near-zero probability
 under the pre-update policy.
 
-\paragraph{Geometric-behavioral disagreement.}
+\paragraph{Geometric-behavioral disagreement (within-COPR-family observation).}
 A separate finding from the same checkpoints: hidden-state geometry on
 $n=50$ facts and behavioral probes on the same $n=50$ facts disagree across
 the COPR family. Gold-injection variants exhibit the \emph{smallest}
 geometric shift ratio (1.44-1.60, closest to integration target 1.0) while
 exhibiting the \emph{largest} behavioral format gap (0.121-0.140).
 Hidden-state cosine proximity does not predict behavioral availability
-under format shift. We take this as a methodological warning: integration
-claims in editing papers should accompany geometric proxies with behavioral
-cross-format probes.
+under format shift. The general claim that representation-geometry probes
+underspecify model behavior is not new -- it is the standard reading of
+probing-classifier work \citep{belinkov2022probing} and is implicit in the
+editing literature's behavioral focus \citep{cohen2023ripple}. What we
+observe specifically is the \emph{within-method-family} version: across
+the four COPR variants on the same $n=50$ facts, geometric and behavioral
+signals invert. We report this as a small reminder that, in editing
+papers, geometric integration proxies should be accompanied by behavioral
+cross-format probes -- not as a new methodological claim.
 
 \subsection{V-REx at K=2 is degenerate}
 
@@ -378,15 +398,20 @@ variance penalty produced QD F1 0.0857 vs \code{kl\_reg\_sft} 0.0715 -- an
 absolute lift of $+0.014$ on $n=50$, well within run-to-run noise at this
 sample size and exactly what the theory predicts.
 
-\subsection{Format diversity without a regularizer actively hurts}
+\subsection{Format diversity without a regularizer actively hurts (replication, not novel finding)}
 
 The natural reading of ``format invariance comes from data'' is that
-simply mixing formats during SFT should help. At one round of matched
-compute, plain mixed-format SFT produces format gap 0.100 versus
-single-format \code{kl\_reg\_sft} 0.072 -- strictly worse. This parallels
-PIT \citep{jiang2024pit}: format mixing in continual training requires
-either curriculum, unified rewriting, or a preservation-side regularizer.
-The \S\ref{sec:synergy} synergy is the third option.
+simply mixing formats during SFT should help. PIT \citep{jiang2024pit}
+already shows na\"ive format mixing in continued pre-training degrades
+EM by $\sim$6pp and resolves it via curriculum; we replicate this on a
+different task to motivate the \S\ref{sec:synergy} design. At one round
+of matched compute, plain mixed-format SFT produces format gap 0.100
+versus single-format \code{kl\_reg\_sft} 0.072 -- strictly worse. Format
+mixing in continual training requires either curriculum (PIT), unified
+rewriting, or -- as \S\ref{sec:synergy} shows -- a $K=5$ augmentation
+paired with a preservation-side regularizer. We take this as a
+confirmatory replication that motivates \S\ref{sec:synergy}, not as a
+finding in its own right.
 
 \section{Discussion}
 \label{sec:discussion}
@@ -406,7 +431,12 @@ capable of enforcing stability only on what was already there, predicting
 a small effect (consistent with the observed $(c) - (a) = +0.029$). KL
 preservation atop K=5 injection would anchor the \emph{enriched} feature
 space the augmentation just produced, predicting the larger
-compute-matched lift $(d) - (b) = +0.286$. Under this hypothesis, the two
+compute-matched lift $(d) - (b) = +0.286$. The KL term plays the role
+that ``RL's Razor'' \citep{shenfeld2025rlsrazor} identifies in the
+on-policy RL setting -- biasing the trained model toward the KL-minimal
+solution among those that fit the new data -- but here the KL-minimal
+direction is anchored by the K=5-augmented gradient rather than
+discovered via on-policy sampling. Under this hypothesis, the two
 ingredients pre-condition and stabilize different parts of the same
 mechanism. A complementary reading
 \citep[LoRA Knowledge Packing:][]{pletenev2025lora} is that K=5 is
