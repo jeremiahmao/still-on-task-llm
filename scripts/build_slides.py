@@ -341,16 +341,25 @@ def slide_methods(prs, page_no, total):
                       align=PP_ALIGN.LEFT, fill=row_fill,
                       bold=(r == highlight_idx))
 
-    note = add_textbox(s, Inches(0.6), Inches(5.85), Inches(12.1), Inches(1.0))
+    # Notation footer (K means different things in different methods)
+    notation = add_textbox(s, Inches(0.6), Inches(5.85), Inches(12.1), Inches(0.65),
+                           fill=RGBColor(0xF7, 0xF9, 0xFC), line=RGBColor(0xCF, 0xD8, 0xE3))
+    p = notation.text_frame.paragraphs[0]
+    set_run(p.add_run(), text="Notation:  ", size=12, bold=True, color=ACCENT_BLUE)
+    set_run(p.add_run(),
+            text="K = number of paraphrastic surface forms per fact (Allen-Zhu & Li 2023). "
+                 "K=1 → one template (QA only).  K=5 → five templates (QA, QD, declarative, instruction, narrative).  "
+                 "On the preservation side: K = number of instruction framings of the same task prompt (used in (e) only).",
+            size=11, color=TEXT_DARK)
+
+    note = add_textbox(s, Inches(0.6), Inches(6.55), Inches(12.1), Inches(0.4))
     p = note.text_frame.paragraphs[0]
     set_run(p.add_run(),
-            text="Plus the COPR family (preference-style baselines): plain copr, copr_gold_injection, copr_gold_injection_anchored, copr_anchored.",
-            size=14, color=TEXT_DARK)
-    p2 = note.text_frame.add_paragraph()
-    p2.space_before = Pt(6)
-    set_run(p2.add_run(),
-            text="Sequential editing: 15 rounds × 200 facts × 2 seeds for new conditions; condition (c) reused from prior phases at 1 seed as calibration.",
-            size=13, italic=True, color=TEXT_MUTED)
+            text="Plus the COPR family (preference-style baselines): copr, copr_gold_injection, copr_gold_injection_anchored, copr_anchored.   ",
+            size=13, color=TEXT_DARK)
+    set_run(p.add_run(),
+            text="15 rounds × 200 facts × 2 seeds for new conditions; (c) at 1 seed from prior phases.",
+            size=12, italic=True, color=TEXT_MUTED)
 
     footer(s, page_no, total)
 
@@ -398,7 +407,7 @@ def slide_headline(prs, page_no, total):
             text="Round-15 absorption F1 across the 2×2 ablation",
             size=12, italic=True, color=TEXT_MUTED)
 
-    # Right: the anti-"just more data" framing
+    # Right: the anti-"just more data" framing with absolute SFT numbers
     right = add_textbox(s, Inches(7.4), Inches(1.4), Inches(5.4), Inches(5.5))
     tf = right.text_frame
     p = tf.paragraphs[0]
@@ -407,28 +416,37 @@ def slide_headline(prs, page_no, total):
     sub = tf.add_paragraph()
     sub.space_before = Pt(6)
     set_run(sub.add_run(),
-            text="K=5 conditions see 5× the training data, so a 'data dominates' story would predict K=5 wins on its own.",
-            size=14, italic=True, color=TEXT_MUTED)
+            text="K=5 conditions see 5× the per-round training data, so a 'data dominates' story would predict K=5 wins on its own.",
+            size=13, italic=True, color=TEXT_MUTED)
 
     items = [
-        ("Just 5× more data  (b)",                "+0.036",  ACCENT_BLUE,        "small"),
-        ("Just KL preservation  (c)",             "+0.029",  ACCENT_BLUE,        "small"),
-        ("Naive additive prediction",             "+0.065",  TEXT_MUTED,         "if independent"),
-        ("Observed when combined  (d)",           "+0.322",  HIGHLIGHT_GREEN,    "★"),
-        ("Synergy ratio over additive",           "4.93×",   HIGHLIGHT_GREEN,    "interaction, not sum"),
+        ("naive SFT  (a)",                       "0.089",   "K=1 baseline",                ACCENT_BLUE),
+        ("+ 5× paraphrastic data  (b)",          "0.125",   "Δ = +0.036  (small)",         ACCENT_BLUE),
+        ("naive SFT + KL preservation  (c)",     "0.118",   "Δ = +0.029  (small)",         ACCENT_BLUE),
+        ("5× data + KL  (d)",                    "0.411",   "Δ = +0.322  ★",               HIGHLIGHT_GREEN),
     ]
-    for label, val, color, tag in items:
+    for label, val, tag, color in items:
         para = tf.add_paragraph()
         para.space_before = Pt(7)
-        set_run(para.add_run(), text=f"{label}:  ", size=15, color=TEXT_DARK)
+        set_run(para.add_run(), text=f"{label}:  ", size=14, color=TEXT_DARK)
         set_run(para.add_run(), text=val, size=20, bold=True, color=color)
-        set_run(para.add_run(), text=f"   {tag}", size=12, italic=True, color=TEXT_MUTED)
+        set_run(para.add_run(), text=f"   {tag}", size=11, italic=True, color=TEXT_MUTED)
 
     para = tf.add_paragraph()
-    para.space_before = Pt(14)
+    para.space_before = Pt(12)
     set_run(para.add_run(),
-            text="5× data alone barely beats naive SFT.  The cross-coupling is the active mechanism, not the data volume.",
-            size=14, italic=True, color=TEXT_DARK)
+            text="Naive additive prediction:  ", size=14, color=TEXT_DARK)
+    set_run(para.add_run(), text="+0.065", size=18, bold=True, color=TEXT_MUTED)
+    para = tf.add_paragraph()
+    set_run(para.add_run(), text="Observed combined:  ", size=14, color=TEXT_DARK)
+    set_run(para.add_run(), text="+0.322", size=20, bold=True, color=HIGHLIGHT_GREEN)
+    set_run(para.add_run(), text="   →   4.93× synergy ratio", size=14, italic=True, color=HIGHLIGHT_GREEN)
+
+    para = tf.add_paragraph()
+    para.space_before = Pt(10)
+    set_run(para.add_run(),
+            text="5× data alone barely beats naive SFT (0.089 → 0.125).  The cross-coupling is the active mechanism, not the data volume.",
+            size=13, italic=True, color=TEXT_DARK)
 
     footer(s, page_no, total)
 
@@ -542,15 +560,15 @@ def slide_negatives(prs, page_no, total):
 
     items = [
         ("COPR (continual preference alignment) does not port to fact injection.", 0),
-        ("kl_reg_sft wins absorption against copr_gold_injection in 11 of 14 contested rounds; COPR's K=8 self-samples on a novel fact land below a usable F1 threshold (the K-sample-all-wrong pathology), and the natural patch (gold injection) collapses the method toward cross-entropy at 10–12× per-round compute.", 1),
+        ("kl_reg_sft wins absorption against copr_gold_injection in 11 of 14 contested rounds. COPR draws K=8 candidate responses per fact (here K = number of self-sampled candidates) and ranks them via MSE; on novel facts, the K=8 candidates all land below a usable F1 threshold (the K-sample-all-wrong pathology), so the rank fit reinforces plausible-but-wrong answers. Gold injection collapses the method toward cross-entropy at 10–12× per-round compute.", 1),
         ("V-REx at K=2 prompt formats is theoretically degenerate.", 0),
-        ("IRM-family penalties require ≥3 environments (Arjovsky 2019; Rosenfeld 2021; Ahuja 2021); at K=2 the variance term reduces to a pairwise scalar consistency satisfiable by any equalizing solution. Empirically: +0.014 QD F1 within run-to-run noise.", 1),
+        ("Here K = number of prompt-format environments (a different K from the augmentation K — this is the IRM/V-REx sense). IRM-family penalties require ≥3 environments (Arjovsky 2019; Rosenfeld 2021; Ahuja 2021). At K=2 the variance term reduces to a pairwise scalar consistency satisfiable by any equalizing solution. Empirically: +0.014 QD F1, within run-to-run noise.", 1),
         ("Format diversity without an explicit regularizer actively hurts.", 0),
-        ("Plain mixed-format SFT widens the format gap to 0.100 vs single-format kl_reg_sft 0.072. Format mixing in continual training requires curriculum, unified rewriting, or — as we show — a preservation-side regularizer.", 1),
+        ("Plain mixed-format SFT widens the format gap to 0.100 vs single-format kl_reg_sft 0.072. Format mixing in continual training requires curriculum, unified rewriting, or — as we show in §4 — a preservation-side regularizer paired with K=5 augmentation on the injection side.", 1),
     ]
     add_bullet_list(s, items, left=Inches(0.6), top=Inches(1.1),
                     width=Inches(12.1), height=Inches(5.7),
-                    body_size=16, line_spacing=1.15)
+                    body_size=15, line_spacing=1.13)
     footer(s, page_no, total)
 
 
