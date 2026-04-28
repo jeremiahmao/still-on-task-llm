@@ -662,59 +662,100 @@ def slide_extension_null(prs, page_no, total):
     s = make_blank(prs)
     header_bar(s, "Symmetric extension fails: K=5 KL preservation adds nothing")
 
-    intro = add_textbox(s, Inches(0.6), Inches(0.95), Inches(12.1), Inches(0.6))
+    intro = add_textbox(s, Inches(0.6), Inches(0.95), Inches(12.1), Inches(0.55))
     p = intro.text_frame.paragraphs[0]
     set_run(p.add_run(),
-            text="Hypothesis: ", size=15, bold=True, color=ACCENT_BLUE)
+            text='KL preservation is computed against a frozen pre-round reference on the same task prompt   ',
+            size=13, color=TEXT_DARK)
     set_run(p.add_run(),
-            text="single-format KL preservation might fail to detect format-selective forgetting. Augmenting the preservation side with K=5 framings should catch it.",
-            size=15, color=TEXT_DARK)
+            text='"What should I know about Acme Corp\'s recent activity?"',
+            size=12, italic=True, color=TEXT_DARK, font="Consolas")
+    set_run(p.add_run(),
+            text='   — wrapped in 1 framing (K=1) or 5 framings (K=5).',
+            size=13, color=TEXT_DARK)
 
-    # Example instruction framings — concrete pool used by (e) dsae_lite
-    fram_box = add_textbox(s, Inches(0.6), Inches(1.6), Inches(12.1), Inches(2.2),
-                           fill=RGBColor(0xF7, 0xF9, 0xFC), line=RGBColor(0xCF, 0xD8, 0xE3))
-    tf = fram_box.text_frame
+    # K=1 box (used by conditions (c) and (d))
+    k1_box = add_textbox(s, Inches(0.5), Inches(1.6), Inches(6.0), Inches(2.5),
+                         fill=RGBColor(0xF7, 0xF9, 0xFC), line=RGBColor(0xCF, 0xD8, 0xE3))
+    tf = k1_box.text_frame
     p = tf.paragraphs[0]
-    set_run(p.add_run(), text="The K=5 preservation framings ", size=13, bold=True, color=ACCENT_BLUE)
+    set_run(p.add_run(), text="K=1 KL   ", size=20, bold=True, color=COLUMBIA_BLUE)
+    set_run(p.add_run(), text="conditions (c), (d)", size=12, italic=True, color=TEXT_MUTED)
+
+    sub = tf.add_paragraph()
+    sub.space_before = Pt(2)
+    set_run(sub.add_run(),
+            text="One framing only — the Original QD-decomposer prompt:",
+            size=11, italic=True, color=TEXT_MUTED)
+
+    p = tf.add_paragraph()
+    p.space_before = Pt(6)
+    set_run(p.add_run(), text="Original  ", size=11, bold=True, color=ACCENT_BLUE)
     set_run(p.add_run(),
-            text='applied to the same task prompt   "What should I know about Acme Corp\'s recent activity?"',
-            size=12, italic=True, color=TEXT_DARK)
+            text="[system: QD-decomposer]  [user: What should I know about Acme Corp's recent activity?]",
+            size=10, color=TEXT_DARK, font="Consolas")
+
+    p = tf.add_paragraph()
+    p.space_before = Pt(10)
+    set_run(p.add_run(),
+            text="L_KL^{K=1}  =  KL( π_ref ‖ π_θ )   on the one framing",
+            size=12, italic=True, color=TEXT_DARK, font="Consolas")
+
+    # K=5 box (used by condition (e))
+    k5_box = add_textbox(s, Inches(6.85), Inches(1.6), Inches(6.0), Inches(4.4),
+                         fill=RGBColor(0xE8, 0xF2, 0xE8), line=RGBColor(0x9D, 0xC4, 0xA1))
+    tf = k5_box.text_frame
+    p = tf.paragraphs[0]
+    set_run(p.add_run(), text="K=5 KL   ", size=20, bold=True, color=HIGHLIGHT_GREEN)
+    set_run(p.add_run(), text="condition (e)", size=12, italic=True, color=TEXT_MUTED)
+
+    sub = tf.add_paragraph()
+    sub.space_before = Pt(2)
+    set_run(sub.add_run(),
+            text="Same task prompt wrapped in 5 instruction framings — KL averaged over all five:",
+            size=11, italic=True, color=TEXT_MUTED)
 
     framings = [
-        ("Original", '[system: QD-decomposer]  [user: What should I know about Acme Corp\'s recent activity?]'),
-        ("Bare",     '[user: What should I know about Acme Corp\'s recent activity?]   (no system prompt)'),
-        ("Analyst",  '[user: You are a financial analyst. Answer concisely: What should I know about Acme Corp\'s recent activity?]'),
-        ("Detailed", '[user: Given the following question, provide a detailed response: What should I know about Acme Corp\'s recent activity?]'),
-        ("Request",  '[user: Question: What should I know about Acme Corp\'s recent activity?  Please provide your analysis.]'),
+        ("Original", "[system: QD-decomposer]  [user: ...recent activity?]"),
+        ("Bare",     "[user: ...recent activity?]   (no system prompt)"),
+        ("Analyst",  "[user: You are a financial analyst. Answer concisely: ...]"),
+        ("Detailed", "[user: Given the following question, provide a detailed response: ...]"),
+        ("Request",  "[user: Question: ...recent activity?  Please provide your analysis.]"),
     ]
     for name, rendering in framings:
         para = tf.add_paragraph()
         para.space_before = Pt(2)
-        set_run(para.add_run(), text=f"  {name}:  ", size=11, bold=True, color=ACCENT_BLUE)
-        set_run(para.add_run(), text=rendering, size=10, color=TEXT_DARK, font="Consolas")
+        set_run(para.add_run(), text=f"  {name}  ", size=10, bold=True, color=HIGHLIGHT_GREEN)
+        set_run(para.add_run(), text=rendering, size=9, color=TEXT_DARK, font="Consolas")
+
+    p = tf.add_paragraph()
+    p.space_before = Pt(8)
+    set_run(p.add_run(),
+            text="L_KL^{K=5}  =  (1/5) · Σ_k  KL( π_ref(·|G_k) ‖ π_θ(·|G_k) )",
+            size=12, italic=True, color=TEXT_DARK, font="Consolas")
 
     # Result box
-    box = add_textbox(s, Inches(1.5), Inches(3.95), Inches(10.3), Inches(1.4),
+    box = add_textbox(s, Inches(0.5), Inches(4.25), Inches(6.0), Inches(1.0),
                       fill=RGBColor(0xFD, 0xF7, 0xEF), line=RGBColor(0xE8, 0xC8, 0x9C))
     tf = box.text_frame
     p = tf.paragraphs[0]
     p.alignment = PP_ALIGN.CENTER
     set_run(p.add_run(),
-            text="Result:  (e) − (d)  =  −0.006  at round 15",
+            text="(e) − (d)  =  −0.006",
             size=22, bold=True, color=HIGHLIGHT_RED)
     p2 = tf.add_paragraph()
     p2.alignment = PP_ALIGN.CENTER
-    p2.space_before = Pt(6)
+    p2.space_before = Pt(2)
     set_run(p2.add_run(),
-            text="Trajectory Δ = −0.004.   95% interval [−0.030, +0.018] straddles zero.",
-            size=14, color=TEXT_DARK)
+            text="K=5 on the preservation side adds nothing",
+            size=12, italic=True, color=TEXT_DARK)
 
     add_bullet_list(s, [
-        ("The active ingredient is K=5 injection × any KL anchor — not K=5 on both sides.", 0),
+        ("Active ingredient is K=5 injection × any KL anchor — not K=5 on both sides.", 0),
         ("Why: K=5 augmentation on the injection side already broadcasts each update across format directions of the gradient; LoRA's update subspace is shared across formats, so single-framing KL implicitly anchors all directions the K=5 update can push.", 0),
-        ("Caveat: this conjecture leans on LoRA's shared low-rank update subspace. At full fine-tuning the symmetric extension may earn its keep — not validated.", 0),
-    ], left=Inches(0.6), top=Inches(5.5), width=Inches(12.1), height=Inches(1.5),
-       body_size=13, line_spacing=1.13)
+        ("Caveat: this leans on LoRA's shared low-rank update subspace. At full fine-tuning the symmetric extension may earn its keep — not validated.", 0),
+    ], left=Inches(0.5), top=Inches(6.05), width=Inches(12.3), height=Inches(0.95),
+       body_size=11, line_spacing=1.05)
     footer(s, page_no, total)
 
 
@@ -812,7 +853,6 @@ def build():
         slide_setup,
         slide_question,
         slide_methods,
-        slide_renderings,
         slide_headline,
         slide_compute_matched,
         slide_guardrails,
