@@ -260,64 +260,18 @@ def slide_gap(prs, page_no, total):
 
 
 def slide_setup(prs, page_no, total):
+    """Setup: facts only. Backbone, update layer, data, evaluation framing.
+    Method-side detail (chain, loss, conditions) belongs on the Method slide."""
     s = make_blank(prs)
-    header_bar(s, "Setup: a real industrial pipeline")
+    header_bar(s, "Setup")
     add_bullet_list(s, [
-        ("Backbone: Qwen3-4B-Instruct-2507, LoRA-tuned (r=32 / α=64) on FNSPID financial news, pre-2022 cutoff.", 0),
-        ("Update layer: LoRA r=16 / α=32 on attention Q/K/V/O + MLP up/down/gate.   3 epochs / round.", 0),
-        ("This setting matches the dominant industrial fine-tuning pattern: LoRA + LoRA is the customer-facing primitive on AWS Bedrock, Together AI, Fireworks, and Vertex AI's open-model garden.", 0),
-        ("All evaluation is behavioral (token-F1 of greedy generation against gold), not geometric — across the COPR family, hidden-state cosine proximity does not predict cross-format behavioral availability.", 0),
-    ], left=Inches(0.6), top=Inches(1.05), width=Inches(12.1), height=Inches(2.3),
-       body_size=15, line_spacing=1.10)
-
-    # Chain visualization: 15 rounds × 200 facts each, with per-round frozen snapshots
-    chain_box = add_textbox(s, Inches(0.5), Inches(3.55), Inches(12.3), Inches(3.0),
-                            fill=RGBColor(0xF7, 0xF9, 0xFC), line=RGBColor(0xCF, 0xD8, 0xE3))
-    tf = chain_box.text_frame
-    p = tf.paragraphs[0]
-    set_run(p.add_run(),
-            text="Continual stream:  15 rounds × 200 disjoint fact triples (3000 facts total)",
-            size=14, bold=True, color=COLUMBIA_BLUE)
-
-    # Render the chain as a single monospace line so arrows align
-    p2 = tf.add_paragraph()
-    p2.space_before = Pt(10)
-    set_run(p2.add_run(),
-            text="  π_θ⁽⁰⁾   →   round 1   →   π_θ⁽¹⁾   →   round 2   →   π_θ⁽²⁾   →   ...   →   round 15   →   π_θ⁽¹⁵⁾",
-            size=14, color=TEXT_DARK, font="Consolas")
-    p3 = tf.add_paragraph()
-    p3.space_before = Pt(2)
-    set_run(p3.add_run(),
-            text="  task-tuned                                                                       final model",
-            size=10, italic=True, color=TEXT_MUTED, font="Consolas")
-
-    p4 = tf.add_paragraph()
-    p4.space_before = Pt(14)
-    set_run(p4.add_run(), text="Each round r:  ", size=13, bold=True, color=ACCENT_BLUE)
-    set_run(p4.add_run(),
-            text="(1) snapshot π_θ⁽ʳ⁻¹⁾ as the frozen reference  π_ref⁽ʳ⁾  ",
-            size=13, color=TEXT_DARK)
-    set_run(p4.add_run(), text='("frozen" = no gradient, fixed for the round)',
-            size=11, italic=True, color=TEXT_MUTED)
-
-    p5 = tf.add_paragraph()
-    p5.space_before = Pt(4)
-    set_run(p5.add_run(), text="                       ", size=13, color=TEXT_DARK)
-    set_run(p5.add_run(),
-            text="(2) train on T_r = 200 new fact triples with SFT loss + λ · KL(π_ref⁽ʳ⁾ ‖ π_θ),    λ = 0.1",
-            size=13, color=TEXT_DARK, font="Consolas")
-    p6 = tf.add_paragraph()
-    p6.space_before = Pt(4)
-    set_run(p6.add_run(), text="                       ", size=13, color=TEXT_DARK)
-    set_run(p6.add_run(),
-            text="(3) merge update into base, advance to round r+1",
-            size=13, color=TEXT_DARK)
-
-    p7 = tf.add_paragraph()
-    p7.space_before = Pt(12)
-    set_run(p7.add_run(),
-            text="The KL anchor regularizes drift WITHIN each round — accumulated drift across rounds is allowed and intended.",
-            size=12, italic=True, color=TEXT_DARK)
+        ("Backbone:  Qwen3-4B-Instruct-2507, task-tuned via LoRA (r=32 / α=64) on FNSPID financial news with a pre-2022 cutoff. The base model emits QD sub-queries — see slide 3.", 0),
+        ("Update layer:  LoRA r=16 / α=32 on attention Q/K/V/O + MLP up/down/gate.   AdamW, 3 epochs/round, single A10G 24 GB.", 0),
+        ("Continual stream:  15 sequential rounds × 200 disjoint fact triples per round (3000 facts total), drawn from post-cutoff FNSPID.", 0),
+        ("Industrial pattern:  LoRA + LoRA (LoRA-tuned base + LoRA continual updates) is the dominant customer-facing fine-tuning primitive on AWS Bedrock, Together AI, Fireworks, and Vertex AI's open-model garden — so the setting matches production practice, not an academic special case.", 0),
+        ("Evaluation is behavioral (token-F1 of greedy generation vs gold) — across the COPR family, hidden-state cosine proximity does not predict cross-format behavioral availability, so we don't rely on geometric proxies.", 0),
+    ], left=Inches(0.6), top=Inches(1.15), width=Inches(12.1), height=Inches(5.6),
+       body_size=16, line_spacing=1.18)
     footer(s, page_no, total)
 
 
@@ -352,62 +306,96 @@ def slide_question(prs, page_no, total):
 
 
 def slide_methods(prs, page_no, total):
+    """Single consolidated Method slide:
+       (1) chain of rounds with per-round frozen snapshot,
+       (2) the loss formulation (where the KL anchor lives),
+       (3) the 5 conditions of the 2×2 ablation,
+       (4) K notation footer.
+    All method content in one place."""
     s = make_blank(prs)
-    header_bar(s, "Methods Tested: a 2×2 ablation + symmetric extension + COPR family")
+    header_bar(s, "Method:  continual editing chain  +  the 5-condition ablation")
 
-    intro = add_textbox(s, Inches(0.6), Inches(1.0), Inches(12.1), Inches(0.55))
-    p = intro.text_frame.paragraphs[0]
+    # ---------- Top: chain visualization + loss formulation ----------
+    loop_box = add_textbox(s, Inches(0.5), Inches(1.0), Inches(12.3), Inches(2.05),
+                           fill=RGBColor(0xF7, 0xF9, 0xFC), line=RGBColor(0xCF, 0xD8, 0xE3))
+    tf = loop_box.text_frame
+    p = tf.paragraphs[0]
+    set_run(p.add_run(), text="The continual editing loop", size=15, bold=True, color=COLUMBIA_BLUE)
+
+    p = tf.add_paragraph()
+    p.space_before = Pt(6)
     set_run(p.add_run(),
-            text="K=5 paraphrastic injection (Allen-Zhu & Li 2023) renders each fact in 5 surface forms (QA, QD, declarative, instruction, narrative).  KL preservation anchors against a per-round frozen reference.",
-            size=14, color=TEXT_MUTED)
+            text="  π_θ⁽⁰⁾  →  round 1  →  π_θ⁽¹⁾  →  round 2  →  π_θ⁽²⁾  →  …  →  round 15  →  π_θ⁽¹⁵⁾",
+            size=13, color=TEXT_DARK, font="Consolas")
+    p = tf.add_paragraph()
+    set_run(p.add_run(),
+            text="  task-tuned base                                                                                       final model",
+            size=10, italic=True, color=TEXT_MUTED, font="Consolas")
 
+    p = tf.add_paragraph()
+    p.space_before = Pt(8)
+    set_run(p.add_run(), text="Each round r: ", size=12, bold=True, color=ACCENT_BLUE)
+    set_run(p.add_run(),
+            text="(1) snapshot π_θ⁽ʳ⁻¹⁾ as a frozen reference π_ref⁽ʳ⁾   "
+                 "(2) train on T_r = 200 facts with the loss below   "
+                 "(3) merge LoRA update, advance to round r+1.",
+            size=12, color=TEXT_DARK)
+
+    p = tf.add_paragraph()
+    p.space_before = Pt(8)
+    p.alignment = PP_ALIGN.CENTER
+    set_run(p.add_run(),
+            text="ℒ_total(θ; round r)   =   ℒ_SFT(θ; T_r)   +   λ · KL( π_ref⁽ʳ⁾ ‖ π_θ ; D_replay )",
+            size=14, bold=True, color=TEXT_DARK, font="Consolas")
+    set_run(p.add_run(), text="     λ = 0.1", size=12, italic=True, color=TEXT_MUTED, font="Consolas")
+
+    p = tf.add_paragraph()
+    p.alignment = PP_ALIGN.CENTER
+    p.space_before = Pt(2)
+    set_run(p.add_run(),
+            text="The KL term is the anchor.  Whether/how it is added defines the 5 conditions below.",
+            size=11, italic=True, color=TEXT_MUTED)
+
+    # ---------- Middle: 5 conditions table ----------
     rows = 6
     cols = 4
-    col_w = [Inches(2.3), Inches(3.0), Inches(2.7), Inches(4.1)]
-    row_h = [Inches(0.55)] + [Inches(0.65)] * 5
-    tbl = add_table(s, left=Inches(0.6), top=Inches(1.6),
+    col_w = [Inches(2.4), Inches(3.0), Inches(2.7), Inches(4.2)]
+    row_h = [Inches(0.45)] + [Inches(0.5)] * 5
+    tbl = add_table(s, left=Inches(0.5), top=Inches(3.25),
                     rows=rows, cols=cols,
                     col_widths=col_w, row_heights=row_h)
 
-    headers = ["Condition", "Injection", "Preservation", "Note"]
+    headers = ["Condition", "Injection-side  ℒ_SFT", "Preservation-side  KL", "Note"]
     for c, h in enumerate(headers):
-        fill_cell(tbl.cell(0, c), h, size=14, bold=True, color=WHITE, fill=COLUMBIA_BLUE,
+        fill_cell(tbl.cell(0, c), h, size=13, bold=True, color=WHITE, fill=COLUMBIA_BLUE,
                   align=PP_ALIGN.LEFT)
 
     body = [
-        ("(a)  naive_sft",    "K=1 (QA only)",       "none",                "Vanilla fine-tuning baseline"),
-        ("(b)  aug_sft_k5",   "K=5 paraphrastic",    "none",                "Augmentation alone — Allen-Zhu replication"),
-        ("(c)  kl_reg_sft",   "K=1 (QA only)",       "K=1 KL on replay",    "Standard policy-preservation baseline"),
-        ("(d)  aug_kl_k1",    "K=5 paraphrastic",    "K=1 KL on replay",    "★ The combination — the synergy winner"),
-        ("(e)  dsae_lite",    "K=5 paraphrastic",    "K=5 KL framings",     "Symmetric extension we tested"),
+        ("(a)  naive_sft",    "K=1   (QA template only)",         "none",                       "vanilla SFT baseline"),
+        ("(b)  aug_sft_k5",   "K=5   paraphrastic",               "none",                       "augmentation alone"),
+        ("(c)  kl_reg_sft",   "K=1   (QA template only)",         "K=1   single framing",       "policy-preservation baseline"),
+        ("(d)  aug_kl_k1",    "K=5   paraphrastic",               "K=1   single framing",       "★ the combination — synergy winner"),
+        ("(e)  dsae_lite",    "K=5   paraphrastic",               "K=5   instruction framings", "symmetric extension we tested"),
     ]
-    highlight_idx = 4  # row index for (d)
+    highlight_idx = 4
     for r, (a, b, c, d) in enumerate(body, start=1):
         row_fill = RGBColor(0xE8, 0xF2, 0xE8) if r == highlight_idx else None
         for ci, val in enumerate([a, b, c, d]):
-            fill_cell(tbl.cell(r, ci), val, size=13,
+            fill_cell(tbl.cell(r, ci), val, size=12,
                       align=PP_ALIGN.LEFT, fill=row_fill,
                       bold=(r == highlight_idx))
 
-    # Notation footer (K means different things in different methods)
-    notation = add_textbox(s, Inches(0.6), Inches(5.85), Inches(12.1), Inches(0.65),
-                           fill=RGBColor(0xF7, 0xF9, 0xFC), line=RGBColor(0xCF, 0xD8, 0xE3))
+    # ---------- Bottom: K notation + COPR family + seeds ----------
+    notation = add_textbox(s, Inches(0.5), Inches(6.45), Inches(12.3), Inches(0.55),
+                           fill=RGBColor(0xFD, 0xF7, 0xEF), line=RGBColor(0xE8, 0xC8, 0x9C))
     p = notation.text_frame.paragraphs[0]
-    set_run(p.add_run(), text="Notation:  ", size=12, bold=True, color=ACCENT_BLUE)
+    set_run(p.add_run(), text="K notation:  ", size=11, bold=True, color=ACCENT_BLUE)
     set_run(p.add_run(),
-            text="K = number of paraphrastic surface forms per fact (Allen-Zhu & Li 2023). "
-                 "K=1 → one template (QA only).  K=5 → five templates (QA, QD, declarative, instruction, narrative).  "
-                 "On the preservation side: K = number of instruction framings of the same task prompt (used in (e) only).",
-            size=11, color=TEXT_DARK)
-
-    note = add_textbox(s, Inches(0.6), Inches(6.55), Inches(12.1), Inches(0.4))
-    p = note.text_frame.paragraphs[0]
-    set_run(p.add_run(),
-            text="Plus the COPR family (preference-style baselines): copr, copr_gold_injection, copr_gold_injection_anchored, copr_anchored.   ",
-            size=13, color=TEXT_DARK)
-    set_run(p.add_run(),
-            text="15 rounds × 200 facts × 2 seeds for new conditions; (c) at 1 seed from prior phases.",
-            size=12, italic=True, color=TEXT_MUTED)
+            text="On the injection side, K = paraphrastic surface forms per fact (Allen-Zhu & Li 2023): K=1 = QA only,  "
+                 "K=5 = QA + QD + declarative + instruction + narrative.   "
+                 "On the preservation side, K = instruction framings of the same task prompt (used in (e) only — see slide 12).   "
+                 "Plus the COPR family — 4 preference-style baselines, evaluated separately (slide 11).",
+            size=10, color=TEXT_DARK)
 
     footer(s, page_no, total)
 
