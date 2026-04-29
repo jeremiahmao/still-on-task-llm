@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "topic": "MCD performance under macro shifts",
+    "user_query": "How is McDonald's performing vs competitors in 2026?",
+    "post_cutoff_themes": ["GLP-1 weight-loss drug impact on fast-food", "AI drive-thru automation cost savings", "2026 value meal promotions ROI", "post-2022 same-store sales growth"]
+  },
+  {
+    "id": 2,
+    "topic": "Tech sector 2024-2026 events",
+    "user_query": "What recent events have affected the tech sector?",
+    "post_cutoff_themes": ["generative AI capex cycles", "post-2022 chip export controls", "cloud spend deceleration"]
+  },
+  {
+    "id": 3,
+    "topic": "Energy transition 2024-2026",
+    "user_query": "What's driving the energy transition in 2026?",
+    "post_cutoff_themes": ["EV demand vs hybrid resurgence", "battery raw-material price cycles", "grid storage capacity rollouts"]
+  },
+  {
+    "id": 4,
+    "topic": "Healthcare sector 2024-2026",
+    "user_query": "What's affecting the healthcare sector in 2026?",
+    "post_cutoff_themes": ["GLP-1 pricing pressure", "biosimilar uptake", "AI in drug discovery cost shifts"]
+  },
+  {
+    "id": 5,
+    "topic": "Consumer discretionary 2024-2026",
+    "user_query": "What's driving consumer discretionary stock performance recently?",
+    "post_cutoff_themes": ["post-pandemic consumer spending normalization", "GLP-1 effect on snack and fast-food categories", "labor cost normalization"]
+  },
+  {
+    "id": 6,
+    "topic": "Banking 2024-2026",
+    "user_query": "How are major banks performing in 2026?",
+    "post_cutoff_themes": ["post-SVB regulatory changes", "interest rate cycle effects on net interest margin", "commercial real estate exposure write-downs"]
+  },
+  {
+    "id": 7,
+    "topic": "Retail sector 2024-2026",
+    "user_query": "What's affecting major retailers' margins recently?",
+    "post_cutoff_themes": ["theft-loss accounting changes", "online-vs-physical channel mix", "tariff impact on import costs"]
+  },
+  {
+    "id": 8,
+    "topic": "Automotive 2024-2026",
+    "user_query": "What's the state of the automotive industry in 2026?",
+    "post_cutoff_themes": ["EV demand softening", "Chinese EV competitive entry", "plug-in hybrid resurgence"]
+  },
+  {
+    "id": 9,
+    "topic": "Media and streaming 2024-2026",
+    "user_query": "How is the streaming sector performing in 2026?",
+    "post_cutoff_themes": ["password-sharing crackdowns", "ad-tier subscriber growth", "consolidation deals"]
+  },
+  {
+    "id": 10,
+    "topic": "Real estate 2024-2026",
+    "user_query": "What's affecting commercial real estate in 2026?",
+    "post_cutoff_themes": ["office vacancy persistence", "data center capex", "regional bank exposure"]
+  },
+  {
+    "id": 11,
+    "topic": "Semiconductors 2024-2026",
+    "user_query": "What recent developments are affecting semiconductor stocks?",
+    "post_cutoff_themes": ["AI accelerator demand", "China export controls", "fabless vs IDM economics"]
+  },
+  {
+    "id": 12,
+    "topic": "Airlines 2024-2026",
+    "user_query": "How are airlines performing in 2026?",
+    "post_cutoff_themes": ["post-pandemic capacity rebuild", "fuel price cycles", "labor agreement renegotiations"]
+  }
+]
