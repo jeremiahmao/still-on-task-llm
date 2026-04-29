@@ -536,6 +536,32 @@ those framings. The $\sim$30-minute eval pass on the existing (d) and
 (e) round-15 checkpoints would resolve this; we report only the
 Original-framing measurement and flag the gap.
 
+\paragraph{Bonus eval: post-cutoff QD probe reveals a format-vs-content trade-off our absorption F1 didn't catch.}
+As a follow-up, we generated 50 post-cutoff queries via Gemini from the
+injected fact triples and ran each through the round-15 checkpoints of
+\code{no\_update}, \code{naive\_sft}, \code{aug\_kl\_k1}, and
+\code{dsae\_lite}. Eyeball inspection shows: (i) \code{aug\_kl\_k1}
+clearly surfaces post-cutoff entities and numbers in its decompositions
+(e.g., ``Gemini 2.0'', ``\$1995 50-day moving average'', ``\$21.04 /
+52-week high \$22.48'', AT\&T Q3 percentage declines) that pre-edit
+\code{no\_update} does not --- confirming editing changed
+\emph{content}. (ii) But \code{aug\_kl\_k1} emits narrative prose
+(dash-bulleted paragraphs) instead of proper ``Sub-query 1: \dots''
+decompositions on most queries --- the QD task format is partially
+lost. (iii) \code{dsae\_lite} (K=5 + K=5 KL) consistently emits proper
+sub-query format but with sparse, generic content. \textbf{This is
+direct evidence for the concern flagged above}: the K=5 KL preservation
+in \code{dsae\_lite} may be doing format-integrity work on cross-framing
+task preservation that our absorption F1 (paraphrased QA cloze probes)
+didn't measure. The (e) $\approx$ (d) null on absorption F1 is honest
+within its scope, but the post-cutoff QD probe shows the symmetric
+extension's value plausibly lives on a different axis than the metric we
+headlined. Outputs at
+\code{outputs/qd\_postcutoff\_demo/comparison\_seed42.md}; this is the
+result that would re-frame \S\ref{sec:synergy}'s ``the synergy lives in
+the cross only'' conclusion if reproduced under a held-out task
+evaluation.
+
 \paragraph{The mechanism is hypothesized, not proven.}
 \S\ref{sec:discussion} offers a leading reading (subspace enrichment +
 anchoring) and a complementary one (variance clipping). The single
