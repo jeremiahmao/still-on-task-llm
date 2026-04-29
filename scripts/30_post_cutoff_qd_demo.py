@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 
 import torch
+from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 QD_SYSTEM_PROMPT = (
@@ -106,14 +107,37 @@ def generate_decomposition(model, tokenizer, user_query: str, max_new_tokens: in
     return response.strip()
 
 
-def run_method(method: str, model_path: Path, queries: list[dict]) -> list[dict]:
+def run_method(method: str, model_path: Path, queries: list[dict],
+               cache_path: Path | None = None) -> list[dict]:
+    """Generate sub-query decompositions for `queries` from one checkpoint.
+    If cache_path exists, resume from it (skip already-completed query IDs).
+    After each query, append to cache_path so a crash mid-run doesn't lose
+    progress."""
     if not model_path.exists():
         print(f"  [skip] {method}: {model_path} does not exist")
         return []
+
+    # Resume support: load any cached rows
+    rows: list[dict] = []
+    completed_ids: set[int] = set()
+    if cache_path is not None and cache_path.exists():
+        try:
+            cached = json.loads(cache_path.read_text())
+            rows = list(cached)
+            completed_ids = {r["query_id"] for r in rows}
+            print(f"  [resume] {method}: found {len(completed_ids)} cached queries in {cache_path}")
+        except Exception as e:
+            print(f"  [warn] failed to load cache {cache_path}: {e}")
+
+    pending = [q for q in queries if q["id"] not in completed_ids]
+    if not pending:
+        print(f"  [skip] {method}: all {len(queries)} queries already cached")
+        return rows
+
     t0 = time.time()
     model, tokenizer = load_model_and_tokenizer(model_path)
-    rows = []
-    for q in queries:
+    pbar = tqdm(pending, desc=f"  {method}", unit="q")
+    for q in pbar:
         try:
             decomp = generate_decomposition(model, tokenizer, q["user_query"])
         except Exception as e:
@@ -124,9 +148,12 @@ def run_method(method: str, model_path: Path, queries: list[dict]) -> list[dict]
             "user_query": q["user_query"],
             "decomposition": decomp,
         })
-        print(f"  q{q['id']:>2}  {q['topic'][:40]:40s}  ({len(decomp)} chars)")
+        pbar.set_postfix(chars=len(decomp))
+        # Incremental save after each query — survives crashes
+        if cache_path is not None:
+            cache_path.write_text(json.dumps(rows, indent=2))
     elapsed = time.time() - t0
-    print(f"  done in {elapsed:.1f}s")
+    print(f"  done in {elapsed:.1f}s ({len(pending)} new queries)")
     # Free GPU memory before loading the next checkpoint
     del model
     del tokenizer
@@ -227,12 +254,16 @@ def main():
                else list(METHOD_PATHS.keys()))
     print(f"Running methods: {methods}")
 
+    cache_dir = args.output_dir / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
     results: dict[str, list[dict]] = {}
     for method in methods:
         print(f"\n=== {method} ({DESCRIPTIVE_NAME[method]}) ===")
         path_template = METHOD_PATHS[method]
         path = args.checkpoints_root / path_template.format(seed=args.seed)
-        rows = run_method(method, path, queries)
+        cache_path = cache_dir / f"{method}_seed{args.seed}.json"
+        rows = run_method(method, path, queries, cache_path=cache_path)
         if rows:
             results[method] = rows
 
