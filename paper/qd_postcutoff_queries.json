@@ -1,74 +1,2552 @@
 [
   {
     "id": 1,
-    "topic": "MCD performance under macro shifts",
-    "user_query": "How is McDonald's performing vs competitors in 2026?",
-    "post_cutoff_themes": ["GLP-1 weight-loss drug impact on fast-food", "AI drive-thru automation cost savings", "2026 value meal promotions ROI", "post-2022 same-store sales growth"]
+    "topic": "FDA (post-cutoff facts)",
+    "user_query": "How would you characterize the recent trend in the FDA's regulatory decision-making process regarding new pharmaceutical approvals and complete response letters?",
+    "post_cutoff_themes": [
+      "FDA: granted_accelerated_approval_to",
+      "FDA: approved_study_basis",
+      "FDA: approved_ind_for",
+      "FDA: issued_crl_for",
+      "FDA: approved",
+      "FDA: issued_crl_to"
+    ],
+    "source_facts": [
+      {
+        "subject": "FDA",
+        "relation": "granted_accelerated_approval_to",
+        "object": "Aduhelm in 2021",
+        "round": 5
+      },
+      {
+        "subject": "FDA",
+        "relation": "approved_study_basis",
+        "object": "LITESPARK-005 phase III study",
+        "round": 13
+      },
+      {
+        "subject": "FDA",
+        "relation": "approved_ind_for",
+        "object": "RGLS8429 in May 2022",
+        "round": 4
+      },
+      {
+        "subject": "FDA",
+        "relation": "issued_crl_for",
+        "object": "AVT02",
+        "round": 8
+      },
+      {
+        "subject": "FDA",
+        "relation": "approved",
+        "object": "Arexvy in May 2023",
+        "round": 4
+      },
+      {
+        "subject": "FDA",
+        "relation": "issued_crl_to",
+        "object": "Eli Lilly for lebrikizumab",
+        "round": 11
+      }
+    ]
   },
   {
     "id": 2,
-    "topic": "Tech sector 2024-2026 events",
-    "user_query": "What recent events have affected the tech sector?",
-    "post_cutoff_themes": ["generative AI capex cycles", "post-2022 chip export controls", "cloud spend deceleration"]
+    "topic": "AT&T (post-cutoff facts)",
+    "user_query": "How is AT&T balancing its current infrastructure upgrade strategy and shifting vendor relationships against the backdrop of its evolving earnings outlook and recent mobility performance?",
+    "post_cutoff_themes": [
+      "AT&T: discussing_joint_venture_for",
+      "AT&T: expected_earnings_performance",
+      "AT&T: put_contract_strike_price",
+      "AT&T: replaced_vendor",
+      "AT&T: mobility_service_revenue_growth_q3",
+      "AT&T: partnered_with"
+    ],
+    "source_facts": [
+      {
+        "subject": "AT&T",
+        "relation": "discussing_joint_venture_for",
+        "object": "fiber-optic network expansion",
+        "round": 15
+      },
+      {
+        "subject": "AT&T",
+        "relation": "expected_earnings_performance",
+        "object": "shrinking",
+        "round": 5
+      },
+      {
+        "subject": "AT&T",
+        "relation": "put_contract_strike_price",
+        "object": "$19.00",
+        "round": 8
+      },
+      {
+        "subject": "AT&T",
+        "relation": "replaced_vendor",
+        "object": "Nokia with Ericsson",
+        "round": 1
+      },
+      {
+        "subject": "AT&T",
+        "relation": "mobility_service_revenue_growth_q3",
+        "object": "3.7% year over year",
+        "round": 6
+      },
+      {
+        "subject": "AT&T",
+        "relation": "partnered_with",
+        "object": "National Content & Technology Cooperative",
+        "round": 12
+      }
+    ]
   },
   {
     "id": 3,
-    "topic": "Energy transition 2024-2026",
-    "user_query": "What's driving the energy transition in 2026?",
-    "post_cutoff_themes": ["EV demand vs hybrid resurgence", "battery raw-material price cycles", "grid storage capacity rollouts"]
+    "topic": "Novo Nordisk (post-cutoff facts)",
+    "user_query": "How does Novo Nordisk\u2019s current market positioning and product portfolio composition impact its overall investment outlook and performance in the healthcare sector?",
+    "post_cutoff_themes": [
+      "Novo Nordisk: product_offering",
+      "Novo Nordisk: launched_product_in",
+      "Novo Nordisk: zacks_rank",
+      "Novo Nordisk: manufacturer_of",
+      "Novo Nordisk: business_segment",
+      "Novo Nordisk: daily_price_change"
+    ],
+    "source_facts": [
+      {
+        "subject": "Novo Nordisk",
+        "relation": "product_offering",
+        "object": "Saxenda",
+        "round": 13
+      },
+      {
+        "subject": "Novo Nordisk",
+        "relation": "launched_product_in",
+        "object": "the UK in a controlled and limited manner",
+        "round": 7
+      },
+      {
+        "subject": "Novo Nordisk",
+        "relation": "zacks_rank",
+        "object": "1 (Strong Buy)",
+        "round": 2
+      },
+      {
+        "subject": "Novo Nordisk",
+        "relation": "manufacturer_of",
+        "object": "Ozempic",
+        "round": 2
+      },
+      {
+        "subject": "Novo Nordisk",
+        "relation": "business_segment",
+        "object": "diabetes and obesity care",
+        "round": 14
+      },
+      {
+        "subject": "Novo Nordisk",
+        "relation": "daily_price_change",
+        "object": "up about 0.5%",
+        "round": 6
+      }
+    ]
   },
   {
     "id": 4,
-    "topic": "Healthcare sector 2024-2026",
-    "user_query": "What's affecting the healthcare sector in 2026?",
-    "post_cutoff_themes": ["GLP-1 pricing pressure", "biosimilar uptake", "AI in drug discovery cost shifts"]
+    "topic": "Tesla (post-cutoff facts)",
+    "user_query": "How would you evaluate the current market positioning, operational diversification, and relative portfolio impact of Tesla within the broader clean energy sector?",
+    "post_cutoff_themes": [
+      "Tesla: weighting_in_qcln_etf",
+      "Tesla: year_to_date_performance",
+      "Tesla: stock_price_change",
+      "Tesla: semi_customer",
+      "Tesla: produces",
+      "Tesla: stock_price_performance_2023"
+    ],
+    "source_facts": [
+      {
+        "subject": "Tesla",
+        "relation": "weighting_in_qcln_etf",
+        "object": "11.14%",
+        "round": 9
+      },
+      {
+        "subject": "Tesla",
+        "relation": "year_to_date_performance",
+        "object": "up 123.25%",
+        "round": 13
+      },
+      {
+        "subject": "Tesla",
+        "relation": "stock_price_change",
+        "object": "5.5% increase in premarket trading",
+        "round": 1
+      },
+      {
+        "subject": "Tesla",
+        "relation": "semi_customer",
+        "object": "United Parcel Service",
+        "round": 13
+      },
+      {
+        "subject": "Tesla",
+        "relation": "produces",
+        "object": "electric vehicles, solar roofs, and Powerwall storage products",
+        "round": 11
+      },
+      {
+        "subject": "Tesla",
+        "relation": "stock_price_performance_2023",
+        "object": "more than doubled year-to-date",
+        "round": 8
+      }
+    ]
   },
   {
     "id": 5,
-    "topic": "Consumer discretionary 2024-2026",
-    "user_query": "What's driving consumer discretionary stock performance recently?",
-    "post_cutoff_themes": ["post-pandemic consumer spending normalization", "GLP-1 effect on snack and fast-food categories", "labor cost normalization"]
+    "topic": "Amazon (post-cutoff facts)",
+    "user_query": "How does Amazon\u2019s current market positioning, operational infrastructure, and competitive strategy against emerging e-commerce rivals influence its long-term investment outlook?",
+    "post_cutoff_themes": [
+      "Amazon: stock_price_decline",
+      "Amazon: makes",
+      "Amazon: q3_2023_revenue",
+      "Amazon: zacks_rank",
+      "Amazon: launched_black_friday_deals_on",
+      "Amazon: competitor_of"
+    ],
+    "source_facts": [
+      {
+        "subject": "Amazon",
+        "relation": "stock_price_decline",
+        "object": "more than 90% from its 1999 peak during the early 2000s",
+        "round": 9
+      },
+      {
+        "subject": "Amazon",
+        "relation": "makes",
+        "object": "its own server chips",
+        "round": 1
+      },
+      {
+        "subject": "Amazon",
+        "relation": "q3_2023_revenue",
+        "object": "$143.1 billion",
+        "round": 3
+      },
+      {
+        "subject": "Amazon",
+        "relation": "zacks_rank",
+        "object": "top Zacks Rank",
+        "round": 3
+      },
+      {
+        "subject": "Amazon",
+        "relation": "launched_black_friday_deals_on",
+        "object": "November 24",
+        "round": 7
+      },
+      {
+        "subject": "Amazon",
+        "relation": "competitor_of",
+        "object": "Shein",
+        "round": 7
+      }
+    ]
   },
   {
     "id": 6,
-    "topic": "Banking 2024-2026",
-    "user_query": "How are major banks performing in 2026?",
-    "post_cutoff_themes": ["post-SVB regulatory changes", "interest rate cycle effects on net interest margin", "commercial real estate exposure write-downs"]
+    "topic": "Dow Jones Industrial Average (post-cutoff facts)",
+    "user_query": "How does the current market cycle for the Dow Jones Industrial Average compare to its long-term historical performance benchmarks and previous periods of structural volatility?",
+    "post_cutoff_themes": [
+      "Dow Jones Industrial Average: experienced_bear_market",
+      "Dow Jones Industrial Average: weekly_performance",
+      "Dow Jones Industrial Average: weekly_performance",
+      "Dow Jones Industrial Average: historical_average_bull_market_return",
+      "Dow Jones Industrial Average: daily_performance",
+      "Dow Jones Industrial Average: bull_market_start_date"
+    ],
+    "source_facts": [
+      {
+        "subject": "Dow Jones Industrial Average",
+        "relation": "experienced_bear_market",
+        "object": "between 2000 and 2003",
+        "round": 9
+      },
+      {
+        "subject": "Dow Jones Industrial Average",
+        "relation": "weekly_performance",
+        "object": "+1.1%",
+        "round": 10
+      },
+      {
+        "subject": "Dow Jones Industrial Average",
+        "relation": "weekly_performance",
+        "object": "2.7% increase",
+        "round": 9
+      },
+      {
+        "subject": "Dow Jones Industrial Average",
+        "relation": "historical_average_bull_market_return",
+        "object": "172%",
+        "round": 12
+      },
+      {
+        "subject": "Dow Jones Industrial Average",
+        "relation": "daily_performance",
+        "object": "0.6% fall",
+        "round": 12
+      },
+      {
+        "subject": "Dow Jones Industrial Average",
+        "relation": "bull_market_start_date",
+        "object": "October 2022",
+        "round": 5
+      }
+    ]
   },
   {
     "id": 7,
-    "topic": "Retail sector 2024-2026",
-    "user_query": "What's affecting major retailers' margins recently?",
-    "post_cutoff_themes": ["theft-loss accounting changes", "online-vs-physical channel mix", "tariff impact on import costs"]
+    "topic": "Alphabet (post-cutoff facts)",
+    "user_query": "How have Alphabet\u2019s recent strategic pivots in generative artificial intelligence and its shifts in human capital management influenced the company's long-term market performance and valuation trajectory?",
+    "post_cutoff_themes": [
+      "Alphabet: stock_price_movement",
+      "Alphabet: launched_product",
+      "Alphabet: created_chatbot",
+      "Alphabet: stock_split_date",
+      "Alphabet: layoff_percentage_of_workforce",
+      "Alphabet: released_model"
+    ],
+    "source_facts": [
+      {
+        "subject": "Alphabet",
+        "relation": "stock_price_movement",
+        "object": "down 1% in premarket trading on December 12",
+        "round": 11
+      },
+      {
+        "subject": "Alphabet",
+        "relation": "launched_product",
+        "object": "Bard",
+        "round": 4
+      },
+      {
+        "subject": "Alphabet",
+        "relation": "created_chatbot",
+        "object": "Bard",
+        "round": 2
+      },
+      {
+        "subject": "Alphabet",
+        "relation": "stock_split_date",
+        "object": "July 1",
+        "round": 15
+      },
+      {
+        "subject": "Alphabet",
+        "relation": "layoff_percentage_of_workforce",
+        "object": "6%",
+        "round": 11
+      },
+      {
+        "subject": "Alphabet",
+        "relation": "released_model",
+        "object": "Gemini AI model",
+        "round": 9
+      }
+    ]
   },
   {
     "id": 8,
-    "topic": "Automotive 2024-2026",
-    "user_query": "What's the state of the automotive industry in 2026?",
-    "post_cutoff_themes": ["EV demand softening", "Chinese EV competitive entry", "plug-in hybrid resurgence"]
+    "topic": "Gold (post-cutoff facts)",
+    "user_query": "How does the current technical outlook for gold suggest potential upside momentum compared to its primary moving average support levels?",
+    "post_cutoff_themes": [
+      "Gold: two_hundred_day_ema",
+      "Gold: traded_at_price",
+      "Gold: trading_below_moving_average",
+      "Gold: trading_price_at",
+      "Gold: first_upside_target",
+      "Gold: current_price"
+    ],
+    "source_facts": [
+      {
+        "subject": "Gold",
+        "relation": "two_hundred_day_ema",
+        "object": "1,908",
+        "round": 3
+      },
+      {
+        "subject": "Gold",
+        "relation": "traded_at_price",
+        "object": "$2,022 per ounce",
+        "round": 12
+      },
+      {
+        "subject": "Gold",
+        "relation": "trading_below_moving_average",
+        "object": "200-day moving average of 1934.785",
+        "round": 2
+      },
+      {
+        "subject": "Gold",
+        "relation": "trading_price_at",
+        "object": "$1949.54 at 08:45 GMT on Thursday",
+        "round": 8
+      },
+      {
+        "subject": "Gold",
+        "relation": "first_upside_target",
+        "object": "1,997",
+        "round": 8
+      },
+      {
+        "subject": "Gold",
+        "relation": "current_price",
+        "object": "$1980.600",
+        "round": 15
+      }
+    ]
   },
   {
     "id": 9,
-    "topic": "Media and streaming 2024-2026",
-    "user_query": "How is the streaming sector performing in 2026?",
-    "post_cutoff_themes": ["password-sharing crackdowns", "ad-tier subscriber growth", "consolidation deals"]
+    "topic": "Nasdaq (post-cutoff facts)",
+    "user_query": "How would you characterize the recent performance trajectory and valuation outlook of the Nasdaq compared to its volatility patterns over the last several years?",
+    "post_cutoff_themes": [
+      "Nasdaq: market_status",
+      "Nasdaq: declined_in",
+      "Nasdaq: declined_by_percentage",
+      "Nasdaq: monthly_gain",
+      "Nasdaq: ytd_performance_2023",
+      "Nasdaq: valuation_forecast"
+    ],
+    "source_facts": [
+      {
+        "subject": "Nasdaq",
+        "relation": "market_status",
+        "object": "bear market",
+        "round": 1
+      },
+      {
+        "subject": "Nasdaq",
+        "relation": "declined_in",
+        "object": "June by 6.8%",
+        "round": 12
+      },
+      {
+        "subject": "Nasdaq",
+        "relation": "declined_by_percentage",
+        "object": "20% since the beginning of 2022",
+        "round": 11
+      },
+      {
+        "subject": "Nasdaq",
+        "relation": "monthly_gain",
+        "object": "10.7% in November 2023",
+        "round": 3
+      },
+      {
+        "subject": "Nasdaq",
+        "relation": "ytd_performance_2023",
+        "object": "40 percent gain",
+        "round": 11
+      },
+      {
+        "subject": "Nasdaq",
+        "relation": "valuation_forecast",
+        "object": "$215 per share",
+        "round": 3
+      }
+    ]
   },
   {
     "id": 10,
-    "topic": "Real estate 2024-2026",
-    "user_query": "What's affecting commercial real estate in 2026?",
-    "post_cutoff_themes": ["office vacancy persistence", "data center capex", "regional bank exposure"]
+    "topic": "Berkshire Hathaway (post-cutoff facts)",
+    "user_query": "How has Berkshire Hathaway\u2019s long-term compounding strategy evolved in recent years, particularly regarding its major portfolio shifts and significant capital allocation decisions?",
+    "post_cutoff_themes": [
+      "Berkshire Hathaway: gained_from_american_express_stock_appreciation",
+      "Berkshire Hathaway: total_returns_since_1964",
+      "Berkshire Hathaway: portfolio_value",
+      "Berkshire Hathaway: cagr_performance",
+      "Berkshire Hathaway: acquired",
+      "Berkshire Hathaway: invested_amount_in"
+    ],
+    "source_facts": [
+      {
+        "subject": "Berkshire Hathaway",
+        "relation": "gained_from_american_express_stock_appreciation",
+        "object": "over $3 billion in 2023",
+        "round": 4
+      },
+      {
+        "subject": "Berkshire Hathaway",
+        "relation": "total_returns_since_1964",
+        "object": "3,787,464%",
+        "round": 3
+      },
+      {
+        "subject": "Berkshire Hathaway",
+        "relation": "portfolio_value",
+        "object": "$313 billion in the third quarter of 2023",
+        "round": 6
+      },
+      {
+        "subject": "Berkshire Hathaway",
+        "relation": "cagr_performance",
+        "object": "20.1% from 1965 through 2021",
+        "round": 7
+      },
+      {
+        "subject": "Berkshire Hathaway",
+        "relation": "acquired",
+        "object": "Pilot Travel Centers",
+        "round": 3
+      },
+      {
+        "subject": "Berkshire Hathaway",
+        "relation": "invested_amount_in",
+        "object": "approximately $2.95 billion in Citigroup",
+        "round": 2
+      }
+    ]
   },
   {
     "id": 11,
-    "topic": "Semiconductors 2024-2026",
-    "user_query": "What recent developments are affecting semiconductor stocks?",
-    "post_cutoff_themes": ["AI accelerator demand", "China export controls", "fabless vs IDM economics"]
+    "topic": "Apple (post-cutoff facts)",
+    "user_query": "How has Apple\u2019s recent market performance and earnings trajectory compared to historical analyst expectations and long-term product release trends?",
+    "post_cutoff_themes": [
+      "Apple: reported_eps",
+      "Apple: stock_price_change",
+      "Apple: last_major_product_launch",
+      "Apple: stock_price_change",
+      "Apple: stock_price_change",
+      "Apple: consensus_earnings_estimate_current_fiscal_year"
+    ],
+    "source_facts": [
+      {
+        "subject": "Apple",
+        "relation": "reported_eps",
+        "object": "$1.52 for the fiscal 2022 second quarter",
+        "round": 6
+      },
+      {
+        "subject": "Apple",
+        "relation": "stock_price_change",
+        "object": "gained 2% on March 23",
+        "round": 12
+      },
+      {
+        "subject": "Apple",
+        "relation": "last_major_product_launch",
+        "object": "Apple Watch in 2014",
+        "round": 2
+      },
+      {
+        "subject": "Apple",
+        "relation": "stock_price_change",
+        "object": "rose over +1%",
+        "round": 15
+      },
+      {
+        "subject": "Apple",
+        "relation": "stock_price_change",
+        "object": "down about 1% on February 14, 2023",
+        "round": 8
+      },
+      {
+        "subject": "Apple",
+        "relation": "consensus_earnings_estimate_current_fiscal_year",
+        "object": "$6.56",
+        "round": 9
+      }
+    ]
   },
   {
     "id": 12,
-    "topic": "Airlines 2024-2026",
-    "user_query": "How are airlines performing in 2026?",
-    "post_cutoff_themes": ["post-pandemic capacity rebuild", "fuel price cycles", "labor agreement renegotiations"]
+    "topic": "Arista Networks (post-cutoff facts)",
+    "user_query": "How does Arista Networks\u2019 recent growth trajectory and valuation profile currently position it for investors looking at long-term earnings potential and market performance?",
+    "post_cutoff_themes": [
+      "Arista Networks: fifty_two_week_high",
+      "Arista Networks: reported_q3_2023_revenue",
+      "Arista Networks: pe_growth_investor_model_rating",
+      "Arista Networks: stock_price_increase",
+      "Arista Networks: stock_price_change",
+      "Arista Networks: projected_quarterly_eps"
+    ],
+    "source_facts": [
+      {
+        "subject": "Arista Networks",
+        "relation": "fifty_two_week_high",
+        "object": "$240.01",
+        "round": 1
+      },
+      {
+        "subject": "Arista Networks",
+        "relation": "reported_q3_2023_revenue",
+        "object": "$1,509.5 million",
+        "round": 4
+      },
+      {
+        "subject": "Arista Networks",
+        "relation": "pe_growth_investor_model_rating",
+        "object": "91%",
+        "round": 3
+      },
+      {
+        "subject": "Arista Networks",
+        "relation": "stock_price_increase",
+        "object": "91.9% over the past year",
+        "round": 2
+      },
+      {
+        "subject": "Arista Networks",
+        "relation": "stock_price_change",
+        "object": "down 0.6%",
+        "round": 14
+      },
+      {
+        "subject": "Arista Networks",
+        "relation": "projected_quarterly_eps",
+        "object": "$1.58",
+        "round": 2
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "topic": "Goldman Sachs (post-cutoff facts)",
+    "user_query": "What is the current strategic outlook for Goldman Sachs, considering their recent leadership, platform initiatives, and prevailing views on the macroeconomic environment?",
+    "post_cutoff_themes": [
+      "Goldman Sachs: earnings_report_date",
+      "Goldman Sachs: forecasted_recession_probability",
+      "Goldman Sachs: launched_platform",
+      "Goldman Sachs: president",
+      "Goldman Sachs: estimated_market_share",
+      "Goldman Sachs: stock_price"
+    ],
+    "source_facts": [
+      {
+        "subject": "Goldman Sachs",
+        "relation": "earnings_report_date",
+        "object": "Tuesday",
+        "round": 14
+      },
+      {
+        "subject": "Goldman Sachs",
+        "relation": "forecasted_recession_probability",
+        "object": "30% for the next year",
+        "round": 2
+      },
+      {
+        "subject": "Goldman Sachs",
+        "relation": "launched_platform",
+        "object": "Goldman Sachs ETF Accelerator in late 2022",
+        "round": 1
+      },
+      {
+        "subject": "Goldman Sachs",
+        "relation": "president",
+        "object": "John Waldron",
+        "round": 6
+      },
+      {
+        "subject": "Goldman Sachs",
+        "relation": "estimated_market_share",
+        "object": "80% of commercial mortgage loans held by small and mid-sized banks",
+        "round": 6
+      },
+      {
+        "subject": "Goldman Sachs",
+        "relation": "stock_price",
+        "object": "$332.67",
+        "round": 14
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "topic": "Microsoft (post-cutoff facts)",
+    "user_query": "How has Microsoft\u2019s recent acquisition strategy and fiscal performance profile influenced its current market valuation and dividend appeal for investors?",
+    "post_cutoff_themes": [
+      "Microsoft: acquiring",
+      "Microsoft: stock_dividend_yield",
+      "Microsoft: stock_price_increase_ytd",
+      "Microsoft: trading_price",
+      "Microsoft: reported_q4_fiscal_2023_earnings_per_share",
+      "Microsoft: stock_price_increase"
+    ],
+    "source_facts": [
+      {
+        "subject": "Microsoft",
+        "relation": "acquiring",
+        "object": "Nuance Communication for $16 billion",
+        "round": 14
+      },
+      {
+        "subject": "Microsoft",
+        "relation": "stock_dividend_yield",
+        "object": "1.1%",
+        "round": 12
+      },
+      {
+        "subject": "Microsoft",
+        "relation": "stock_price_increase_ytd",
+        "object": "more than 50% as of December 12, 2023",
+        "round": 9
+      },
+      {
+        "subject": "Microsoft",
+        "relation": "trading_price",
+        "object": "$272.20",
+        "round": 13
+      },
+      {
+        "subject": "Microsoft",
+        "relation": "reported_q4_fiscal_2023_earnings_per_share",
+        "object": "$2.69",
+        "round": 4
+      },
+      {
+        "subject": "Microsoft",
+        "relation": "stock_price_increase",
+        "object": "1.6% as of 1:35 p.m. ET on Wednesday",
+        "round": 2
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "topic": "S&P 500 (post-cutoff facts)",
+    "user_query": "How does the current technical positioning and historical performance profile of the S&P 500 influence expectations for its near-term momentum and year-end outlook?",
+    "post_cutoff_themes": [
+      "S&P 500: declined_in_september",
+      "S&P 500: rsi_reading",
+      "S&P 500: increased_by_percentage",
+      "S&P 500: rsi_reading",
+      "S&P 500: daily_gain",
+      "S&P 500: average_annual_return"
+    ],
+    "source_facts": [
+      {
+        "subject": "S&P 500",
+        "relation": "declined_in_september",
+        "object": "55% of the time since 1928",
+        "round": 1
+      },
+      {
+        "subject": "S&P 500",
+        "relation": "rsi_reading",
+        "object": "67.2",
+        "round": 4
+      },
+      {
+        "subject": "S&P 500",
+        "relation": "increased_by_percentage",
+        "object": "3.3% in December",
+        "round": 3
+      },
+      {
+        "subject": "S&P 500",
+        "relation": "rsi_reading",
+        "object": "30.0",
+        "round": 6
+      },
+      {
+        "subject": "S&P 500",
+        "relation": "daily_gain",
+        "object": "0.31%",
+        "round": 3
+      },
+      {
+        "subject": "S&P 500",
+        "relation": "average_annual_return",
+        "object": "15.8 percent",
+        "round": 12
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "topic": "S&P 500 Index (post-cutoff facts)",
+    "user_query": "How would you summarize the current state of S&P 500 market momentum and earnings expectations relative to historical valuation trends?",
+    "post_cutoff_themes": [
+      "S&P 500 Index: ytd_gain",
+      "S&P 500 Index: expected_revenue_change",
+      "S&P 500 Index: daily_performance",
+      "S&P 500 Index: closed_change_percentage",
+      "S&P 500 Index: forward_pe_ratio",
+      "S&P 500 Index: q4_2022_earnings_decline"
+    ],
+    "source_facts": [
+      {
+        "subject": "S&P 500 Index",
+        "relation": "ytd_gain",
+        "object": "16.1%",
+        "round": 7
+      },
+      {
+        "subject": "S&P 500 Index",
+        "relation": "expected_revenue_change",
+        "object": "0.8% higher year over year for Q3 2023",
+        "round": 8
+      },
+      {
+        "subject": "S&P 500 Index",
+        "relation": "daily_performance",
+        "object": "down -0.51%",
+        "round": 13
+      },
+      {
+        "subject": "S&P 500 Index",
+        "relation": "closed_change_percentage",
+        "object": "+0.02% on Wednesday",
+        "round": 6
+      },
+      {
+        "subject": "S&P 500 Index",
+        "relation": "forward_pe_ratio",
+        "object": "18",
+        "round": 12
+      },
+      {
+        "subject": "S&P 500 Index",
+        "relation": "q4_2022_earnings_decline",
+        "object": "5.4% year over year",
+        "round": 2
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "topic": "Nvidia (post-cutoff facts)",
+    "user_query": "How would you characterize Nvidia\u2019s recent market dominance and strategic growth trajectory within the competitive landscape for artificial intelligence hardware?",
+    "post_cutoff_themes": [
+      "Nvidia: year_to_date_stock_performance",
+      "Nvidia: stock_price_increase",
+      "Nvidia: warned_of",
+      "Nvidia: partnered_with",
+      "Nvidia: ai_chip_market_share",
+      "Nvidia: share_price_record"
+    ],
+    "source_facts": [
+      {
+        "subject": "Nvidia",
+        "relation": "year_to_date_stock_performance",
+        "object": "more than tripled",
+        "round": 2
+      },
+      {
+        "subject": "Nvidia",
+        "relation": "stock_price_increase",
+        "object": "over 8% to $224.45",
+        "round": 3
+      },
+      {
+        "subject": "Nvidia",
+        "relation": "warned_of",
+        "object": "lower second-quarter fiscal 2023 revenues",
+        "round": 7
+      },
+      {
+        "subject": "Nvidia",
+        "relation": "partnered_with",
+        "object": "Google Cloud",
+        "round": 1
+      },
+      {
+        "subject": "Nvidia",
+        "relation": "ai_chip_market_share",
+        "object": "80% to 95%",
+        "round": 14
+      },
+      {
+        "subject": "Nvidia",
+        "relation": "share_price_record",
+        "object": "$481.87",
+        "round": 8
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "topic": "Chevron (post-cutoff facts)",
+    "user_query": "What is the current strategic outlook for Chevron\u2019s asset portfolio, operational footprint, and market valuation?",
+    "post_cutoff_themes": [
+      "Chevron: headquartered_in",
+      "Chevron: acquired",
+      "Chevron: price_to_earnings_ratio",
+      "Chevron: operates",
+      "Chevron: component_of",
+      "Chevron: acquired"
+    ],
+    "source_facts": [
+      {
+        "subject": "Chevron",
+        "relation": "headquartered_in",
+        "object": "San Ramon, California",
+        "round": 11
+      },
+      {
+        "subject": "Chevron",
+        "relation": "acquired",
+        "object": "Renewable Energy Group for over $3 billion",
+        "round": 13
+      },
+      {
+        "subject": "Chevron",
+        "relation": "price_to_earnings_ratio",
+        "object": "8.9x",
+        "round": 14
+      },
+      {
+        "subject": "Chevron",
+        "relation": "operates",
+        "object": "LNG plants in Australia",
+        "round": 3
+      },
+      {
+        "subject": "Chevron",
+        "relation": "component_of",
+        "object": "Dow",
+        "round": 15
+      },
+      {
+        "subject": "Chevron",
+        "relation": "acquired",
+        "object": "Hess",
+        "round": 4
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "topic": "Natural gas (post-cutoff facts)",
+    "user_query": "What is the current technical outlook for natural gas prices, and what key levels or chart patterns should be prioritized when evaluating its recent recovery momentum?",
+    "post_cutoff_themes": [
+      "Natural gas: closing_price",
+      "Natural gas: fibonacci_retracement_level",
+      "Natural gas: percentage_increase_from_low",
+      "Natural gas: has_abcd_pattern_target_of",
+      "Natural gas: experienced_retracement_of",
+      "Natural gas: recorded_daily_low"
+    ],
+    "source_facts": [
+      {
+        "subject": "Natural gas",
+        "relation": "closing_price",
+        "object": "$2.216 per MMBtu",
+        "round": 5
+      },
+      {
+        "subject": "Natural gas",
+        "relation": "fibonacci_retracement_level",
+        "object": "2.90 for 61.8%",
+        "round": 5
+      },
+      {
+        "subject": "Natural gas",
+        "relation": "percentage_increase_from_low",
+        "object": "55.1% off the trend low of 1.95",
+        "round": 6
+      },
+      {
+        "subject": "Natural gas",
+        "relation": "has_abcd_pattern_target_of",
+        "object": "2.61",
+        "round": 9
+      },
+      {
+        "subject": "Natural gas",
+        "relation": "experienced_retracement_of",
+        "object": "22.6 percent",
+        "round": 12
+      },
+      {
+        "subject": "Natural gas",
+        "relation": "recorded_daily_low",
+        "object": "2.566 on September 6, 2023",
+        "round": 1
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "topic": "The Motley Fool (post-cutoff facts)",
+    "user_query": "What is the current investment profile of The Motley Fool, including their long-term stock recommendations and the status of their equity holdings?",
+    "post_cutoff_themes": [
+      "The Motley Fool: holds_positions_in",
+      "The Motley Fool: recorded_video_on",
+      "The Motley Fool: recommends",
+      "The Motley Fool: holds_position_in",
+      "The Motley Fool: holds_position_in",
+      "The Motley Fool: owns_and_recommends"
+    ],
+    "source_facts": [
+      {
+        "subject": "The Motley Fool",
+        "relation": "holds_positions_in",
+        "object": "Advanced Micro Devices, Alphabet, Microsoft, and Nvidia",
+        "round": 8
+      },
+      {
+        "subject": "The Motley Fool",
+        "relation": "recorded_video_on",
+        "object": "May 19, 2022",
+        "round": 10
+      },
+      {
+        "subject": "The Motley Fool",
+        "relation": "recommends",
+        "object": "W.P. Carey",
+        "round": 6
+      },
+      {
+        "subject": "The Motley Fool",
+        "relation": "holds_position_in",
+        "object": "none of the mentioned stocks",
+        "round": 2
+      },
+      {
+        "subject": "The Motley Fool",
+        "relation": "holds_position_in",
+        "object": "Old Dominion Freight Line",
+        "round": 14
+      },
+      {
+        "subject": "The Motley Fool",
+        "relation": "owns_and_recommends",
+        "object": "AMD and Alphabet A shares",
+        "round": 5
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "topic": "Federal Reserve (post-cutoff facts)",
+    "user_query": "How would you characterize the Federal Reserve's recent interest rate trajectory and its current policy stance compared to the environment leading up to the 2022 tightening cycle?",
+    "post_cutoff_themes": [
+      "Federal Reserve: maintained",
+      "Federal Reserve: current_interest_rate",
+      "Federal Reserve: set_interest_rate_range",
+      "Federal Reserve: implemented_rate_hike",
+      "Federal Reserve: last_raised_rates_before_2022",
+      "Federal Reserve: releases_results_on"
+    ],
+    "source_facts": [
+      {
+        "subject": "Federal Reserve",
+        "relation": "maintained",
+        "object": "steady interest rates",
+        "round": 4
+      },
+      {
+        "subject": "Federal Reserve",
+        "relation": "current_interest_rate",
+        "object": "5.25% to 5.5%",
+        "round": 10
+      },
+      {
+        "subject": "Federal Reserve",
+        "relation": "set_interest_rate_range",
+        "object": "5.25% to 5.50% on November 1, 2023",
+        "round": 9
+      },
+      {
+        "subject": "Federal Reserve",
+        "relation": "implemented_rate_hike",
+        "object": "75 basis points earlier this month",
+        "round": 15
+      },
+      {
+        "subject": "Federal Reserve",
+        "relation": "last_raised_rates_before_2022",
+        "object": "in 2018",
+        "round": 4
+      },
+      {
+        "subject": "Federal Reserve",
+        "relation": "releases_results_on",
+        "object": "Thursday, June 23, 2022",
+        "round": 14
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "topic": "Kyndryl Holdings Inc (post-cutoff facts)",
+    "user_query": "How are current market volatility, regulatory developments, and industrial operational trends across diverse sectors impacting the broader economic landscape?",
+    "post_cutoff_themes": [
+      "Kyndryl Holdings Inc: rsi_value",
+      "McDonald's Corp: options_trading_volume",
+      "Lyondellbasell: stock_price_change",
+      "Matalco: operates_facilities_in",
+      "European Union: introduced_law",
+      "U.S. offshore rig count: totaled_on_date"
+    ],
+    "source_facts": [
+      {
+        "subject": "Kyndryl Holdings Inc",
+        "relation": "rsi_value",
+        "object": "above 70",
+        "round": 11
+      },
+      {
+        "subject": "McDonald's Corp",
+        "relation": "options_trading_volume",
+        "object": "13,052 contracts today",
+        "round": 15
+      },
+      {
+        "subject": "Lyondellbasell",
+        "relation": "stock_price_change",
+        "object": "up 3% on Friday",
+        "round": 3
+      },
+      {
+        "subject": "Matalco",
+        "relation": "operates_facilities_in",
+        "object": "six locations in North America and one in Canada",
+        "round": 14
+      },
+      {
+        "subject": "European Union",
+        "relation": "introduced_law",
+        "object": "Markets in Crypto Assets",
+        "round": 14
+      },
+      {
+        "subject": "U.S. offshore rig count",
+        "relation": "totaled_on_date",
+        "object": "20 for the week ended June 16",
+        "round": 5
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "topic": "ChargePoint (post-cutoff facts)",
+    "user_query": "How are current operational shifts in charging infrastructure, capital allocation strategies at industrial tech firms, and recent market performance across defensive and niche sector ETFs influencing the broader outlook for portfolio stability?",
+    "post_cutoff_themes": [
+      "ChargePoint: industry_position",
+      "Aptiv PLC: projected_2022_capital_expenditures",
+      "National Fuel Gas: declared_dividend",
+      "Consumer Staples Select Sector SPDR Fund: stock_price_change",
+      "Zacks Consensus EPS estimate: remained_unchanged_over",
+      "Honeytree U.S. Equity ETF: ticker_symbol"
+    ],
+    "source_facts": [
+      {
+        "subject": "ChargePoint",
+        "relation": "industry_position",
+        "object": "world's largest independent charging network for electric vehicles",
+        "round": 13
+      },
+      {
+        "subject": "Aptiv PLC",
+        "relation": "projected_2022_capital_expenditures",
+        "object": "$850 million",
+        "round": 5
+      },
+      {
+        "subject": "National Fuel Gas",
+        "relation": "declared_dividend",
+        "object": "$0.495 per share",
+        "round": 5
+      },
+      {
+        "subject": "Consumer Staples Select Sector SPDR Fund",
+        "relation": "stock_price_change",
+        "object": "dropped 0.6% on Tuesday afternoon",
+        "round": 12
+      },
+      {
+        "subject": "Zacks Consensus EPS estimate",
+        "relation": "remained_unchanged_over",
+        "object": "last 30 days",
+        "round": 9
+      },
+      {
+        "subject": "Honeytree U.S. Equity ETF",
+        "relation": "ticker_symbol",
+        "object": "BEEZ",
+        "round": 3
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "topic": "Etsy (post-cutoff facts)",
+    "user_query": "How are recent market fluctuations across the technology and packaging sectors performing compared to broader infrastructure spending initiatives and trending social advocacy-driven corporate developments?",
+    "post_cutoff_themes": [
+      "Etsy: stock_price_change",
+      "Adobe: stock_price",
+      "Sonoco: share_price_performance_ytd",
+      "United States government: approved_funds",
+      "BULZ: weekly_return",
+      "Hannah Diviney: launched_campaign_for"
+    ],
+    "source_facts": [
+      {
+        "subject": "Etsy",
+        "relation": "stock_price_change",
+        "object": "5.5% increase on Monday",
+        "round": 2
+      },
+      {
+        "subject": "Adobe",
+        "relation": "stock_price",
+        "object": "$479.53",
+        "round": 14
+      },
+      {
+        "subject": "Sonoco",
+        "relation": "share_price_performance_ytd",
+        "object": "2.8% increase",
+        "round": 3
+      },
+      {
+        "subject": "United States government",
+        "relation": "approved_funds",
+        "object": "$450 billion for infrastructure in August 2021",
+        "round": 3
+      },
+      {
+        "subject": "BULZ",
+        "relation": "weekly_return",
+        "object": "23.75%",
+        "round": 10
+      },
+      {
+        "subject": "Hannah Diviney",
+        "relation": "launched_campaign_for",
+        "object": "a disabled Disney princess",
+        "round": 1
+      }
+    ]
+  },
+  {
+    "id": 25,
+    "topic": "S&P 1500 materials sector (post-cutoff facts)",
+    "user_query": "How is current market sentiment shaping the performance of specific healthcare and materials sector investments compared to recent developments in the pharmaceutical and semiconductor industries?",
+    "post_cutoff_themes": [
+      "S&P 1500 materials sector: year_to_date_rise",
+      "VistaGen Therapeutics: reported_quarterly_loss_per_share",
+      "Health Care Select Sector SPDR ETF: daily_performance",
+      "Fidelity High Dividend ETF: expense_ratio",
+      "Advanced Micro Devices: premarket_stock_gain",
+      "Novartis: partner_of"
+    ],
+    "source_facts": [
+      {
+        "subject": "S&P 1500 materials sector",
+        "relation": "year_to_date_rise",
+        "object": "about 8%",
+        "round": 10
+      },
+      {
+        "subject": "VistaGen Therapeutics",
+        "relation": "reported_quarterly_loss_per_share",
+        "object": "$0.08",
+        "round": 13
+      },
+      {
+        "subject": "Health Care Select Sector SPDR ETF",
+        "relation": "daily_performance",
+        "object": "up 0.4% on Tuesday",
+        "round": 7
+      },
+      {
+        "subject": "Fidelity High Dividend ETF",
+        "relation": "expense_ratio",
+        "object": "29 basis points",
+        "round": 7
+      },
+      {
+        "subject": "Advanced Micro Devices",
+        "relation": "premarket_stock_gain",
+        "object": "2.1% on October 27",
+        "round": 11
+      },
+      {
+        "subject": "Novartis",
+        "relation": "partner_of",
+        "object": "Ionis Pharmaceuticals for pelacarsen",
+        "round": 7
+      }
+    ]
+  },
+  {
+    "id": 26,
+    "topic": "International Energy Agency (post-cutoff facts)",
+    "user_query": "How have recent macroeconomic trends and specific corporate developments across the energy, manufacturing, and financial sectors influenced the outlook for institutional portfolios as we reach mid-decade?",
+    "post_cutoff_themes": [
+      "International Energy Agency: predicted",
+      "Caterpillar: full_year_revenue_estimate",
+      "Besi: headquartered_in",
+      "Parkev Tatevosian: role",
+      "Invesco Advantage Municipal Income Trust II: declared_monthly_dividend",
+      "Athersys: planned_action"
+    ],
+    "source_facts": [
+      {
+        "subject": "International Energy Agency",
+        "relation": "predicted",
+        "object": "slowdown in global natural gas demand through 2026",
+        "round": 4
+      },
+      {
+        "subject": "Caterpillar",
+        "relation": "full_year_revenue_estimate",
+        "object": "$67.25 billion",
+        "round": 1
+      },
+      {
+        "subject": "Besi",
+        "relation": "headquartered_in",
+        "object": "Netherlands",
+        "round": 13
+      },
+      {
+        "subject": "Parkev Tatevosian",
+        "relation": "role",
+        "object": "Fool.com contributor",
+        "round": 6
+      },
+      {
+        "subject": "Invesco Advantage Municipal Income Trust II",
+        "relation": "declared_monthly_dividend",
+        "object": "$0.03 per share on June 1, 2023",
+        "round": 15
+      },
+      {
+        "subject": "Athersys",
+        "relation": "planned_action",
+        "object": "public offering of shares and warrants",
+        "round": 2
+      }
+    ]
+  },
+  {
+    "id": 27,
+    "topic": "First Trust Large Cap Core AlphaDEX ETF (post-cutoff facts)",
+    "user_query": "What is the current outlook on international geopolitical exposures, regional policy shifts, and recent portfolio performance trends impacting large-cap equity and industrial valuation models?",
+    "post_cutoff_themes": [
+      "First Trust Large Cap Core AlphaDEX ETF: launched_on",
+      "Alexander's, Inc.: dividend_yield",
+      "Encore Wire Corp: highest_rated_by",
+      "Sven Schulze: is_economy_minister_of",
+      "American Express: terminated_relationships_with",
+      "Norwegian Cruise Line Holdings: stock_price_decreased_by"
+    ],
+    "source_facts": [
+      {
+        "subject": "First Trust Large Cap Core AlphaDEX ETF",
+        "relation": "launched_on",
+        "object": "05/08/2007",
+        "round": 5
+      },
+      {
+        "subject": "Alexander's, Inc.",
+        "relation": "dividend_yield",
+        "object": "7.9%",
+        "round": 7
+      },
+      {
+        "subject": "Encore Wire Corp",
+        "relation": "highest_rated_by",
+        "object": "Benjamin Graham Value Investor model",
+        "round": 3
+      },
+      {
+        "subject": "Sven Schulze",
+        "relation": "is_economy_minister_of",
+        "object": "Saxony-Anhalt, Germany",
+        "round": 1
+      },
+      {
+        "subject": "American Express",
+        "relation": "terminated_relationships_with",
+        "object": "sanctioned Russian banks",
+        "round": 5
+      },
+      {
+        "subject": "Norwegian Cruise Line Holdings",
+        "relation": "stock_price_decreased_by",
+        "object": "more than 16%",
+        "round": 3
+      }
+    ]
+  },
+  {
+    "id": 28,
+    "topic": "United Airlines (post-cutoff facts)",
+    "user_query": "How have recent market trends across the aviation supply chain, mid-cap consumer discretionary performance, and broad growth-focused equity benchmarks impacted current portfolio valuations and outlooks?",
+    "post_cutoff_themes": [
+      "United Airlines: q2_2023_cargo_revenue",
+      "Gen Digital: daily_stock_change",
+      "iShares Russell 1000 Growth ETF: has_52_week_low_of",
+      "CFM International: manufactures_product",
+      "The Lovesac Company: average_earnings_surprise",
+      "IQVIA Holdings Inc: year_to_date_gain"
+    ],
+    "source_facts": [
+      {
+        "subject": "United Airlines",
+        "relation": "q2_2023_cargo_revenue",
+        "object": "$362 million",
+        "round": 1
+      },
+      {
+        "subject": "Gen Digital",
+        "relation": "daily_stock_change",
+        "object": "down 2.2%",
+        "round": 9
+      },
+      {
+        "subject": "iShares Russell 1000 Growth ETF",
+        "relation": "has_52_week_low_of",
+        "object": "$202.05",
+        "round": 12
+      },
+      {
+        "subject": "CFM International",
+        "relation": "manufactures_product",
+        "object": "LEAP jet engines",
+        "round": 8
+      },
+      {
+        "subject": "The Lovesac Company",
+        "relation": "average_earnings_surprise",
+        "object": "17.4 percent",
+        "round": 10
+      },
+      {
+        "subject": "IQVIA Holdings Inc",
+        "relation": "year_to_date_gain",
+        "object": "4.45%",
+        "round": 8
+      }
+    ]
+  },
+  {
+    "id": 29,
+    "topic": "University of Michigan (post-cutoff facts)",
+    "user_query": "How are current macroeconomic sentiment, shifting sector-specific business models, and recent market volatility impacting the performance and growth outlook for my diversified portfolio of industrial, technology, and defensive equity holdings?",
+    "post_cutoff_themes": [
+      "University of Michigan: reported_august_one_year_inflation_expectations",
+      "Cisco Systems: recurring_subscription_revenue_percentage",
+      "iShares U.S. Home Construction ETF: performance_change",
+      "Napco Security Technologies: industry",
+      "Cardinal Health Inc.: identified_as",
+      "Roper Technologies Inc: stock_price_increased_by"
+    ],
+    "source_facts": [
+      {
+        "subject": "University of Michigan",
+        "relation": "reported_august_one_year_inflation_expectations",
+        "object": "3.3%",
+        "round": 11
+      },
+      {
+        "subject": "Cisco Systems",
+        "relation": "recurring_subscription_revenue_percentage",
+        "object": "44 percent of total revenue",
+        "round": 8
+      },
+      {
+        "subject": "iShares U.S. Home Construction ETF",
+        "relation": "performance_change",
+        "object": "down 1.6% on Monday",
+        "round": 11
+      },
+      {
+        "subject": "Napco Security Technologies",
+        "relation": "industry",
+        "object": "Communications Equipment",
+        "round": 9
+      },
+      {
+        "subject": "Cardinal Health Inc.",
+        "relation": "identified_as",
+        "object": "dividend growth stock",
+        "round": 9
+      },
+      {
+        "subject": "Roper Technologies Inc",
+        "relation": "stock_price_increased_by",
+        "object": "0.6%",
+        "round": 9
+      }
+    ]
+  },
+  {
+    "id": 30,
+    "topic": "Thomson Reuters (post-cutoff facts)",
+    "user_query": "What is the current market sentiment and performance outlook for my diversified portfolio positions, considering recent analyst revisions, executive insider activity, and updated income distribution metrics?",
+    "post_cutoff_themes": [
+      "Thomson Reuters: polled_analysts_count",
+      "eBay: projected_full_year_2022_revenue",
+      "Invesco QQQ ETF: implied_analyst_target_price",
+      "DIREXION DAILY SELECT LARGE CAPS & FANGS BULL 2X Shares: units_increased_by",
+      "Daryl N. Bible: invested_amount_in_mtb",
+      "Fidelity MSCI Health Care Index ETF: dividend_yield"
+    ],
+    "source_facts": [
+      {
+        "subject": "Thomson Reuters",
+        "relation": "polled_analysts_count",
+        "object": "15",
+        "round": 5
+      },
+      {
+        "subject": "eBay",
+        "relation": "projected_full_year_2022_revenue",
+        "object": "$9.6 billion to $9.9 billion",
+        "round": 7
+      },
+      {
+        "subject": "Invesco QQQ ETF",
+        "relation": "implied_analyst_target_price",
+        "object": "$412.88 per unit",
+        "round": 14
+      },
+      {
+        "subject": "DIREXION DAILY SELECT LARGE CAPS & FANGS BULL 2X Shares",
+        "relation": "units_increased_by",
+        "object": "400,000 units",
+        "round": 13
+      },
+      {
+        "subject": "Daryl N. Bible",
+        "relation": "invested_amount_in_mtb",
+        "object": "$555,217.95",
+        "round": 4
+      },
+      {
+        "subject": "Fidelity MSCI Health Care Index ETF",
+        "relation": "dividend_yield",
+        "object": "1.43%",
+        "round": 2
+      }
+    ]
+  },
+  {
+    "id": 31,
+    "topic": "Incyte Corporation put contract (post-cutoff facts)",
+    "user_query": "What is the current outlook for my portfolio's diverse holdings, including the status of ongoing capital return programs, recent option market activity, and updated growth projections for the upcoming fiscal cycle?",
+    "post_cutoff_themes": [
+      "Incyte Corporation put contract: strike_price",
+      "Xometry Inc: recent_share_price",
+      "Safran: plans_share_buyback",
+      "WisdomTree Efficient Gold Plus Gold Miners Strategy Fund: ticker_symbol",
+      "Call contract at $30.00 strike price: current_bid",
+      "Jabil: forecasted_earnings_growth_current_year"
+    ],
+    "source_facts": [
+      {
+        "subject": "Incyte Corporation put contract",
+        "relation": "strike_price",
+        "object": "$77.50",
+        "round": 14
+      },
+      {
+        "subject": "Xometry Inc",
+        "relation": "recent_share_price",
+        "object": "$49.05 per share",
+        "round": 6
+      },
+      {
+        "subject": "Safran",
+        "relation": "plans_share_buyback",
+        "object": "2.2% of shares",
+        "round": 6
+      },
+      {
+        "subject": "WisdomTree Efficient Gold Plus Gold Miners Strategy Fund",
+        "relation": "ticker_symbol",
+        "object": "GDMN",
+        "round": 9
+      },
+      {
+        "subject": "Call contract at $30.00 strike price",
+        "relation": "current_bid",
+        "object": "$3.55",
+        "round": 7
+      },
+      {
+        "subject": "Jabil",
+        "relation": "forecasted_earnings_growth_current_year",
+        "object": "11%",
+        "round": 1
+      }
+    ]
+  },
+  {
+    "id": 32,
+    "topic": "Sage Therapeutics (post-cutoff facts)",
+    "user_query": "How are recent market volatility trends, institutional earnings expectations, and shifting retail investor sentiment impacting the current performance of diverse asset classes and specific equities?",
+    "post_cutoff_themes": [
+      "Sage Therapeutics: stock_price_change",
+      "Amazon: historical_eps_growth_rate",
+      "Eastman Kodak: stock_price_decline",
+      "First Trust TCW Opportunistic Fixed Income ETF: trading_symbol",
+      "Retail investors: planned_to_liquidate_holdings_in",
+      "Wall Street analysts: forecasted_revenue_growth"
+    ],
+    "source_facts": [
+      {
+        "subject": "Sage Therapeutics",
+        "relation": "stock_price_change",
+        "object": "11.8% increase in the last trading session",
+        "round": 9
+      },
+      {
+        "subject": "Amazon",
+        "relation": "historical_eps_growth_rate",
+        "object": "7.4%",
+        "round": 11
+      },
+      {
+        "subject": "Eastman Kodak",
+        "relation": "stock_price_decline",
+        "object": "23.64% on Wednesday",
+        "round": 3
+      },
+      {
+        "subject": "First Trust TCW Opportunistic Fixed Income ETF",
+        "relation": "trading_symbol",
+        "object": "FIXD",
+        "round": 6
+      },
+      {
+        "subject": "Retail investors",
+        "relation": "planned_to_liquidate_holdings_in",
+        "object": "2023 at a rate of 1%",
+        "round": 5
+      },
+      {
+        "subject": "Wall Street analysts",
+        "relation": "forecasted_revenue_growth",
+        "object": "7.5% for the first three months of the calendar year",
+        "round": 8
+      }
+    ]
+  },
+  {
+    "id": 33,
+    "topic": "Services sector (post-cutoff facts)",
+    "user_query": "Can you provide an overview of current market volatility, including performance trends across the services sector, recent movements in energy benchmarks, and updates on specific volatility in both domestic and international equity holdings?",
+    "post_cutoff_themes": [
+      "Services sector: daily_loss_percentage",
+      "Brent oil: price_level",
+      "First Industrial Realty Trust: stock_price_drop",
+      "PDD Holdings: parent_company_of",
+      "The Korea Fund: stock_price",
+      "Zymeworks Inc.: closing_stock_price"
+    ],
+    "source_facts": [
+      {
+        "subject": "Services sector",
+        "relation": "daily_loss_percentage",
+        "object": "0.1%",
+        "round": 15
+      },
+      {
+        "subject": "Brent oil",
+        "relation": "price_level",
+        "object": "moved below $87",
+        "round": 2
+      },
+      {
+        "subject": "First Industrial Realty Trust",
+        "relation": "stock_price_drop",
+        "object": "3.3% over the past week",
+        "round": 2
+      },
+      {
+        "subject": "PDD Holdings",
+        "relation": "parent_company_of",
+        "object": "Temu",
+        "round": 12
+      },
+      {
+        "subject": "The Korea Fund",
+        "relation": "stock_price",
+        "object": "$24.01",
+        "round": 14
+      },
+      {
+        "subject": "Zymeworks Inc.",
+        "relation": "closing_stock_price",
+        "object": "$9.70",
+        "round": 15
+      }
+    ]
+  },
+  {
+    "id": 34,
+    "topic": "Upstart (post-cutoff facts)",
+    "user_query": "What are the latest developments impacting valuation across global financial markets, specific corporate contracts, and macroeconomic trends in the energy and real estate sectors?",
+    "post_cutoff_themes": [
+      "Upstart: stock_price",
+      "Energy Information Association: forecasted_henry_hub_price_q1",
+      "Premier, Inc.: awarded_contract_to",
+      "China: new_property_sales_decline",
+      "Enghouse Systems: tender_offer_price",
+      "iShares Core MSCI Emerging Markets ETF: last_traded_price"
+    ],
+    "source_facts": [
+      {
+        "subject": "Upstart",
+        "relation": "stock_price",
+        "object": "$16.76",
+        "round": 2
+      },
+      {
+        "subject": "Energy Information Association",
+        "relation": "forecasted_henry_hub_price_q1",
+        "object": "$6/MMBtu",
+        "round": 8
+      },
+      {
+        "subject": "Premier, Inc.",
+        "relation": "awarded_contract_to",
+        "object": "Teleflex for PICCs and navigation equipment",
+        "round": 8
+      },
+      {
+        "subject": "China",
+        "relation": "new_property_sales_decline",
+        "object": "-28.9% year over year",
+        "round": 2
+      },
+      {
+        "subject": "Enghouse Systems",
+        "relation": "tender_offer_price",
+        "object": "$0.90 per Qumu share",
+        "round": 11
+      },
+      {
+        "subject": "iShares Core MSCI Emerging Markets ETF",
+        "relation": "last_traded_price",
+        "object": "$48.72",
+        "round": 7
+      }
+    ]
+  },
+  {
+    "id": 35,
+    "topic": "Rigel Pharmaceuticals (post-cutoff facts)",
+    "user_query": "How is the current macroeconomic environment impacting global trade, major corporate growth trends, and the performance of key market indices?",
+    "post_cutoff_themes": [
+      "Rigel Pharmaceuticals: projected_annual_revenue",
+      "The Ames Companies: established_in",
+      "Russia: major_exporter_of",
+      "Hyundai: october_sales_growth",
+      "Joint venture: planned_investment_amount",
+      "S&P 500: stock_index_decline_ytd"
+    ],
+    "source_facts": [
+      {
+        "subject": "Rigel Pharmaceuticals",
+        "relation": "projected_annual_revenue",
+        "object": "$123 million",
+        "round": 7
+      },
+      {
+        "subject": "The Ames Companies",
+        "relation": "established_in",
+        "object": "1774 in Massachusetts",
+        "round": 4
+      },
+      {
+        "subject": "Russia",
+        "relation": "major_exporter_of",
+        "object": "oil, natural gas, wheat, corn, edible oils, metals, and fertilizers",
+        "round": 9
+      },
+      {
+        "subject": "Hyundai",
+        "relation": "october_sales_growth",
+        "object": "7%",
+        "round": 7
+      },
+      {
+        "subject": "Joint venture",
+        "relation": "planned_investment_amount",
+        "object": "$7 billion",
+        "round": 13
+      },
+      {
+        "subject": "S&P 500",
+        "relation": "stock_index_decline_ytd",
+        "object": "-17.1%",
+        "round": 11
+      }
+    ]
+  },
+  {
+    "id": 36,
+    "topic": "Invesco QQQ Trust QQQ (post-cutoff facts)",
+    "user_query": "What is the current market sentiment regarding major sector-specific investment trends, upcoming corporate structural changes, and the latest central bank policy outlook?",
+    "post_cutoff_themes": [
+      "Invesco QQQ Trust QQQ: ten_year_gain",
+      "W. P. Carey Inc.: earnings_call_webcast_url",
+      "PFFD - Global X U.S. Preferred ETF: holds_shares_of",
+      "SCHE ETF: experienced_inflow_of",
+      "Magrabi: considering_flotation",
+      "CME FedWatch tool: predicted_likelihood_of_rate_hold"
+    ],
+    "source_facts": [
+      {
+        "subject": "Invesco QQQ Trust QQQ",
+        "relation": "ten_year_gain",
+        "object": "393 percent",
+        "round": 8
+      },
+      {
+        "subject": "W. P. Carey Inc.",
+        "relation": "earnings_call_webcast_url",
+        "object": "http://www.wpcarey.com/earnings",
+        "round": 7
+      },
+      {
+        "subject": "PFFD - Global X U.S. Preferred ETF",
+        "relation": "holds_shares_of",
+        "object": "Southern Company - 4.95% NT REDEEM 30",
+        "round": 6
+      },
+      {
+        "subject": "SCHE ETF",
+        "relation": "experienced_inflow_of",
+        "object": "$116.2 million",
+        "round": 7
+      },
+      {
+        "subject": "Magrabi",
+        "relation": "considering_flotation",
+        "object": "its hospitals business in 2023",
+        "round": 10
+      },
+      {
+        "subject": "CME FedWatch tool",
+        "relation": "predicted_likelihood_of_rate_hold",
+        "object": "69% for November",
+        "round": 10
+      }
+    ]
+  },
+  {
+    "id": 37,
+    "topic": "Amazon (post-cutoff facts)",
+    "user_query": "How have recent shifts in market performance and healthcare sector investments impacted the strategic positioning of diversified portfolios and specialized medical technology holdings?",
+    "post_cutoff_themes": [
+      "Amazon: stock_price_increase_ytd",
+      "Global healthcare industry: annual_expenditure",
+      "Ackerman Capital Advisors: holds_shares_of",
+      "S&P 500: gained_percentage",
+      "American Eagle Outfitters: projected_q3_earnings_per_share",
+      "Excelsius3D: used_at"
+    ],
+    "source_facts": [
+      {
+        "subject": "Amazon",
+        "relation": "stock_price_increase_ytd",
+        "object": "70% as of December 12, 2023",
+        "round": 9
+      },
+      {
+        "subject": "Global healthcare industry",
+        "relation": "annual_expenditure",
+        "object": "$8.3 trillion",
+        "round": 15
+      },
+      {
+        "subject": "Ackerman Capital Advisors",
+        "relation": "holds_shares_of",
+        "object": "71K shares of Pimco New York Municipal Income Fund III",
+        "round": 15
+      },
+      {
+        "subject": "S&P 500",
+        "relation": "gained_percentage",
+        "object": "almost 6% in the last 30 days",
+        "round": 4
+      },
+      {
+        "subject": "American Eagle Outfitters",
+        "relation": "projected_q3_earnings_per_share",
+        "object": "47 cents",
+        "round": 4
+      },
+      {
+        "subject": "Excelsius3D",
+        "relation": "used_at",
+        "object": "MedStar Union Memorial Hospital, Northwest Specialty Hospital, and NYU Langone Health",
+        "round": 14
+      }
+    ]
+  },
+  {
+    "id": 38,
+    "topic": "Stellantis (post-cutoff facts)",
+    "user_query": "How does the current market performance and recent earnings outlook for these diverse industrial and automotive companies compare to their broader sector trends?",
+    "post_cutoff_themes": [
+      "Stellantis: zacks_rank",
+      "Corning Incorporated: reported_q4_core_eps",
+      "Allison Transmission: stock_price_change_ytd",
+      "NIO Inc.: trading_price",
+      "Analog Devices: stock_performance",
+      "Dow Inc.: projected_revenue"
+    ],
+    "source_facts": [
+      {
+        "subject": "Stellantis",
+        "relation": "zacks_rank",
+        "object": "#1 (Strong Buy)",
+        "round": 2
+      },
+      {
+        "subject": "Corning Incorporated",
+        "relation": "reported_q4_core_eps",
+        "object": "$0.47",
+        "round": 11
+      },
+      {
+        "subject": "Allison Transmission",
+        "relation": "stock_price_change_ytd",
+        "object": "9.5%",
+        "round": 4
+      },
+      {
+        "subject": "NIO Inc.",
+        "relation": "trading_price",
+        "object": "$8.18",
+        "round": 5
+      },
+      {
+        "subject": "Analog Devices",
+        "relation": "stock_performance",
+        "object": "up 1.3%",
+        "round": 5
+      },
+      {
+        "subject": "Dow Inc.",
+        "relation": "projected_revenue",
+        "object": "$10.34 billion",
+        "round": 5
+      }
+    ]
+  },
+  {
+    "id": 39,
+    "topic": "Madison Short-Term Strategic Income ETF (post-cutoff facts)",
+    "user_query": "How do current fee structures for niche thematic funds compare against the recent performance metrics of mid-cap growth vehicles and the latest earnings surprises within the consumer goods and biotechnology sectors?",
+    "post_cutoff_themes": [
+      "Madison Short-Term Strategic Income ETF: has_expense_ratio",
+      "Gildan Activewear: beat_zacks_eps_estimate",
+      "Bumble: owns_app",
+      "Achieve Life Sciences, Inc.: recorded_maximum_gain",
+      "Invesco Dynamic Biotechnology & Genome ETF: expense_ratio",
+      "iShares Russell Mid-Cap Growth ETF: recent_trading_price"
+    ],
+    "source_facts": [
+      {
+        "subject": "Madison Short-Term Strategic Income ETF",
+        "relation": "has_expense_ratio",
+        "object": "0.40%",
+        "round": 4
+      },
+      {
+        "subject": "Gildan Activewear",
+        "relation": "beat_zacks_eps_estimate",
+        "object": "$0.61 per share",
+        "round": 4
+      },
+      {
+        "subject": "Bumble",
+        "relation": "owns_app",
+        "object": "Badoo",
+        "round": 8
+      },
+      {
+        "subject": "Achieve Life Sciences, Inc.",
+        "relation": "recorded_maximum_gain",
+        "object": "55%",
+        "round": 1
+      },
+      {
+        "subject": "Invesco Dynamic Biotechnology & Genome ETF",
+        "relation": "expense_ratio",
+        "object": "0.59%",
+        "round": 13
+      },
+      {
+        "subject": "iShares Russell Mid-Cap Growth ETF",
+        "relation": "recent_trading_price",
+        "object": "$91.63 per unit",
+        "round": 14
+      }
+    ]
+  },
+  {
+    "id": 40,
+    "topic": "Farmmi (post-cutoff facts)",
+    "user_query": "How does the current market valuation, performance trajectory, and institutional positioning of these diverse small-to-mid-cap holdings compare across their respective financial sectors?",
+    "post_cutoff_themes": [
+      "Farmmi: price_earnings_ratio",
+      "SolarWinds: year_to_date_stock_performance",
+      "MidCap Financial Investment: industry_classification",
+      "Amkor Technology: average_analyst_target_price",
+      "Ashmore: annual_profit_changed_by",
+      "Ackerman Capital Advisors: holds_shares_in"
+    ],
+    "source_facts": [
+      {
+        "subject": "Farmmi",
+        "relation": "price_earnings_ratio",
+        "object": "1.71",
+        "round": 14
+      },
+      {
+        "subject": "SolarWinds",
+        "relation": "year_to_date_stock_performance",
+        "object": "13.8% increase",
+        "round": 13
+      },
+      {
+        "subject": "MidCap Financial Investment",
+        "relation": "industry_classification",
+        "object": "Zacks Financial - Miscellaneous Services",
+        "round": 4
+      },
+      {
+        "subject": "Amkor Technology",
+        "relation": "average_analyst_target_price",
+        "object": "$33.00",
+        "round": 10
+      },
+      {
+        "subject": "Ashmore",
+        "relation": "annual_profit_changed_by",
+        "object": "-6%",
+        "round": 15
+      },
+      {
+        "subject": "Ackerman Capital Advisors",
+        "relation": "holds_shares_in",
+        "object": "Pimco California Municipal Income Fund (299K shares)",
+        "round": 3
+      }
+    ]
+  },
+  {
+    "id": 41,
+    "topic": "Granite Construction (post-cutoff facts)",
+    "user_query": "How are the latest developments in medical research, shifting retail equity performance, and current energy sector portfolio weightings influencing institutional investment strategies and market volatility?",
+    "post_cutoff_themes": [
+      "Granite Construction: call_option_strike_price",
+      "Haystack Oncology: developed_technology_at",
+      "S&P 500: dividend_yield",
+      "Sabby Management: holds_shares_of",
+      "Energy Select Sector SPDR ETF: holdings_percentage_by",
+      "Walmart Inc: daily_stock_loss"
+    ],
+    "source_facts": [
+      {
+        "subject": "Granite Construction",
+        "relation": "call_option_strike_price",
+        "object": "$45.00",
+        "round": 12
+      },
+      {
+        "subject": "Haystack Oncology",
+        "relation": "developed_technology_at",
+        "object": "Johns Hopkins School of Medicine",
+        "round": 1
+      },
+      {
+        "subject": "S&P 500",
+        "relation": "dividend_yield",
+        "object": "1.77%",
+        "round": 10
+      },
+      {
+        "subject": "Sabby Management",
+        "relation": "holds_shares_of",
+        "object": "7,392K shares of Akari Therapeutics",
+        "round": 3
+      },
+      {
+        "subject": "Energy Select Sector SPDR ETF",
+        "relation": "holdings_percentage_by",
+        "object": "Diamondback Energy and EOG Resources combined at 6.9%",
+        "round": 11
+      },
+      {
+        "subject": "Walmart Inc",
+        "relation": "daily_stock_loss",
+        "object": "2.4%",
+        "round": 15
+      }
+    ]
+  },
+  {
+    "id": 42,
+    "topic": "CSM (post-cutoff facts)",
+    "user_query": "How is the current market volatility affecting the performance and strategic capital allocation of major media, agricultural, and industrial investment holdings?",
+    "post_cutoff_themes": [
+      "CSM: lost_value",
+      "Dow Jones Industrial Average: weekly_performance",
+      "Tri-Continental Corp.: market_cap",
+      "Teucrium Agricultural Fund: includes_exposure_to",
+      "Warner Bros Discovery: investment_amount_in_leavesden",
+      "Natural gas markets: trending_near"
+    ],
+    "source_facts": [
+      {
+        "subject": "CSM",
+        "relation": "lost_value",
+        "object": "0.2% in the last trading session",
+        "round": 4
+      },
+      {
+        "subject": "Dow Jones Industrial Average",
+        "relation": "weekly_performance",
+        "object": "fell 0.9%",
+        "round": 8
+      },
+      {
+        "subject": "Tri-Continental Corp.",
+        "relation": "market_cap",
+        "object": "$1 billion",
+        "round": 13
+      },
+      {
+        "subject": "Teucrium Agricultural Fund",
+        "relation": "includes_exposure_to",
+        "object": "corn, wheat, soybeans, and sugar",
+        "round": 1
+      },
+      {
+        "subject": "Warner Bros Discovery",
+        "relation": "investment_amount_in_leavesden",
+        "object": "245 million pounds ($301 million)",
+        "round": 10
+      },
+      {
+        "subject": "Natural gas markets",
+        "relation": "trending_near",
+        "object": "20-Day EMA",
+        "round": 6
+      }
+    ]
+  },
+  {
+    "id": 43,
+    "topic": "S&P 500 (post-cutoff facts)",
+    "user_query": "How would you characterize the recent performance of the broader market indices compared to the specific income-generating strategies and industrial sector holdings currently in my portfolio?",
+    "post_cutoff_themes": [
+      "Richard Bernstein Advisors: provides_index_for",
+      "Avangrid Inc: dividend_payment_date",
+      "S&P 500: stock_price_change_year_to_date",
+      "Dow Inc.: zacks_rank",
+      "S&P 500: year_to_date_gain",
+      "FLCB ETF: daily_price_increase"
+    ],
+    "source_facts": [
+      {
+        "subject": "Richard Bernstein Advisors",
+        "relation": "provides_index_for",
+        "object": "First Trust RBA American Industrial Renaissance ETF",
+        "round": 1
+      },
+      {
+        "subject": "Avangrid Inc",
+        "relation": "dividend_payment_date",
+        "object": "1/2/24",
+        "round": 5
+      },
+      {
+        "subject": "S&P 500",
+        "relation": "stock_price_change_year_to_date",
+        "object": "18.2% decline",
+        "round": 14
+      },
+      {
+        "subject": "Dow Inc.",
+        "relation": "zacks_rank",
+        "object": "#3 (Hold)",
+        "round": 12
+      },
+      {
+        "subject": "S&P 500",
+        "relation": "year_to_date_gain",
+        "object": "3.4%",
+        "round": 1
+      },
+      {
+        "subject": "FLCB ETF",
+        "relation": "daily_price_increase",
+        "object": "0.5%",
+        "round": 3
+      }
+    ]
+  },
+  {
+    "id": 44,
+    "topic": "Ryan Ermey (post-cutoff facts)",
+    "user_query": "How have recent shifts in macroeconomic indicators, technological leadership transitions, and trends in alternative asset classes influenced the current performance of major sector-specific ETFs?",
+    "post_cutoff_themes": [
+      "Ryan Ermey: reported_for",
+      "iShares Biotechnology ETF: ticker_symbol",
+      "KraneShares China Innovation ETF: ticker_symbol",
+      "Bitcoin: price_reached",
+      "Gold: traded_at",
+      "Sundar Pichai: declared_emergency_for"
+    ],
+    "source_facts": [
+      {
+        "subject": "Ryan Ermey",
+        "relation": "reported_for",
+        "object": "CNBC",
+        "round": 5
+      },
+      {
+        "subject": "iShares Biotechnology ETF",
+        "relation": "ticker_symbol",
+        "object": "IBB",
+        "round": 6
+      },
+      {
+        "subject": "KraneShares China Innovation ETF",
+        "relation": "ticker_symbol",
+        "object": "KGRO",
+        "round": 14
+      },
+      {
+        "subject": "Bitcoin",
+        "relation": "price_reached",
+        "object": "above $44,000 earlier in December 2023",
+        "round": 9
+      },
+      {
+        "subject": "Gold",
+        "relation": "traded_at",
+        "object": "$1929.87 at 05:41 GMT on Monday",
+        "round": 4
+      },
+      {
+        "subject": "Sundar Pichai",
+        "relation": "declared_emergency_for",
+        "object": "Google in December 2022",
+        "round": 14
+      }
+    ]
+  },
+  {
+    "id": 45,
+    "topic": "Smucker (post-cutoff facts)",
+    "user_query": "How are current market volatility, sector-specific performance trends, and shifting macroeconomic indicators impacting overall portfolio strategy and asset allocation for the coming quarter?",
+    "post_cutoff_themes": [
+      "Smucker: projected_net_sales_us_retail_consumer_foods",
+      "SoFi Technologies: stock_price_performance",
+      "Jim Smigiel: job_title",
+      "Dynatronics Corporation: projected_revenue_decline",
+      "Zacks Rank system: average_annual_return_for_rank_1",
+      "U.S. Jun pending home sales: rose_by"
+    ],
+    "source_facts": [
+      {
+        "subject": "Smucker",
+        "relation": "projected_net_sales_us_retail_consumer_foods",
+        "object": "$473.15 million",
+        "round": 10
+      },
+      {
+        "subject": "SoFi Technologies",
+        "relation": "stock_price_performance",
+        "object": "65% increase year-to-date",
+        "round": 9
+      },
+      {
+        "subject": "Jim Smigiel",
+        "relation": "job_title",
+        "object": "chief investment officer at SEI Investments",
+        "round": 7
+      },
+      {
+        "subject": "Dynatronics Corporation",
+        "relation": "projected_revenue_decline",
+        "object": "23.9% year-over-year",
+        "round": 3
+      },
+      {
+        "subject": "Zacks Rank system",
+        "relation": "average_annual_return_for_rank_1",
+        "object": "+25% since 1988",
+        "round": 14
+      },
+      {
+        "subject": "U.S. Jun pending home sales",
+        "relation": "rose_by",
+        "object": "0.3% m/m",
+        "round": 5
+      }
+    ]
+  },
+  {
+    "id": 46,
+    "topic": "S&P Case-Shiller home price index (post-cutoff facts)",
+    "user_query": "How is the current market environment impacting the valuation metrics, leadership stability, and recent performance trends across a diversified cross-section of financial, energy, and real estate assets?",
+    "post_cutoff_themes": [
+      "S&P Case-Shiller home price index: scheduled_for",
+      "Chubb: peg_ratio",
+      "Thomas Oxley: ceo_of",
+      "JP Morgan Chase: stock_price_change",
+      "Bloom Energy: stock_price_decline",
+      "Invesco California AMT-Free Municipal Bond ETF: fifty_two_week_high"
+    ],
+    "source_facts": [
+      {
+        "subject": "S&P Case-Shiller home price index",
+        "relation": "scheduled_for",
+        "object": "October 24",
+        "round": 3
+      },
+      {
+        "subject": "Chubb",
+        "relation": "peg_ratio",
+        "object": "1.19",
+        "round": 4
+      },
+      {
+        "subject": "Thomas Oxley",
+        "relation": "ceo_of",
+        "object": "Synchron Inc",
+        "round": 1
+      },
+      {
+        "subject": "JP Morgan Chase",
+        "relation": "stock_price_change",
+        "object": "down about 2.7% in morning trading",
+        "round": 4
+      },
+      {
+        "subject": "Bloom Energy",
+        "relation": "stock_price_decline",
+        "object": "50% since early January 2021",
+        "round": 12
+      },
+      {
+        "subject": "Invesco California AMT-Free Municipal Bond ETF",
+        "relation": "fifty_two_week_high",
+        "object": "$25.3321",
+        "round": 4
+      }
+    ]
+  },
+  {
+    "id": 47,
+    "topic": "Nikkei Stock Index (post-cutoff facts)",
+    "user_query": "How are current shifts in equity index performance, thematic sector activity, and recent institutional product launches shaping the broader market landscape?",
+    "post_cutoff_themes": [
+      "Nikkei Stock Index: closed_up",
+      "Wynn Resorts: daily_options_volume",
+      "U.S. PMI reports: exceeded",
+      "Disney: industry_sector",
+      "First Trust Cloud Computing ETF: tracks_index",
+      "Madison Investments: launched_product"
+    ],
+    "source_facts": [
+      {
+        "subject": "Nikkei Stock Index",
+        "relation": "closed_up",
+        "object": "0.92% on Tuesday",
+        "round": 1
+      },
+      {
+        "subject": "Wynn Resorts",
+        "relation": "daily_options_volume",
+        "object": "32,898 contracts",
+        "round": 1
+      },
+      {
+        "subject": "U.S. PMI reports",
+        "relation": "exceeded",
+        "object": "expectations",
+        "round": 11
+      },
+      {
+        "subject": "Disney",
+        "relation": "industry_sector",
+        "object": "Zacks Media Conglomerates",
+        "round": 5
+      },
+      {
+        "subject": "First Trust Cloud Computing ETF",
+        "relation": "tracks_index",
+        "object": "ISE Cloud Computing Index",
+        "round": 4
+      },
+      {
+        "subject": "Madison Investments",
+        "relation": "launched_product",
+        "object": "Madison Aggregate Bond ETF (MAGG)",
+        "round": 1
+      }
+    ]
+  },
+  {
+    "id": 48,
+    "topic": "Goldman Sachs (post-cutoff facts)",
+    "user_query": "How have recent market trends in consumer services and energy sectors impacted the performance of thematic ETFs and the broader equity landscape compared to historical profitability metrics?",
+    "post_cutoff_themes": [
+      "Goldman Sachs: commented_on",
+      "S&P 500: price_change_october",
+      "GraniteShares 1.75x Long TSLA Daily ETF (TSLR): expense_ratio",
+      "Food and beverage revenue: third_quarter_2022_estimate",
+      "iShares U.S. Consumer Services ETF: year_to_date_gain_percentage",
+      "Insperity: gross_profit_2021"
+    ],
+    "source_facts": [
+      {
+        "subject": "Goldman Sachs",
+        "relation": "commented_on",
+        "object": "the lack of direct alignment between U.S. and European gas markets",
+        "round": 1
+      },
+      {
+        "subject": "S&P 500",
+        "relation": "price_change_october",
+        "object": "fell 2.2%",
+        "round": 13
+      },
+      {
+        "subject": "GraniteShares 1.75x Long TSLA Daily ETF (TSLR)",
+        "relation": "expense_ratio",
+        "object": "1.50%",
+        "round": 6
+      },
+      {
+        "subject": "Food and beverage revenue",
+        "relation": "third_quarter_2022_estimate",
+        "object": "$614 million",
+        "round": 8
+      },
+      {
+        "subject": "iShares U.S. Consumer Services ETF",
+        "relation": "year_to_date_gain_percentage",
+        "object": "25.48%",
+        "round": 11
+      },
+      {
+        "subject": "Insperity",
+        "relation": "gross_profit_2021",
+        "object": "$4,153",
+        "round": 15
+      }
+    ]
+  },
+  {
+    "id": 49,
+    "topic": "DoubleLine (post-cutoff facts)",
+    "user_query": "How are recent strategic shifts, valuation metrics, and performance trends across these diverse market sectors influencing current institutional portfolio positioning?",
+    "post_cutoff_themes": [
+      "DoubleLine: partnership_with",
+      "APi: peg_ratio",
+      "Atrion Corp.: fifty_two_week_high",
+      "Susquehanna Securities: owns_percentage_of",
+      "Virgin Galactic: stock_price_performance",
+      "Casey's General Stores: fiscal_2024_projected_inside_margin"
+    ],
+    "source_facts": [
+      {
+        "subject": "DoubleLine",
+        "relation": "partnership_with",
+        "object": "Professor Robert J. Shiller",
+        "round": 8
+      },
+      {
+        "subject": "APi",
+        "relation": "peg_ratio",
+        "object": "1.10",
+        "round": 5
+      },
+      {
+        "subject": "Atrion Corp.",
+        "relation": "fifty_two_week_high",
+        "object": "$805.62",
+        "round": 7
+      },
+      {
+        "subject": "Susquehanna Securities",
+        "relation": "owns_percentage_of",
+        "object": "Alpha Pro Tech, Ltd. (1.4%)",
+        "round": 11
+      },
+      {
+        "subject": "Virgin Galactic",
+        "relation": "stock_price_performance",
+        "object": "down over 90% from 2021 peak levels",
+        "round": 11
+      },
+      {
+        "subject": "Casey's General Stores",
+        "relation": "fiscal_2024_projected_inside_margin",
+        "object": "40% to 41%",
+        "round": 1
+      }
+    ]
+  },
+  {
+    "id": 50,
+    "topic": "Chimera Investment Corp's 7.75% Series C Fixed-to-Floating Rate Cumulative Redeemable Preferred Stock (post-cutoff facts)",
+    "user_query": "How have recent market trends and specific corporate performance indicators influenced the current valuation and dividend sentiment across my diversified portfolio of REITs, energy-sector ETFs, and travel industry holdings?",
+    "post_cutoff_themes": [
+      "Chimera Investment Corp's 7.75% Series C Fixed-to-Floating Rate Cumulative Redeemable Preferred Stock: daily_price_change",
+      "Multiply Group: stock_price_fell_by",
+      "Vanguard Large-Cap ETF: recent_trading_price",
+      "AGNC Investment Corp.: announced_november_dividend",
+      "iShares Global Energy ETF: trading_volume_friday",
+      "Carnival Corporation: earnings_forecast_revision_count"
+    ],
+    "source_facts": [
+      {
+        "subject": "Chimera Investment Corp's 7.75% Series C Fixed-to-Floating Rate Cumulative Redeemable Preferred Stock",
+        "relation": "daily_price_change",
+        "object": "down 0.9% on Tuesday",
+        "round": 15
+      },
+      {
+        "subject": "Multiply Group",
+        "relation": "stock_price_fell_by",
+        "object": "4.4% on December 8",
+        "round": 13
+      },
+      {
+        "subject": "Vanguard Large-Cap ETF",
+        "relation": "recent_trading_price",
+        "object": "$200.08 per unit",
+        "round": 12
+      },
+      {
+        "subject": "AGNC Investment Corp.",
+        "relation": "announced_november_dividend",
+        "object": "12 cents per share",
+        "round": 7
+      },
+      {
+        "subject": "iShares Global Energy ETF",
+        "relation": "trading_volume_friday",
+        "object": "over 3.4 million shares",
+        "round": 8
+      },
+      {
+        "subject": "Carnival Corporation",
+        "relation": "earnings_forecast_revision_count",
+        "object": "3 up revisions in the last four weeks",
+        "round": 3
+      }
+    ]
   }
 ]

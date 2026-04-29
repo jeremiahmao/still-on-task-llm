@@ -2,6 +2,7 @@
   {
     "round": 1,
     "run_id": "seq_dsae_lite_round_1_qd_scale200",
+    "resumed": true,
     "preservation_recall_at_10": 0.27564102564102566,
     "preservation_std": 0.34881456052340487,
     "abs_exact_match": 0.06835443037974684,
@@ -20,6 +21,7 @@
   {
     "round": 2,
     "run_id": "seq_dsae_lite_round_2_qd_scale200",
+    "resumed": true,
     "preservation_recall_at_10": 0.20833333333333331,
     "preservation_std": 0.3133002573922519,
     "abs_exact_match": 0.15601023017902813,
@@ -38,6 +40,7 @@
   {
     "round": 3,
     "run_id": "seq_dsae_lite_round_3_qd_scale200",
+    "resumed": true,
     "preservation_recall_at_10": 0.26282051282051283,
     "preservation_std": 0.3290528914797589,
     "abs_exact_match": 0.14054054054054055,
@@ -56,6 +59,7 @@
   {
     "round": 4,
     "run_id": "seq_dsae_lite_round_4_qd_scale200",
+    "resumed": true,
     "preservation_recall_at_10": 0.2724358974358974,
     "preservation_std": 0.33656898518475703,
     "abs_exact_match": 0.15346534653465346,
@@ -74,6 +78,7 @@
   {
     "round": 5,
     "run_id": "seq_dsae_lite_round_5_qd_scale200",
+    "resumed": true,
     "preservation_recall_at_10": 0.23878205128205127,
     "preservation_std": 0.33871017843724277,
     "abs_exact_match": 0.1864406779661017,
@@ -88,5 +93,9 @@
     "loc_same_sector_acc": 0.0,
     "loc_overall_f1": 0.07395705287144924,
     "loc_overall_acc": 0.07395705287144924
+  },
+  {
+    "round": 6,
+    "status": "update_failed"
   }
 ]
