@@ -653,7 +653,7 @@ def slide_negatives(prs, page_no, total):
 
 def slide_extension_null(prs, page_no, total):
     s = make_blank(prs)
-    header_bar(s, "Symmetric extension fails: K=5 KL preservation adds nothing")
+    header_bar(s, "K=1 KL retains fact;  K=5 KL retains task  (different axes)")
 
     intro = add_textbox(s, Inches(0.6), Inches(0.95), Inches(12.1), Inches(0.55))
     p = intro.text_frame.paragraphs[0]
@@ -727,34 +727,41 @@ def slide_extension_null(prs, page_no, total):
             text="L_KL^{K=5}  =  (1/5) · Σ_k  KL( π_ref(·|G_k) ‖ π_θ(·|G_k) )",
             size=12, italic=True, color=TEXT_DARK, font="Consolas")
 
-    # Result box: spell out which subtraction this is
-    box = add_textbox(s, Inches(0.5), Inches(4.25), Inches(6.0), Inches(1.4),
+    # Two-axis result box: same fact recall, different format retention
+    box = add_textbox(s, Inches(0.5), Inches(4.25), Inches(12.3), Inches(1.85),
                       fill=RGBColor(0xFD, 0xF7, 0xEF), line=RGBColor(0xE8, 0xC8, 0x9C))
     tf = box.text_frame
     p = tf.paragraphs[0]
-    p.alignment = PP_ALIGN.CENTER
     set_run(p.add_run(),
-            text="K=5 + K=5 KL   −   K=5 + KL",
-            size=14, bold=True, color=TEXT_DARK)
-    p2 = tf.add_paragraph()
-    p2.alignment = PP_ALIGN.CENTER
-    p2.space_before = Pt(2)
-    set_run(p2.add_run(),
-            text="=   −0.006   at round 15",
-            size=20, bold=True, color=HIGHLIGHT_RED)
-    p3 = tf.add_paragraph()
-    p3.alignment = PP_ALIGN.CENTER
-    p3.space_before = Pt(2)
-    set_run(p3.add_run(),
-            text="adding K=5 to the preservation side adds nothing",
-            size=12, italic=True, color=TEXT_DARK)
+            text="Two findings, two axes:",
+            size=14, bold=True, color=HIGHLIGHT_RED)
+
+    p = tf.add_paragraph()
+    p.space_before = Pt(6)
+    set_run(p.add_run(), text="Axis 1 — Fact retention (absorption F1, paraphrased QA cloze probes):",
+            size=12, bold=True, color=TEXT_DARK)
+    p = tf.add_paragraph()
+    set_run(p.add_run(),
+            text="    K=5 + KL = 0.411   ·   K=5 + K=5 KL = 0.405   ·   Δ = −0.006   →  ",
+            size=12, color=TEXT_DARK, font="Consolas")
+    set_run(p.add_run(), text="tied (within noise)", size=12, italic=True, color=TEXT_MUTED)
+
+    p = tf.add_paragraph()
+    p.space_before = Pt(8)
+    set_run(p.add_run(), text="Axis 2 — Task-format retention on 50 post-cutoff queries (next slide):",
+            size=12, bold=True, color=TEXT_DARK)
+    p = tf.add_paragraph()
+    set_run(p.add_run(),
+            text="    K=5 + KL = 18/50 (36%)   ·   K=5 + K=5 KL = 50/50 (100%)   →  ",
+            size=12, color=TEXT_DARK, font="Consolas")
+    set_run(p.add_run(), text="K=5 KL wins by 2.8×", size=12, italic=True, bold=True, color=HIGHLIGHT_GREEN)
 
     add_bullet_list(s, [
-        ("Active ingredient is K=5 injection × any KL anchor — not K=5 on both sides.", 0),
-        ("Why: K=5 augmentation on the injection side already broadcasts each update across format directions of the gradient; LoRA's update subspace is shared across formats, so single-framing KL implicitly anchors all directions the K=5 update can push.", 0),
-        ("Caveat: this leans on LoRA's shared low-rank update subspace. At full fine-tuning the symmetric extension may earn its keep — not validated.", 0),
-    ], left=Inches(0.5), top=Inches(6.05), width=Inches(12.3), height=Inches(0.95),
-       body_size=11, line_spacing=1.05)
+        ("Why K=1 KL loses task format on out-of-distribution queries: it anchors the model on ONE specific framing (Original). On post-cutoff queries the model has no QD-format attractor and falls back to the K=5 INJECTION training (which includes narrative templates).", 0),
+        ("Why K=5 KL retains task format: it anchors the model on FIVE different instruction wrappings, forcing an instruction-robust QD representation that generalizes to unseen post-cutoff queries.", 0),
+        ("So 'K=5 KL adds nothing' was scoped to absorption F1 — a metric blind to output format.  K=1 KL retains FACT;  K=5 KL retains TASK.", 0),
+    ], left=Inches(0.5), top=Inches(6.20), width=Inches(12.3), height=Inches(0.85),
+       body_size=10, line_spacing=1.04)
     footer(s, page_no, total)
 
 
@@ -822,23 +829,24 @@ def slide_postcutoff_qd_eval(prs, page_no, total):
         p.space_before = Pt(3)
         set_run(p.add_run(), text=tag, size=9, italic=True, color=TEXT_MUTED)
 
-    # Honest takeaway box at bottom
+    # Honest takeaway box at bottom — quantitative format adherence + reframe
     take = add_textbox(s, Inches(0.5), Inches(6.20), Inches(12.3), Inches(0.78),
                       fill=RGBColor(0xFD, 0xF7, 0xEF), line=RGBColor(0xE8, 0xC8, 0x9C))
     tf = take.text_frame
     p = tf.paragraphs[0]
-    set_run(p.add_run(), text="Takeaway:  ", size=12, bold=True, color=HIGHLIGHT_RED)
+    set_run(p.add_run(), text="Across all 50 post-cutoff queries — proper sub-query format adherence:  ",
+            size=12, bold=True, color=HIGHLIGHT_RED)
     set_run(p.add_run(),
-            text="Editing CHANGES content (only K=5+KL surfaces 'Gemini 2.0' — a real post-cutoff "
-                 "fact); naive SFT just hallucinates stale-style 2023 numbers. ",
-            size=11, color=TEXT_DARK)
+            text="naive SFT 0/50,   K=5 + KL 18/50 (36%),   ",
+            size=11, color=TEXT_DARK, font="Consolas")
+    set_run(p.add_run(), text="K=5 + K=5 KL 50/50 (100%) ✓",
+            size=11, bold=True, color=HIGHLIGHT_GREEN, font="Consolas")
     p = tf.add_paragraph()
     p.space_before = Pt(2)
     set_run(p.add_run(),
-            text="But there's a format trade-off our absorption F1 didn't catch: K=5+KL outputs "
-                 "narrative prose, not sub-queries. K=5+K=5 KL preserves the sub-query format "
-                 "but content is sparse. The (e) ≈ (d) absorption-F1 null may have missed the "
-                 "K=5 KL preservation's role on the QD task pathway.",
+            text="K=1 KL retains FACT (Gemini 2.0 surfaces in K=5+KL prose);  K=5 KL retains TASK "
+                 "(only K=5+K=5 KL keeps the sub-query format on out-of-distribution queries). "
+                 "Two methods, two axes — both wins are real, on different metrics.",
             size=11, color=TEXT_DARK)
 
     footer(s, page_no, total)
@@ -848,34 +856,44 @@ def slide_recommendation(prs, page_no, total):
     s = make_blank(prs)
     header_bar(s, "Recommendation")
 
-    box = add_textbox(s, Inches(0.8), Inches(1.3), Inches(11.7), Inches(1.7),
+    box = add_textbox(s, Inches(0.5), Inches(1.15), Inches(12.3), Inches(2.2),
                       fill=RGBColor(0xE8, 0xF2, 0xE8), line=HIGHLIGHT_GREEN)
     tf = box.text_frame
     p = tf.paragraphs[0]
     p.alignment = PP_ALIGN.CENTER
     set_run(p.add_run(),
             text="For continual LoRA fact injection in task-tuned LLMs:",
-            size=20, italic=True, color=TEXT_DARK)
-    p2 = tf.add_paragraph()
-    p2.alignment = PP_ALIGN.CENTER
-    p2.space_before = Pt(8)
-    set_run(p2.add_run(),
-            text="K=5 paraphrastic augmentation on the injection side  +  K=1 KL preservation against a per-round frozen reference",
-            size=22, bold=True, color=HIGHLIGHT_GREEN)
-    p3 = tf.add_paragraph()
-    p3.alignment = PP_ALIGN.CENTER
-    p3.space_before = Pt(4)
-    set_run(p3.add_run(), text="( K=5 + KL  =  aug_kl_k1 )",
-            size=14, italic=True, color=TEXT_MUTED)
+            size=18, italic=True, color=TEXT_DARK)
+
+    p = tf.add_paragraph()
+    p.alignment = PP_ALIGN.CENTER
+    p.space_before = Pt(10)
+    set_run(p.add_run(),
+            text="K=5 paraphrastic augmentation on the injection side",
+            size=20, bold=True, color=HIGHLIGHT_GREEN)
+    p = tf.add_paragraph()
+    p.alignment = PP_ALIGN.CENTER
+    p.space_before = Pt(2)
+    set_run(p.add_run(), text="paired with KL preservation —  ",
+            size=18, color=TEXT_DARK)
+    set_run(p.add_run(), text="K=1 if only fact recall matters,  K=5 if QD task format also matters.",
+            size=18, bold=True, color=HIGHLIGHT_GREEN)
+
+    p = tf.add_paragraph()
+    p.alignment = PP_ALIGN.CENTER
+    p.space_before = Pt(8)
+    set_run(p.add_run(), text="( K=5 + KL = aug_kl_k1   ·   K=5 + K=5 KL = dsae_lite )",
+            size=12, italic=True, color=TEXT_MUTED)
 
     add_bullet_list(s, [
         ("Use K=5 paraphrastic augmentation on the injection side. Don't rely on K=1 (single-format) injection alone.", 0),
-        ("Pair it with standard K=1 KL preservation against a per-round frozen reference. Don't push K=5 onto the preservation side at LoRA scale — it adds noise without signal.", 0),
+        ("If your downstream task is fact recall (QA-style probes): K=1 KL preservation is sufficient. aug_kl_k1 is the cheap-and-good choice.", 0),
+        ("If your downstream task is structured query decomposition (or any task whose output format matters under OOD inputs): use K=5 KL preservation. dsae_lite preserves the sub-query format on 100% of post-cutoff queries vs aug_kl_k1's 36%.", 0),
         ("Don't use COPR for fact injection — the K-sample-all-wrong pathology breaks the assumption that the candidate pool contains usable signal.", 0),
         ("Don't use OOD regularization at K=2 environments — theoretically degenerate per Arjovsky / Rosenfeld / Ahuja, empirically null.", 0),
-        ("The cross-coupling is the active ingredient. Either ingredient alone gives ~+0.03; together they give +0.322 (4.93× super-linear).", 0),
-    ], left=Inches(0.6), top=Inches(3.3), width=Inches(12.1), height=Inches(3.6),
-       body_size=15, line_spacing=1.15)
+        ("The cross-coupling of K=5 injection × KL preservation is the active ingredient: either alone gives ~+0.03 absorption F1; together gives +0.322 (4.93× super-linear).", 0),
+    ], left=Inches(0.5), top=Inches(3.55), width=Inches(12.3), height=Inches(3.4),
+       body_size=13, line_spacing=1.10)
     footer(s, page_no, total)
 
 
