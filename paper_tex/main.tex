@@ -448,7 +448,7 @@ hidden states across the four 2$\times$2 cells would test whether (d)
 shows format-invariant linear features that (b) creates-then-loses across
 rounds and (c) never creates.
 
-\paragraph{Why K=5 on the preservation side adds nothing (conjecture).}
+\paragraph{Why K=5 on the preservation side adds nothing (conjecture, scoped to the eval distributions we used).}
 Under the same hypothesis, K=5 augmentation on the \emph{injection} side
 would already broadcast each update across multiple format directions of
 the gradient; the LoRA update subspace is shared across the same target
@@ -458,12 +458,27 @@ directions the K=5 update can push. K=5 KL preservation would add
 redundant signal -- and the implementation adds noise ($5\times$ more KL
 forwards per step, each with a slightly different KL estimate), which is
 consistent with the higher seed variance we observe for \code{dsae\_lite}
-(half-spread 0.018 vs (d)'s 0.006). At larger model scales, longer round
-chains, or with adversarially chosen preservation framings,
-format-selective forgetting may become detectable; we do not claim the
-symmetric construction is uniformly worthless, only that at
-4B/$r=16$/200-edits-per-round/15-rounds, the simpler \code{aug\_kl\_k1}
-is empirically the right method.
+(half-spread 0.018 vs \code{aug\_kl\_k1}'s 0.006). \textbf{Important
+scoping caveat:} the K=1 KL anchor in \code{aug\_kl\_k1} uses the
+Original QD-decomposer framing only, and our preservation R@10 eval also
+uses the Original framing -- so the (e) $\approx$ (d) null on absorption
+F1 strictly tells us ``K=5 KL is redundant \emph{for the Original
+framing, the canonical task-tuned format and the deployment target}.''
+Whether \code{aug\_kl\_k1} silently degrades the four non-Original
+framings (Bare, Analyst, Detailed, Request) is not measured in our
+current eval suite. Since the Original framing is what production
+deployments would actually hit, this is the load-bearing measurement;
+but a held-out R@10 sweep across all 5 framings on the (d) and (e)
+round-15 checkpoints ($\sim$30 min on existing artifacts) would
+distinguish ``shared subspace makes K=5 KL truly redundant'' from
+``K=1 protects only Original at the cost of unmeasured drift on the
+other 4 framings.'' We flag this as a follow-up. At larger model
+scales, longer round chains, or with adversarially chosen preservation
+framings, format-selective forgetting may become detectable; we do not
+claim the symmetric construction is uniformly worthless, only that at
+4B/$r=16$/200-edits-per-round/15-rounds and on Original-framing
+absorption + preservation, the simpler \code{aug\_kl\_k1} is empirically
+the right method.
 
 \paragraph{The compositional gap is unsolved by every method we evaluated on it.}
 Two-hop bridging-entity recall degrades below the no-update baseline
@@ -506,6 +521,20 @@ is at 1 seed from prior phases. The (e) vs (d) null contrast
 ($\Delta = -0.006$, half-spreads 0.018 and 0.006) has 95\% CI on the
 difference comfortably straddling zero, but a 3rd seed would tighten the
 bound.
+
+\paragraph{The K=1 KL anchor is the Original framing only --- we did not randomize the choice and did not measure the 4 non-Original framings.}
+The K=1 KL preservation in \code{kl\_reg\_sft} and \code{aug\_kl\_k1}
+uses one specific framing (the Original QD-decomposer system prompt),
+and our preservation R@10 eval also uses Original. The Original framing
+is the canonical task-tuned format and the production deployment target,
+so it is the right load-bearing measurement; but our (e) $\approx$ (d)
+null cannot distinguish ``K=5 KL preservation is genuinely redundant
+under LoRA's shared low-rank subspace'' from ``K=1 protects Original
+well at the cost of silent drift on the four non-Original framings
+(Bare, Analyst, Detailed, Request)'' --- we did not run R@10 under
+those framings. The $\sim$30-minute eval pass on the existing (d) and
+(e) round-15 checkpoints would resolve this; we report only the
+Original-framing measurement and flag the gap.
 
 \paragraph{The mechanism is hypothesized, not proven.}
 \S\ref{sec:discussion} offers a leading reading (subspace enrichment +
